@@ -133,8 +133,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         // Send a tutorial message
         if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[weapon_type])
         {
-            if (Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_vr[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_vr[weapon_type], Color.cyan); }
-            else if (!Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_desktop[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_desktop[weapon_type], Color.cyan); }
+            if (Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_vr[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_vr[weapon_type], Color.cyan, 12.0f); }
+            else if (!Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_desktop[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_desktop[weapon_type], Color.cyan, 12.0f); }
             local_tutorial_message_bool[weapon_type] = true;
         }
 

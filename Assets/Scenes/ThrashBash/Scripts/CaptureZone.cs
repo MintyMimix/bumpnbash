@@ -5,6 +5,7 @@ using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Rendering;
+using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -31,6 +32,9 @@ public class CaptureZone : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image UITeamPoleImage;
     [SerializeField] public UnityEngine.UI.Image UITeamCBImage;
     [SerializeField] public TMP_Text UITeamText;
+    [SerializeField] public UnityEngine.UI.Image UIContestMeterFG;
+    [SerializeField] public UnityEngine.UI.Image UIContestMeterBG;
+    [SerializeField] public TMP_Text UITimerText;
 
     [NonSerialized] [UdonSynced] public double last_network_time = 0.0f;
     [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
@@ -101,10 +105,6 @@ public class CaptureZone : UdonSharpBehaviour
             dict_points_values_arr = gameController.ConvertStrToIntArray(dict_points_values_str);
         }
 
-        // -- Master Only Below --
-
-        if (!Networking.IsMaster) { return; }
-
         double currentNetworkTime = Networking.GetServerTimeInSeconds();
         float networkTimeDelta = (float)Networking.CalculateServerDeltaTime(currentNetworkTime, last_network_time);
         last_network_time = currentNetworkTime;
@@ -124,12 +124,11 @@ public class CaptureZone : UdonSharpBehaviour
                     else { } // Overtime condition
                 }
 
-                if (!Networking.IsMaster) { LocalGrantPoints(); }
-                else 
-                { 
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); 
+                if (Networking.IsMaster)
+                {
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
                     if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
-                    else if (hold_index >= 0 && hold_points == gameController.option_gm_goal - 1 && overtime_enabled)
+                    else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
                     {
                         // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
                     }
@@ -137,6 +136,23 @@ public class CaptureZone : UdonSharpBehaviour
                     {
                         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
                     }
+                }
+
+                // Respawn duration should scale with progress
+                int local_id = 0;
+                if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
+                else { local_id = Networking.LocalPlayer.playerId; }
+                int local_index = gameController.DictIndexFromKey(local_id, dict_points_keys_arr);
+                if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
+                {
+                    gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
+
+                    // Respawn duration is always longer for the holder
+                    if ((
+                        (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
+                        || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
+                        ))
+                    { gameController.local_plyAttr.ply_respawn_duration *= 2.5f; }
                 }
             }
         }
@@ -155,12 +171,12 @@ public class CaptureZone : UdonSharpBehaviour
         {
             initial_lock_timer += networkTimeDelta;
         }
-        
-        if (is_locked)
+
+        if (is_locked && Networking.IsMaster)
         {
             dict_points_keys_str = gameController.ConvertIntArrayToString(dict_points_keys_arr);
             dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
-            return; 
+            return;
         }
 
         // -- Below will only occur if the point is unlocked and active --
@@ -176,12 +192,12 @@ public class CaptureZone : UdonSharpBehaviour
         // If the contest_progress exceeds duration, then contestor becomes the new holder; reset contestor and contest_progress.
         if (contest_progress >= gameController.option_gm_config_a)
         {
-            UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
+            //UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
 
             // Assign a penalty if a holder lost the point within the last 5 seconds
             int hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
             if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && (gameController.option_gm_goal - dict_points_values_arr[hold_index]) <= 5) {
-                dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6; 
+                dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6;
                 if (!Networking.IsMaster) { LocalGrantPoints(); }
                 else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
             }
@@ -203,10 +219,11 @@ public class CaptureZone : UdonSharpBehaviour
             contest_id = -1; contest_progress = 0.0f; contest_pause_timer = 0.0f;
         }
 
-        dict_points_keys_str = gameController.ConvertIntArrayToString(dict_points_keys_arr);
-        dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
+        if (Networking.IsMaster) {
+            dict_points_keys_str = gameController.ConvertIntArrayToString(dict_points_keys_arr);
+            dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
+        }
 
-        
     }
     public void CheckPointContest(float deltaTime)
     {
@@ -218,6 +235,8 @@ public class CaptureZone : UdonSharpBehaviour
             // Ignore invalid player entries
             if (players_on_point[i] < 0 || VRCPlayerApi.GetPlayerById(players_on_point[i]) == null) { continue; }
             int compare_id = players_on_point[i];
+            // Make sure they are currently not in an invulnerable state
+            if (gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(players_on_point[i])).ply_state == (int)player_state_name.Respawning) { continue; }
             // If we are in teamplay, use the team ID instead of the player ID
             if (gameController.option_teamplay) { compare_id = gameController.GetGlobalTeam(players_on_point[i]); }
 
@@ -228,16 +247,13 @@ public class CaptureZone : UdonSharpBehaviour
         }
         //UnityEngine.Debug.Log("[CAPTURE_TEST]: Holder on point: " + holder_on_point + "; Contestor on point: " + contestor_on_point + "; Others on point: " + others_unique_count + "; other_id = " + other_id + "; Players on Point: " + gameController.ConvertIntArrayToString(players_on_point));
 
-        // If the holder is on the point, enable overtime if there are others trying to contest it. Otherwise, disable overtime.
-        // Overtime prevents a win, but allows progress.
-        if (holder_on_point) 
-        { 
-            overtime_enabled = (contestor_on_point || others_unique_count > 0);
-            if (contestor_on_point) { contest_pause_timer = 0.0f; }
-        }   
+        // Enable overtime if there are others trying to contest the point. Overtime prevents a win, but allows holder point progress.
+        overtime_enabled = (contestor_on_point || others_unique_count > 0 || contest_progress > 0.0f);
+        // If the holder is on the point, pause contest progress.
+        if (holder_on_point && contestor_on_point) { contest_pause_timer = 0.0f; }   
         // If no one other than the contestors are on point, give them progress.
         // We make this an if rather than an else-if because we do want to assign new contestors regardless of whether the holder is on point; all that matters is whether or not a contestor is or is not
-        if (!holder_on_point && contestor_on_point && others_unique_count == 0) { contest_progress += deltaTime; contest_pause_timer = 0.0f; }
+        else if (!holder_on_point && contestor_on_point && others_unique_count == 0) { contest_progress += deltaTime; contest_pause_timer = 0.0f; }
         // If there is no contestor AND there is only one team/player on the point AND they are not the holder, assign the contestor to them.
         else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
         {
@@ -248,6 +264,11 @@ public class CaptureZone : UdonSharpBehaviour
         else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = -2;
+        }
+        else if (contestor_on_point)
+        {
+            // Even if no special condition is ongoing, if the contestor is on the point, make sure not to drain their progress
+            contest_pause_timer = 0.0f;
         }
     }
 
@@ -325,7 +346,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (captureDisplayArea != null) { captureDisplayArea.SetActive(true); }
         UITeamFlagCanvas.transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
 
-        Vector3 initScale = new Vector3(0.000375f, 0.0006f, 0.000375f);
+        Vector3 initScale = new Vector3(0.000375f, 0.0006f, 0.000375f) * 0.5f;
         Vector3 ratio_desired = Vector3.zero;
         if (gameController != null && gameController.local_uiplytoself != null)
         {
@@ -336,7 +357,7 @@ public class CaptureZone : UdonSharpBehaviour
                 ply_scale = gameController.local_plyAttr.ply_scale;
             }
             calc_ui_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position +
-                (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * (0.5f * (1 / ply_scale) * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f)));
+                (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * (0.5f * (ply_scale) * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f)));
             ratio_desired =
                 initScale
                 /
@@ -357,16 +378,19 @@ public class CaptureZone : UdonSharpBehaviour
         UnityEngine.UI.Image activeImage = null;
 
         string displayText = "";
+        string timerText = "";
 
         if (is_locked)
         {
             activeImage = UITeamLockImage;
             activeImage.enabled = true;
             RecolorDisplayArea(Color.gray);
-            displayText = "(LOCKED)" + "\n" + (Mathf.Floor((initial_lock_duration - initial_lock_timer) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
+            displayText = "(LOCKED)\n";
+            timerText = (Mathf.Floor((initial_lock_duration - initial_lock_timer) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
             activeImage.color = Color.gray;
             UITeamCBImage.sprite = gameController.team_sprites[0];
             UITeamText.color = Color.gray;
+            UITimerText.color = Color.gray;
             RecolorDisplayArea(Color.gray);
         }
         else
@@ -393,6 +417,7 @@ public class CaptureZone : UdonSharpBehaviour
                 activeImage.color = gameController.team_colors[hold_id];
                 UITeamCBImage.sprite = gameController.team_sprites[hold_id];
                 UITeamText.color = gameController.team_colors_bright[hold_id];
+                UITimerText.color = gameController.team_colors_bright[hold_id];
                 RecolorDisplayArea(gameController.team_colors[hold_id]);
                 displayText += gameController.team_names[hold_id];
             }
@@ -407,6 +432,7 @@ public class CaptureZone : UdonSharpBehaviour
                         activeImage.color = gameController.team_colors[0];
                         UITeamCBImage.sprite = gameController.team_sprites[0];
                         UITeamText.color = gameController.team_colors_bright[0];
+                        UITimerText.color = gameController.team_colors_bright[0];
                         RecolorDisplayArea(gameController.team_colors[0]);
                     }
                     else
@@ -414,6 +440,7 @@ public class CaptureZone : UdonSharpBehaviour
                         activeImage.color = gameController.team_colors[1];
                         UITeamCBImage.sprite = gameController.team_sprites[1];
                         UITeamText.color = gameController.team_colors_bright[1];
+                        UITimerText.color = gameController.team_colors_bright[1];
                         RecolorDisplayArea(gameController.team_colors[1]);
                     }
                     displayText += hold_ply.displayName; 
@@ -423,6 +450,7 @@ public class CaptureZone : UdonSharpBehaviour
                     activeImage.color = Color.white;
                     UITeamCBImage.sprite = gameController.team_sprites[3];
                     UITeamText.color = Color.white;
+                    UITimerText.color = Color.white;
                     RecolorDisplayArea(Color.white);
                     displayText += "(DISCONNECTED)"; 
                 }
@@ -430,17 +458,18 @@ public class CaptureZone : UdonSharpBehaviour
 
             float timeLeft = gameController.option_gm_goal;
             if (hold_index >= 0) { timeLeft -= dict_points_values_arr[hold_index]; }
-            displayText += "\n ";
-            if (timeLeft < 0.0f) { displayText += (Mathf.Floor(timeLeft * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'); }
-            else { displayText += timeLeft.ToString(); }
+            //displayText += "\n ";
+            if (timeLeft < 0.0f) { timerText = (Mathf.Floor(timeLeft * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'); }
+            else { timerText = timeLeft.ToString(); }
 
         }
         else if (!is_locked)
         {
             activeImage.color = Color.gray;
             UITeamCBImage.sprite = gameController.team_sprites[0];
-            displayText += "(OPEN)";
+            displayText += "(OPEN)\n";
             UITeamText.color = Color.gray;
+            UITimerText.color = Color.gray;
             RecolorDisplayArea(Color.gray);
         }
 
@@ -488,7 +517,10 @@ public class CaptureZone : UdonSharpBehaviour
                 , Mathf.Lerp(UITeamText.color.a, ((Color)iColorB).a, contest_pct)
                 );
             activeImage.color = colorLerp;
+            UITimerText.color = UITeamText.color;
+            if (UIContestMeterBG != null) { UIContestMeterBG.color = UITeamText.color; }
             UITeamText.color = colorLerpB;
+            if (UIContestMeterFG != null) { UIContestMeterFG.color = (Color)iColorB; }
             RecolorDisplayArea(colorLerp);
             displayText += "]\n" + Mathf.Round(contest_pct * 100.0f) + "%";
         }
@@ -499,12 +531,27 @@ public class CaptureZone : UdonSharpBehaviour
             else { displayText += "players!]"; }
         }
 
-        if (overtime_enabled && hold_points == gameController.option_gm_goal - 1)
+        if (overtime_enabled && hold_points >= gameController.option_gm_goal - 1)
         {
             displayText = displayText + "\n -- OVERTIME! --";
         }
 
         UITeamText.text = displayText;
+        UITimerText.text = timerText;
+
+        // Display the contest meter
+        if (UIContestMeterFG != null && UIContestMeterBG != null)
+        {
+            UIContestMeterFG.gameObject.SetActive(contest_id >= 0);
+            UIContestMeterBG.gameObject.SetActive(contest_id >= 0);
+            float offsetMax = UIContestMeterBG.rectTransform.rect.width;
+            float offsetPct = 0.0f;
+            if (contest_progress > 0.0f && gameController.option_gm_config_a > 0) { offsetPct = System.Convert.ToSingle(contest_progress / gameController.option_gm_config_a); }
+            UIContestMeterFG.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), UIContestMeterFG.rectTransform.offsetMax.y);
+        }
+
+        if (UIContestMeterFG == null) { UIContestMeterFG.gameObject.SetActive(false); }
+        if (UIContestMeterBG == null) { UIContestMeterBG.gameObject.SetActive(false); }
     }
 
     public void RecolorDisplayArea(Color color)
@@ -607,6 +654,10 @@ public class CaptureZone : UdonSharpBehaviour
         if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return; }
         VRCPlayerApi player = Networking.GetOwner(other.gameObject);
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
+        if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning)
+        {
+            gameController.AddToLocalTextQueue("Cannot capture point while invulnerable!", Color.gray);
+        }
         
         // If we are not the master, signal to them that we entered the trigger
         if (!Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerEnter", player.playerId); }

@@ -53,8 +53,11 @@ public enum dict_compare_name
 public class GameController : UdonSharpBehaviour
 {
 
-    // Note to self: Keep an eye out for getplayerbyids returning null from disconnecting players, especially when getting .displayname
+    [NonSerialized][UdonSynced] public int host_id = 0; // Takes place of Instance Master
+    [NonSerialized] public bool is_host = false; // Takes place of Networking.IsMaster
+    // To-do: Replacing Networking.IsMaster events with is_host
 
+    // Note to self: Keep an eye out for getplayerbyids returning null from disconnecting players, especially when getting .displayname
     [Header("References")]
     [SerializeField] public GameObject template_WeaponProjectile;
     [SerializeField] public GameObject template_WeaponHurtbox;
@@ -74,6 +77,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_round_teamplay_toggle;
     [SerializeField] public TMP_InputField ui_round_teamplay_count_input;
     [SerializeField] public UnityEngine.UI.Button ui_round_teamplay_sort_button;
+    [SerializeField] public UnityEngine.UI.Toggle ui_round_teamplay_personal_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_round_length_toggle;
     [SerializeField] public TMP_InputField ui_round_length_input;
     [SerializeField] public Transform ui_round_scoreboard_canvas;
@@ -110,13 +114,11 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public Room_Ready room_ready_script;
     [SerializeField] public GameObject room_ready_spawn;
     [SerializeField] public Mapscript[] mapscript_list;
-    [NonSerialized] [UdonSynced] public sbyte map_selected = -1;
-    [NonSerialized] [UdonSynced] public string maps_active_str = "";
+    [NonSerialized][UdonSynced] public sbyte map_selected = -1;
+    [NonSerialized][UdonSynced] public string maps_active_str = "";
     [NonSerialized] public sbyte map_selected_local = -1;
     [NonSerialized] public string maps_active_local = "";
     [NonSerialized] public bool restrict_map_change = false;
-    //[SerializeField] public Collider[] room_game_spawnzones; // To-do: replace with mapscript
-    //[SerializeField] public GameObject room_game_extended; // To-do: replace with mapscript
     [SerializeField] public TextMeshProUGUI room_ready_txt;
     [SerializeField] public AudioSource snd_game_music_source;
     //[SerializeField] public AudioClip[] snd_game_music_clips;
@@ -140,23 +142,23 @@ public class GameController : UdonSharpBehaviour
     //[SerializeField] public Transform map_bouncepads_parent;
     //[NonSerialized] public BouncePad[] map_bouncepads;
 
-    [NonSerialized] [UdonSynced] public byte round_state = 0;
+    [NonSerialized][UdonSynced] public byte round_state = 0;
     [Header("Game Settings")]
     [Tooltip("How long a round should last, in seconds")]
-    [SerializeField] [UdonSynced] public float round_length = 300.0f;
+    [SerializeField][UdonSynced] public float round_length = 300.0f;
     [Tooltip("Should a round have a time limit at all?")]
     [SerializeField][UdonSynced] public bool round_length_enabled = true;
     [Tooltip("How long players are on the 'Ready...' screen before a round begins. This time is needed so they can pick up their weapon.")]
-    [SerializeField] [UdonSynced] public float ready_length = 5.0f;
+    [SerializeField][UdonSynced] public float ready_length = 5.0f;
     [Tooltip("How long a round should be in 'Game Over' state before someone can start a new round.")]
-    [SerializeField] [UdonSynced] public float queue_length = 4.0f;
+    [SerializeField][UdonSynced] public float queue_length = 4.0f;
     [Tooltip("How long does a game master have to stop the game from ongoing?")]
-    [SerializeField] [UdonSynced] public float load_length = 4.0f;
+    [SerializeField][UdonSynced] public float load_length = 4.0f;
     [Tooltip("How long should players be given to load in the map?")]
-    [SerializeField] [UdonSynced] public float over_length = 10.0f;
+    [SerializeField][UdonSynced] public float over_length = 10.0f;
     [Tooltip("How often should the goal be checked during a round?")]
-    [SerializeField] [UdonSynced] public float goal_impulse = 5.0f;
-    [NonSerialized] [UdonSynced] public double round_start_ms = 0.0f;
+    [SerializeField][UdonSynced] public float goal_impulse = 5.0f;
+    [NonSerialized][UdonSynced] public double round_start_ms = 0.0f;
 
     [Header("Player Settings")]
     [Tooltip("Starting Damage %")]
@@ -212,7 +214,7 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public float local_timer_a = 0.0f;
     [NonSerialized] public float local_timer_b = 0.0f;
 
-    [NonSerialized] [UdonSynced] public float largest_ply_scale = 1.0f;
+    [NonSerialized][UdonSynced] public float largest_ply_scale = 1.0f;
 
     //[NonSerialized] public bool f;
 
@@ -223,6 +225,7 @@ public class GameController : UdonSharpBehaviour
 
     [UdonSynced] public bool option_teamplay = false;
     [UdonSynced] public byte team_count = 1;
+    [UdonSynced] public bool option_personal_teams = true;
     [SerializeField] public Color32[] team_colors; // Assign in inspector
     [NonSerialized] public Color32[] team_colors_bright;
     [SerializeField] public string[] team_names; // MUST MATCH SIZE OF team_colors
@@ -234,37 +237,37 @@ public class GameController : UdonSharpBehaviour
     //[NonSerialized] public int[][] ply_teams_arr;
 
     [NonSerialized] public int[] ply_tracking_dict_keys_arr;
-    [NonSerialized] [UdonSynced] public string ply_tracking_dict_keys_str = "";
+    [NonSerialized][UdonSynced] public string ply_tracking_dict_keys_str = "";
     [NonSerialized] public int[] ply_tracking_dict_values_arr;
-    [NonSerialized] [UdonSynced] public string ply_tracking_dict_values_str = "";
+    [NonSerialized][UdonSynced] public string ply_tracking_dict_values_str = "";
 
     [SerializeField] public string[] round_option_names; // NOTE: Corresponds to gamemode_name
     [SerializeField] public string[] round_option_descriptions; // NOTE: Corresponds to gamemode_name
-    [NonSerialized] [UdonSynced] public byte option_gamemode = 0;
+    [NonSerialized][UdonSynced] public byte option_gamemode = 0;
     [NonSerialized] public byte local_gamemode_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
     [NonSerialized] public byte local_weapon_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
-    [NonSerialized] [UdonSynced] public ushort option_gm_goal; // The goal for each gamemode, such as points to win, boss KOs, or time to capture
-    [NonSerialized] [UdonSynced] public ushort option_gm_config_a; // A variable for additional configuration options for a gamemode, such as starting infected or boss lives
+    [NonSerialized][UdonSynced] public ushort option_gm_goal; // The goal for each gamemode, such as points to win, boss KOs, or time to capture
+    [NonSerialized][UdonSynced] public ushort option_gm_config_a; // A variable for additional configuration options for a gamemode, such as starting infected or boss lives
     //[NonSerialized] [UdonSynced] public ushort option_gm_config_b; // A variable for additional configuration options for a gamemode, such as starting infected or boss lives
     //[NonSerialized] [UdonSynced] public bool option_goal_time = false; // Should we not factor in points for the goal, but instead just wait out the timer?
     //[NonSerialized] [UdonSynced] public bool option_goal_points_a = false; // If true, points are used instead of lives
     //[NonSerialized] [UdonSynced] public ushort option_goal_value_a = 10;
     //[NonSerialized] [UdonSynced] public bool option_goal_points_b = false; // If true, points are used instead of lives
     //[NonSerialized] [UdonSynced] public ushort option_goal_value_b = 3;
-    [NonSerialized] [UdonSynced] public bool option_force_teamplay = false; // Should teamplay be forced on?
-    [NonSerialized] [UdonSynced] public bool option_enforce_team_limits = false; // Should team limits be enforced? If so...
-    [NonSerialized] [UdonSynced] public string option_team_limits_str = "0,1"; // What is the max # of players per team? Size must match team_count
+    [NonSerialized][UdonSynced] public bool option_force_teamplay = false; // Should teamplay be forced on?
+    [NonSerialized][UdonSynced] public bool option_enforce_team_limits = false; // Should team limits be enforced? If so...
+    [NonSerialized][UdonSynced] public string option_team_limits_str = "0,1"; // What is the max # of players per team? Size must match team_count
     [NonSerialized] public int[] option_team_limits_arr;
-    [NonSerialized] [UdonSynced] public bool option_start_from_master_only = true;
+    [NonSerialized][UdonSynced] public bool option_start_from_master_only = true;
 
-    [NonSerialized] [UdonSynced] public int ply_master_id = 0;
+    [NonSerialized][UdonSynced] public int ply_master_id = 0;
 
     [NonSerialized] private string room_ready_status_text = "";
 
     [NonSerialized] private bool wait_for_sync_for_round_start = false;
     [NonSerialized] private bool wait_for_sync_for_player_join = false;
 
-    [NonSerialized] [UdonSynced] public int gamemode_boss_id = 0; // the boss in big boss's ID
+    [NonSerialized][UdonSynced] public int gamemode_boss_id = 0; // the boss in big boss's ID
     [NonSerialized] public float music_volume_default = 1.0f;
     [NonSerialized] public float music_volume_stored = 1.0f;
 
@@ -308,7 +311,7 @@ public class GameController : UdonSharpBehaviour
         }
 
         team_colors_bright = new Color32[team_colors.Length];
-        for (int j = 0; j < team_colors.Length ; j++)
+        for (int j = 0; j < team_colors.Length; j++)
         {
             team_colors_bright[j] = new Color32(
                         (byte)Mathf.Max(0, Mathf.Min((byte)255, 80 + team_colors[j].r)),
@@ -331,7 +334,6 @@ public class GameController : UdonSharpBehaviour
         snd_game_sfx_clips[(int)game_sfx_name.HitReceive] = snd_game_sfx_clips_hitreceive;
         snd_game_sfx_clips[(int)game_sfx_name.Announcement] = snd_game_sfx_clips_announcement;
 
-        PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true);
         RefreshSetupUI();
         ui_initialized = true;
     }
@@ -432,6 +434,8 @@ public class GameController : UdonSharpBehaviour
     // -- Continously Running --
     private void Update()
     {
+        // Host handling
+        is_host = host_id == Networking.LocalPlayer.playerId;
 
         // Local handling
         round_timer = (float)Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), round_start_ms);
@@ -530,7 +534,7 @@ public class GameController : UdonSharpBehaviour
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
             round_state = (int)round_state_name.Ready;
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkRoundStart"); // To-do: add message
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkRoundStart");
             //RequestSerialization();
         }
     }
@@ -558,6 +562,8 @@ public class GameController : UdonSharpBehaviour
         if (local_plyAttr != null)
         {
             local_plyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
         }
 
         if (ui_round_mapselect != null)
@@ -573,6 +579,7 @@ public class GameController : UdonSharpBehaviour
         // Once we know our team variables have been fully synchronized, we can start the round on our end
         if (wait_for_sync_for_round_start)
         {
+            SetupMap();
             LocalRoundStart();
             wait_for_sync_for_round_start = false;
         }
@@ -600,6 +607,7 @@ public class GameController : UdonSharpBehaviour
 
         ui_round_teamplay_toggle.isOn = option_teamplay;
         ui_round_master_only_toggle.isOn = option_start_from_master_only;
+        ui_round_teamplay_personal_toggle.isOn = option_personal_teams;
 
         ui_round_team_panel.SetAllTeamCounters();
         ui_round_team_panel.RefreshAllPanels();
@@ -670,9 +678,9 @@ public class GameController : UdonSharpBehaviour
         }
 
         // No matter what, if we aren't the master and master-only is toggled, do not allow them to start it
-        if (!Networking.IsMaster && option_start_from_master_only) 
-        { 
-            enableRoundStartButton = false; 
+        if (!Networking.IsMaster && option_start_from_master_only)
+        {
+            enableRoundStartButton = false;
             if (room_ready_status_text == "START") { room_ready_status_text = "(MASTER ONLY)"; }
         }
 
@@ -689,6 +697,7 @@ public class GameController : UdonSharpBehaviour
         {
             ui_round_master_only_toggle.interactable = true;
             ui_round_teamplay_toggle.interactable = true && !option_force_teamplay;
+            ui_round_teamplay_personal_toggle.interactable = option_teamplay;
             ui_round_option_dropdown.interactable = true;
             ui_round_option_default_button.interactable = true;
             ui_round_length_toggle.interactable = option_gamemode != (int)gamemode_name.Infection; // Infection requires a time limit, so don't allow people to toggle it
@@ -720,6 +729,7 @@ public class GameController : UdonSharpBehaviour
         {
             ui_round_master_only_toggle.interactable = false;
             ui_round_teamplay_toggle.interactable = false;
+            ui_round_teamplay_personal_toggle.interactable = false;
             ui_round_option_dropdown.interactable = false;
             ui_round_option_default_button.interactable = false;
             ui_round_length_toggle.interactable = false;
@@ -837,6 +847,26 @@ public class GameController : UdonSharpBehaviour
     public void RefreshGameUI()
     {
         if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.UpdateGameVariables(); }
+    }
+
+    [NetworkCallable]
+    public void ChangeHost(int new_owner_id)
+    {
+        if (Networking.LocalPlayer != Networking.GetOwner(gameObject)) { return; }
+        host_id = new_owner_id;
+        RequestSerialization();
+        Networking.SetOwner(VRCPlayerApi.GetPlayerById(new_owner_id), gameObject);
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ProcessOwnerChanged", Networking.LocalPlayer.playerId, new_owner_id);
+        //ForceActive();
+    }
+
+
+    [NetworkCallable]
+    public void ProcessOwnerChanged(int old_owner_id, int new_owner_id)
+    {
+        host_id = new_owner_id;
+        is_host = host_id == Networking.LocalPlayer.playerId; 
+        // do things
     }
 
     public void ChangeGamemode()
@@ -982,6 +1012,7 @@ public class GameController : UdonSharpBehaviour
 
         option_teamplay = ui_round_teamplay_toggle.isOn;
         option_start_from_master_only = ui_round_master_only_toggle.isOn;
+        option_personal_teams = ui_round_teamplay_personal_toggle.isOn;
 
         int team_input_parse = 1;
         int prev_team_count = team_count;
@@ -1187,6 +1218,14 @@ public class GameController : UdonSharpBehaviour
     public void SetupMap()
     {
         if (map_selected < 0) { RefreshSetupUI(); return; }
+
+        if ((round_state == (int)round_state_name.Queued && !Networking.IsMaster) || (round_state == (int)round_state_name.Loading && Networking.IsMaster)) 
+        {
+            Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
+            AddToLocalTextQueue("You're Going To:", Color.white, load_length); 
+            AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length); 
+        }
+
         for (int i = 0; i < mapscript_list.Length; i++)
         {
             if (i == map_selected) { mapscript_list[i].gameObject.SetActive(true); }
@@ -1196,7 +1235,7 @@ public class GameController : UdonSharpBehaviour
         if (map_selected >= 0) { skybox.mainTexture = mapscript_list[map_selected].skybox_tex; }
         else { skybox.mainTexture = default_skybox_tex; }
         Vector3 plyPosRelativeToReadyRoom = Networking.LocalPlayer.GetPosition() - room_ready_script.gameObject.transform.position;
-        room_ready_script.gameObject.transform.position = mapscript_list[map_selected].map_readyroom_center.position;
+        room_ready_script.gameObject.transform.position = mapscript_list[map_selected].map_readyroom_center.position; // To-do: comment this out and enable portals to spectator regions instead
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].map_readyroom_center.position + plyPosRelativeToReadyRoom, Networking.LocalPlayer.GetRotation());
         platformHook.custom_force_unhook = false;
@@ -1344,8 +1383,8 @@ public class GameController : UdonSharpBehaviour
         
         int team_to_search = GetGlobalTeam(Networking.LocalPlayer.playerId);
         Color color_team = Color.white; Color color_personal = Color.white;
-        if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length) { color_personal = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
-        if (option_teamplay && option_gamemode != (int)gamemode_name.BossBash)
+        if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length && team_to_search >= 0) { color_personal = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
+        if (option_teamplay && option_gamemode != (int)gamemode_name.BossBash && team_to_search >= 0)
         {
             player_description = "Your team: ";
             if (option_gamemode == (int)gamemode_name.Infection) { team_to_search = 1; player_description = "The Infected are: "; }
@@ -1360,13 +1399,13 @@ public class GameController : UdonSharpBehaviour
             }
             player_description += players_on_team_names;
         }
-        if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length) { color_team = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
+        if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length && team_to_search >= 0) { color_team = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
 
-        AddToLocalTextQueue(round_option_names[option_gamemode], Color.yellow);
-        AddToLocalTextQueue(gamemode_description, Color.white);
+        AddToLocalTextQueue(round_option_names[option_gamemode], Color.yellow, ready_length);
+        AddToLocalTextQueue(gamemode_description, Color.white, ready_length);
         if (VRCPlayerApi.GetPlayerById(gamemode_boss_id) != null) { personal_description = personal_description.Replace("$BOSS", VRCPlayerApi.GetPlayerById(gamemode_boss_id).displayName); }
-        if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal); }
-        if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team); }
+        if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal, ready_length); }
+        if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team, ready_length); }
 
         // -- Master Handling Below --
         if (!Networking.IsMaster) { return; }
@@ -1431,6 +1470,11 @@ public class GameController : UdonSharpBehaviour
             RequestSerialization();
         }
         restrict_map_change = true;
+        if (ui_round_scoreboard_canvas != null)
+        {
+            ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = "Scoreboard";
+            ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.color = Color.white;
+        }
         RefreshSetupUI();
     }
 
@@ -1792,9 +1836,9 @@ public class GameController : UdonSharpBehaviour
 
         if (declare_victor)
         {
-            UnityEngine.Debug.Log("[VICTORY_TEST] LEADERBOARD ARR: " + ConvertIntArrayToString(leaderboard_arr));
-            UnityEngine.Debug.Log("[VICTORY_TEST] PROGRESS ARR: " + ConvertIntArrayToString(progress_arr));
-            UnityEngine.Debug.Log("[VICTORY_TEST] LEADER NAME: " + leader_name);
+            //UnityEngine.Debug.Log("[VICTORY_TEST] LEADERBOARD ARR: " + ConvertIntArrayToString(leaderboard_arr));
+            //UnityEngine.Debug.Log("[VICTORY_TEST] PROGRESS ARR: " + ConvertIntArrayToString(progress_arr));
+            //UnityEngine.Debug.Log("[VICTORY_TEST] LEADER NAME: " + leader_name);
             //if (option_teamplay) { UnityEngine.Debug.Log("[VICTORY TEST] LEADER NAME CAME FROM TEAM #" + leaderboard_arr[0] + " (" + team_names[leaderboard_arr[0]] + ") WITH PROGRESS: " + progress_arr[0]); }
         }
 
@@ -1823,11 +1867,11 @@ public class GameController : UdonSharpBehaviour
     [NetworkCallable]
     public void RoundEnd(string winner_name, int winning_team)
     {
-        int[][] players_in_game_dict = GetPlayersInGame();
-        UnityEngine.Debug.Log("[DICT_TEST]: ROUND END - " + ConvertIntArrayToString(players_in_game_dict[0]) + " | " + ConvertIntArrayToString(players_in_game_dict[1]));
-        for (int i = 0; i < players_in_game_dict[0].Length; i++)
+        //UnityEngine.Debug.Log("[DICT_TEST]: ROUND END - " + ConvertIntArrayToString(players_in_game_dict[0]) + " | " + ConvertIntArrayToString(players_in_game_dict[1]));
+
+        for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
         {
-            var player = VRCPlayerApi.GetPlayerById(players_in_game_dict[0][i]);
+            var player = VRCPlayerApi.GetPlayerById(ply_tracking_dict_keys_arr[i]);
             if (player == null) { continue; }
             var plyAttributes = FindPlayerAttributes(player);
             var plyWeapon = FindPlayerOwnedObject(player, "PlayerWeapon");
@@ -1839,7 +1883,7 @@ public class GameController : UdonSharpBehaviour
                 if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
                 if (plyAttributes.ply_state != (int)player_state_name.Spectator) { plyAttributes.ply_state = (int)player_state_name.Inactive; }
                 ToggleReadyRoomCollisions(true);
-                TeleportLocalPlayerToReadyRoom();
+                if (plyAttributes.ply_team >= 0 || plyAttributes.ply_team == (int)player_state_name.Spectator) { TeleportLocalPlayerToReadyRoom(); }
             }
         }
 
@@ -1863,16 +1907,26 @@ public class GameController : UdonSharpBehaviour
 
         if (winner_name != null && winner_name.Length > 0)
         {
-            AddToLocalTextQueue("THE WINNER IS:");
-            AddToLocalTextQueue(winner_name + "!", winning_color);
+            AddToLocalTextQueue("THE WINNER IS:", Color.white, ready_length * 2.0f);
+            AddToLocalTextQueue(winner_name + "!", winning_color, ready_length * 2.0f);
+            if (ui_round_scoreboard_canvas != null)
+            {
+                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = "WINNER: " + winner_name;
+                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.color = winning_color;
+            }
         }
         else
         {
             AddToLocalTextQueue("STALEMATE!");
             AddToLocalTextQueue("no one wins :(");
+            if (ui_round_scoreboard_canvas != null)
+            {
+                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = "STALEMATE!";
+                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.color = Color.white;
+            }
         }
 
-        PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true);
+        if (room_ready_script.warning_acknowledged) { PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true); }
 
         if (Networking.IsMaster)
         {
@@ -1901,6 +1955,9 @@ public class GameController : UdonSharpBehaviour
                 capturezone.gameObject.SetActive(false);
             }
         }
+
+        
+        
 
         restrict_map_change = false;
         RefreshSetupUI();
@@ -2135,6 +2192,19 @@ public class GameController : UdonSharpBehaviour
 
     }
 
+    public void LocalDeclareSpectatorIntent(bool spectator_desired)
+    {
+        // Handle spectator intent
+        if (spectator_desired && GetGlobalTeam(Networking.LocalPlayer.playerId) != (int)player_tracking_name.Spectator)
+        {
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false);
+        }
+        else if (!spectator_desired && GetGlobalTeam(Networking.LocalPlayer.playerId) == (int)player_tracking_name.Spectator)
+        {
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, false);
+        }
+    }
+
     // -- Player Tracking --
     public int[] ValidatePlayerArray(int[] arrIn)
     {
@@ -2173,7 +2243,13 @@ public class GameController : UdonSharpBehaviour
         ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
         UnityEngine.Debug.Log("[DICT_TEST]: Changing player " + player_id + " to team " + new_team + " (" + ply_tracking_dict_keys_str + " | " + ply_tracking_dict_values_str + ")");
 
-        if (player_id == Networking.LocalPlayer.playerId) { local_plyAttr.ply_team = new_team; } // Since the master never gets an OnDeserialization event, we can just change their personal team here
+        if (player_id == Networking.LocalPlayer.playerId) 
+        {
+            // Since the master never gets an OnDeserialization event, we can just change their personal team here
+            local_plyAttr.ply_team = new_team;
+            if (new_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+        } 
 
         RefreshSetupUI();
         RequestSerialization();
@@ -2293,6 +2369,8 @@ public class GameController : UdonSharpBehaviour
         ply_tracking_dict_values_arr = team_list_sorted;
         ply_tracking_dict_values_str = ConvertIntArrayToString(team_list_sorted);
         local_plyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId); // Since the master never receives the serialization message, we'll assign their local team value here
+        if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+        else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
         RequestSerialization();
     }
 
@@ -2447,6 +2525,14 @@ public class GameController : UdonSharpBehaviour
     public void AddToLocalTextQueue(string input, Color color)
     {
         if (local_uiplytoself != null) { local_uiplytoself.AddToTextQueue(input, color); }
+    }
+    public void AddToLocalTextQueue(string input, Color color, float duration)
+    {
+        if (local_uiplytoself != null) { local_uiplytoself.AddToTextQueue(input, color, duration); }
+    }
+    public void AddToLocalTextQueue(string input, float duration)
+    {
+        if (local_uiplytoself != null) { local_uiplytoself.AddToTextQueue(input, Color.white, duration); }
     }
 
     public string ModifyModeDescription(string input)

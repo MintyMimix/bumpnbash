@@ -30,6 +30,7 @@ public class Mapscript : UdonSharpBehaviour
     [NonSerialized] public ItemSpawner[] map_item_spawns;
     [NonSerialized] public BouncePad[] map_bouncepads;
     [NonSerialized] public CaptureZone[] map_capturezones;
+    [NonSerialized] public Transform[] map_campoints;
     [SerializeField] public GameObject room_game_extended;
 
     // Unused, but store just to be safe
@@ -46,6 +47,7 @@ public class Mapscript : UdonSharpBehaviour
         map_item_spawns = GetItemSpawnerFromParent(transform); // If we have more than 1000 of these, there's a problem
         map_bouncepads = GetBouncePadFromParent(transform); // If we have more than 1000 of these, there's a problem
         map_capturezones = GetCapturezonesFromParent(transform);
+        map_campoints = GetCamPointsFromParent(transform);
         //Debug.Log("[" +map_name + "] BOUNCEPADS: " + map_bouncepads.Length);
     }
 
@@ -169,6 +171,30 @@ public class Mapscript : UdonSharpBehaviour
             }
         }
         CaptureZone[] array_condensed = new CaptureZone[it_cnt];
+        for (int i = 0; i < it_cnt; i++)
+        {
+            array_condensed[i] = array_working[i];
+        }
+        array_working = array_condensed;
+
+        return array_condensed;
+    }
+
+    private Transform[] GetCamPointsFromParent(Transform parent_transform)
+    {
+        Transform[] array_working = new Transform[1000];
+        ushort it_cnt = 0;
+        Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
+        foreach (Transform t in AllChildren)
+        {
+            if (t != null && t.name.Contains("CamPoint"))
+            {
+                t.gameObject.SetActive(false);
+                array_working[it_cnt] = t;
+                it_cnt++;
+            }
+        }
+        Transform[] array_condensed = new Transform[it_cnt];
         for (int i = 0; i < it_cnt; i++)
         {
             array_condensed[i] = array_working[i];

@@ -13,6 +13,8 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public GameController gameController;
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_l;
+    [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_r;
     [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_particletoggle;
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
@@ -32,6 +34,7 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
     [NonSerialized] public bool intend_to_be_spectator = false;
+    [NonSerialized] public int ui_wrist = 0; // 0 = None, 1 = Left, 2 = Right
     [NonSerialized] public float ui_scale = 1.0f;
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
@@ -41,6 +44,7 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
     [NonSerialized] public bool particles_on = true;
+    [NonSerialized] public bool lock_wrist = false;
 
     private void Start()
     {
@@ -74,6 +78,8 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateUIScale();
         UpdateUISeparation();
         UpdateUIStretch();
+        UpdateUIWrist();
+        UpdateSpectatorIntent();
         UpdateHurtbox();
         UpdateColorblind();
         UpdateParticles();
@@ -151,6 +157,13 @@ public class PPP_Options : UdonSharpBehaviour
                         }
                     }
                     UpdateParticles();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UIWrist"))
+                {
+                    ui_wristtoggle_l.isOn = false;
+                    ui_wristtoggle_r.isOn = false;
+                    UpdateUIWrist();
                     continue;
                 }
                 if (infos[i].State == PlayerData.State.Restored || infos[i].State == PlayerData.State.Changed)
@@ -290,6 +303,29 @@ public class PPP_Options : UdonSharpBehaviour
                 }
             }
             UpdateParticles();
+        }
+
+        if (Networking.LocalPlayer.IsUserInVR())
+        {
+            int out_UIWrist;
+            if (PlayerData.TryGetInt(Networking.LocalPlayer, "UIWrist", out out_UIWrist))
+            {
+                ui_wristtoggle_l.isOn = out_UIWrist == 1;
+                ui_wristtoggle_r.isOn = out_UIWrist == 2;
+            }
+            else
+            {
+                ui_wristtoggle_l.isOn = false;
+                ui_wristtoggle_r.isOn = false;
+                UpdateUIWrist();
+            }
+        }
+        else
+        {
+            ui_wristtoggle_l.isOn = false;
+            ui_wristtoggle_r.isOn = false;
+            ui_wristtoggle_l.interactable = false;
+            ui_wristtoggle_r.interactable = false;
         }
 
     }
@@ -458,6 +494,53 @@ public class PPP_Options : UdonSharpBehaviour
 
         if (waiting_on_playerdata) { return; }
         PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn);
+    }
+
+    public void UpdateUIWrist()
+    {
+        if (ui_wristtoggle_l.isOn)
+        {
+            ui_wrist = 1;
+        }
+        else if (ui_wristtoggle_r.isOn)
+        {
+            ui_wrist = 2;
+        }
+        else
+        {
+            ui_wrist = 0;
+        }
+
+        gameController.RefreshSetupUI();
+        lock_wrist = false;
+        if (waiting_on_playerdata || !Networking.LocalPlayer.IsUserInVR()) { return; }
+        PlayerData.SetInt("UIWrist", ui_wrist);
+    }
+
+    public void UpdateUIWristL()
+    {
+        if (!lock_wrist)
+        {
+            if (ui_wristtoggle_l.isOn) { ui_wristtoggle_r.isOn = false; } // We don't want to do inverse because we want both to be able to be off
+            UpdateUIWrist();
+        }
+    }
+
+    public void UpdateUIWristR()
+    {
+        if (!lock_wrist)
+        {
+            if (ui_wristtoggle_r.isOn) { ui_wristtoggle_l.isOn = false; } // We don't want to do inverse because we want both to be able to be off
+            UpdateUIWrist();
+        }
+    }
+
+    public void UpdateSpectatorIntent()
+    {
+        intend_to_be_spectator = ui_spectatortoggle.isOn;
+        gameController.RefreshSetupUI();
+        gameController.LocalDeclareSpectatorIntent(intend_to_be_spectator);
+
     }
 
     // Spectator does not require persistence

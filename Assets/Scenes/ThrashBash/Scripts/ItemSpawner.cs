@@ -70,18 +70,31 @@ public class ItemSpawner : UdonSharpBehaviour
         StartTimer(item_spawn_impulse * (1.0f/item_spawn_frequency_mul));
     }
 
-    public void SetSpawnChances()
+    public void SetSpawnChances(byte gamemode)
     {
         if (!Networking.IsMaster) { return; }
         float[] parsed_spawn_chances = ParseInspectorSpawnChances();
         for (int i = 0; i < parsed_spawn_chances.Length; i++)
         {
+            // If powerups are disabled, set chances to zero
             if (!item_spawn_powerups_enabled && i < (int)powerup_type_name.ENUM_LENGTH) { parsed_spawn_chances[i] = 0.0f; }
+            // If weapons are disabled, set chances to zero
             if (!item_spawn_weapons_enabled && i >= (int)powerup_type_name.ENUM_LENGTH && i - (int)powerup_type_name.ENUM_LENGTH < (int)powerup_type_name.ENUM_LENGTH) { parsed_spawn_chances[i] = 0.0f; }
+            // If we're in Fitting In, disable size-changing powerups and half the chances of atk/def stat ups
+            if (gamemode == (int)gamemode_name.FittingIn)
+            {
+                if (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown) { parsed_spawn_chances[i] = 0.0f; }
+                else if (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp) { parsed_spawn_chances[i] *= 0.5f; }
+            }
         }
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(parsed_spawn_chances));
         item_spawn_chances_str = gameController.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization(); 
+    }
+
+    public void SetSpawnChances()
+    {
+        SetSpawnChances(gameController.option_gamemode);
     }
 
     public override void OnPlayerJoined(VRCPlayerApi player)

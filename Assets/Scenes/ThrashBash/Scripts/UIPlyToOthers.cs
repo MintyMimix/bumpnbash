@@ -152,10 +152,14 @@ public class UIPlyToOthers : UdonSharpBehaviour
          }
         else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
-            float timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)playerAttributes.ply_points); 
+            float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points;
             LivesText = timeLeft.ToString();
-            float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
-            PTOLives.color = new Color(1.0f, timeRatio / 1.5f, timeRatio / 1.0f, 1.0f);
+            PTOLives.color = new Color(
+                Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
+                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
+                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
+                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
+                );
             PTOLivesImage.color = PTOTeamFlagImage.color;
             if (ref_uiplytoself != null) { PTOLivesImage.sprite = ref_uiplytoself.PTSTimerImage; }
         }
@@ -187,8 +191,15 @@ public class UIPlyToOthers : UdonSharpBehaviour
     private void FixedUpdate()
     {
         if (owner == Networking.LocalPlayer || owner == null) { return; }
-        var scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);
-        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * scaleUI, 0.0f), Networking.LocalPlayer.GetRotation());
+        float scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);
+        float posUI = scaleUI;
+        if (gameController != null && gameController.local_ppp_options != null)
+        {
+            PPP_Options ppp_options = gameController.local_ppp_options;
+            scaleUI *= ((0.0f + ppp_options.ui_other_scale) / 1.0f);
+            posUI *= ((2.0f + ppp_options.ui_other_scale) / 2.0f);
+        }
+        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
     }
 

@@ -22,6 +22,8 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image flag_image;
     [SerializeField] public UnityEngine.UI.Image pole_image;
     [SerializeField] public UnityEngine.UI.Image cb_image;
+    [SerializeField] public Sprite points_sprite;
+    [SerializeField] public Sprite timer_sprite;
 
     [NonSerialized] public VRCPlayerApi player;
     [NonSerialized] public PlayerAttributes plyAttr;
@@ -60,10 +62,18 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
         if (gameController.option_gamemode == (int)gamemode_name.Survival || (plyAttr.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
         {
             lives_obj.SetActive(true);
+            points_image.sprite = points_sprite;
+        }
+        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) 
+        {
+            lives_obj.SetActive(false);
+            points_image.sprite = timer_sprite;
+            points_text.text = (gameController.option_gm_goal - plyAttr.ply_points).ToString();
         }
         else
         {
             lives_obj.SetActive(false);
+            points_image.sprite = points_sprite;
         }
     }
 }

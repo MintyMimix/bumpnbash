@@ -10,15 +10,15 @@ using UnityEngine.UIElements;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
-using static UnityEngine.UI.Image;
 
 public class UIPlyToSelf : UdonSharpBehaviour
 {
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject harmTester;
+    [SerializeField] public GameObject harmTesterUI;
     [SerializeField] public RectTransform PTSCanvas;
-    [SerializeField] public TMP_Text[] PTSTextStack;
+    [SerializeField] public RectTransform[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
     [SerializeField] public RectTransform PTSTimerTransform;
     [SerializeField] public TMP_Text PTSTimer;
@@ -76,11 +76,12 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public char text_queue_separator = '\r';
     [SerializeField] public int text_queue_full_max_lines = 24; // What is the hardcap on queued messages?
     [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
-    [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should an active message be displayed?
+    [SerializeField] public float text_queue_duration_default = 5.0f; // How long should an active message be displayed?
     [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
     [SerializeField] public float text_queue_limited_extend = 0.5f; // How much longer should an active message be displayed if it is not the top message?
     [NonSerialized] public float[] text_queue_limited_timers;
     [NonSerialized] public Color[] text_queue_full_colors;
+    [NonSerialized] public float[] text_queue_full_durations;
 
     [SerializeField] public float ui_check_gamevars_impulse = 0.4f; // How often should we check for game variables (i.e. team lives, points, etc.)
     [NonSerialized] public float ui_check_gamevars_timer = 0.0f;
@@ -121,10 +122,12 @@ public class UIPlyToSelf : UdonSharpBehaviour
             text_queue_limited_timers[t] -= ((t - 1) * text_queue_limited_extend);
         }
 
-        text_queue_full_colors = new Color[text_queue_full_max_lines];
+        text_queue_full_colors = new Color[text_queue_full_max_lines + 1];
+        text_queue_full_durations = new float[text_queue_full_max_lines + 1];
         for (int t = 0; t < text_queue_full_colors.Length; t++)
         {
             text_queue_full_colors[t] = Color.white;
+            text_queue_full_durations[t] = text_queue_duration_default;
         }
 
         foreach (GameObject child in (Transform)PTSPowerupPanel) 
@@ -181,7 +184,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         ui_show_intro_text = true;
-        if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
+        //if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
         ui_demo_enabled = true;
 
     }
@@ -205,10 +208,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
         TransferOwner(newOwner);
     }
 
-    // Overloaded method where no color = Color.white
-    public void AddToTextQueue(string input, Color color)
+    // Overloaded method where no color = Color.white and no timer = default
+    public void AddToTextQueue(string input, Color color, float duration)
     {
         string[] queue_arr = text_queue_full_str.Split(text_queue_separator);
+        //text_queue_limited_durations
         if (queue_arr.Length > text_queue_full_max_lines)
         {
             // If the queue is clogged, pop the next upcoming message 
@@ -217,11 +221,21 @@ public class UIPlyToSelf : UdonSharpBehaviour
             for (int j = text_queue_limited_lines; j < text_queue_full_max_lines - 1; j++)
             {
                 text_queue_full_colors[j] = text_queue_full_colors[j + 1];
+                text_queue_full_durations[j] = text_queue_full_durations[j + 1];
             }
             text_queue_full_colors[text_queue_full_max_lines - 1] = color;
+            text_queue_full_durations[text_queue_full_max_lines - 1] = duration;
         }
-        else if (text_queue_full_str.Length == 0) { text_queue_full_colors[0] = color; }
-        else if (text_queue_full_str.Length > 0) { text_queue_full_colors[queue_arr.Length] = color; }
+        else if (text_queue_full_str.Length == 0) 
+        { 
+            text_queue_full_colors[0] = color;
+            text_queue_full_durations[0] = text_queue_duration_default;
+        }
+        else if (text_queue_full_str.Length > 0) 
+        { 
+            text_queue_full_colors[queue_arr.Length] = color;
+            text_queue_full_durations[queue_arr.Length] = duration;
+        }
         //UnityEngine.Debug.Log("[COLOR_TEST] Adding " + color + " to colors at index " + queue_arr.Length);
 
         if (text_queue_full_str.Length > 0) { text_queue_full_str += text_queue_separator; }
@@ -229,7 +243,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
     }
     public void AddToTextQueue(string input)
     {
-        AddToTextQueue(input, Color.white);
+        AddToTextQueue(input, Color.white, text_queue_duration_default);
+    }
+    public void AddToTextQueue(string input, Color color)
+    {
+        AddToTextQueue(input, color, text_queue_duration_default);
     }
 
     public void UpdateGameVariables()
@@ -336,7 +354,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         while (iteration < iterateAmount)
         {
             if (text_queue_full_str.Length == 0) { break; }
-            if (new_queue_timers[iteration] < text_queue_limited_duration)
+            if (new_queue_timers[iteration] < text_queue_full_durations[iteration])
             {
                 new_queue_timers[iteration] += Time.deltaTime;
             }
@@ -346,7 +364,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 for (int j = iteration; j < iterateAmount - 1; j++)
                 {
                     new_queue_timers[j] = new_queue_timers[j + 1];
-                    if (new_queue_timers[j] < (text_queue_limited_duration - text_queue_limited_extend)) { new_queue_timers[j] += text_queue_limited_extend; }
+                    if (new_queue_timers[j] < (text_queue_full_durations[iteration] - text_queue_limited_extend)) { new_queue_timers[j] += text_queue_limited_extend; }
                 }
                 new_queue_timers[iterateAmount - 1] = 0.0f - ((iterateAmount - 1) * text_queue_limited_extend); // We want to add a little bonus time for those later in the queue
                 // Shift string entries up
@@ -355,9 +373,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     splitStr[k] = splitStr[k + 1];
                     //UnityEngine.Debug.Log("[COLOR_TEST] Shifting " + text_queue_full_colors[k] + " at index " + k + " to " + text_queue_full_colors[k + 1]);
                     text_queue_full_colors[k] = text_queue_full_colors[k + 1];
+                    text_queue_full_durations[k] = text_queue_full_durations[k + 1];
                 }
                 //UnityEngine.Debug.Log("[COLOR_TEST] Resetting " + text_queue_full_colors[splitStr.Length - 1] + " at index " + (splitStr.Length - 1));
                 text_queue_full_colors[splitStr.Length - 1] = Color.white;
+                text_queue_full_durations[splitStr.Length - 1] = text_queue_duration_default;
                 splitStr[splitStr.Length - 1] = "";
                 new_queue_size--;
                 iteration--; // Now that entries are shifted up, we need to check again
@@ -389,36 +409,38 @@ public class UIPlyToSelf : UdonSharpBehaviour
         string[] splitStr = text_queue_full_str.Split(text_queue_separator);
         for (int i = 0; i < text_queue_limited_lines; i++)
         {
-            if (i < text_queue_full_colors.Length) { PTSTextStack[i].color = text_queue_full_colors[i]; } // Needs to happen first, because alpha is modified after
+            if (i < text_queue_full_colors.Length) { PTSTextStack[i].GetComponent<TMP_Text>().color = text_queue_full_colors[i]; } // Needs to happen first, because alpha is modified after
             if (i < splitStr.Length)
             {
-                PTSTextStack[i].text = splitStr[i].ToUpper();
-                float duration_modified = text_queue_limited_duration;
+                PTSTextStack[i].GetComponent<TMP_Text>().text = splitStr[i].ToUpper();
+                float duration_modified = text_queue_full_durations[i];
                 float fade_time = duration_modified - (text_queue_limited_fade_time_percent * duration_modified);
-                if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
-                else { PTSTextStack[i].alpha = 1.0f; }
+                if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].GetComponent<TMP_Text>().alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
+                else { PTSTextStack[i].GetComponent<TMP_Text>().alpha = 1.0f; }
             }
-            else { PTSTextStack[i].text = ""; }
+            else { PTSTextStack[i].GetComponent<TMP_Text>().text = ""; }
         }
 
         // Tick down demo timer
         if (ui_demo_enabled && ui_demo_timer < ui_demo_duration)
         {
+            //if (ui_demo_timer == 0.0f) { AddToTextQueue("Example message", Color.cyan); }
             ui_demo_timer += Time.deltaTime;
         }
         else if (ui_demo_enabled && ui_demo_timer >= ui_demo_duration)
         {
             ui_demo_enabled = false;
             if (ui_show_intro_text) {
-                AddToTextQueue("This game is in development; there may be major bugs or issues!", Color.red);
-                AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.0 --", Color.white);
-                AddToTextQueue("Step in the square to join the game!", Color.white);
+                //AddToTextQueue("This game is in development; there may be major bugs or issues!", Color.red);
+                //AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.4 --", Color.white);
+                //AddToTextQueue("Step in the square to join the game!", Color.white);
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
                 if (gameController != null && Networking.IsMaster) { gameController.ResetGameOptionsToDefault(false); }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
         }
+
 
         // Tick down gamevars update timer
         if (ui_check_gamevars_timer < ui_check_gamevars_impulse)
@@ -460,6 +482,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
             else { PTSTimer.color = Color.white; }
         }
+        if (gameController.round_state == (int)round_state_name.Ongoing && !gameController.round_length_enabled) { TimerText = "--"; }
         PTSTimer.text = TimerText;
         
 
@@ -634,12 +657,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If this is King of the Hill, display the total capture time remaining
             else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
-                float timeLeft;
-                if (gameController.option_teamplay && gamevars_local_team_points != null && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)gamevars_local_team_points[playerAttributes.ply_team]); }
-                else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)playerAttributes.ply_points); }
+                float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points; 
                 LivesText = timeLeft.ToString();
-                float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
-                PTSLives.color = new Color(timeRatio, 1.0f, timeRatio / 1.5f, 1.0f);
+                PTSLives.color = new Color(
+                    Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    );
                 PTSLivesImage.color = PTSTeamFlagImage.color;
                 PTSLivesImage.sprite = PTSTimerImage;
             }
@@ -761,6 +786,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     {
         var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         var scaleUI = 1.0f;
+        int useWrist = 0;
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
@@ -781,6 +807,35 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
             PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
             PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
+
+            ((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
+                ((RectTransform)PTSTextStack[0].parent).sizeDelta.x
+                , text_queue_limited_lines * (PTSCanvas.sizeDelta.y / 10.0f)
+                );
+
+            for (int i = 0; i < text_queue_limited_lines; i++)
+            {
+                //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
+                float size_delta = PTSCanvas.sizeDelta.y / 10.0f;
+                float half_line = (text_queue_limited_lines / 2);
+                if (i < half_line)
+                {
+                    PTSTextStack[i].localPosition = new Vector3(
+                        PTSTextStack[i].localPosition.x
+                        , ((half_line - i) * size_delta) - (size_delta / 2)
+                        , PTSTextStack[i].localPosition.z);
+                }
+                else
+                {
+                    PTSTextStack[i].localPosition = new Vector3(
+                        PTSTextStack[i].localPosition.x
+                        , (-(i - half_line) * size_delta) - (size_delta / 2)
+                        , PTSTextStack[i].localPosition.z);
+                }
+
+            }
+
+            useWrist = ppp_options.ui_wrist;
             //ppp_options.ui_separation * (5.0f / 3.0f)
             //ppp_options.ui_scale
         }
@@ -793,16 +848,39 @@ public class UIPlyToSelf : UdonSharpBehaviour
             velAdd = 0.0095f * plyMagInForward * plyForward;
             if (playerAttributes.ply_scale < 1.0f && Networking.LocalPlayer.IsUserInVR()) { velAdd /= (playerAttributes.ply_scale / 0.9f); }
         }
-        //if (Networking.LocalPlayer.IsUserInVR()) { velAdd *= 2.0f; }
 
-        //if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
-        //else { scaleUI *= 0.5f; }
-        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI) + velAdd;
+        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI);
+        Vector3 posFinal = posOut + velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
-            posOut
+            posFinal
             , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
             );
+
+        if (useWrist > 0)
+        {
+            Vector3 wrist_pos;
+            Quaternion wrist_rot;
+            Vector3 offset_pos = new Vector3(0.0f, 0.05f, 0.0f);
+            Quaternion offset_rot = Quaternion.Euler(180.0f, 0.0f, 0.0f);
+            if (useWrist == 1) 
+            { 
+                wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
+                wrist_rot = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation;
+            }
+            else 
+            { 
+                wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).position;
+                wrist_rot = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation;
+            }
+
+            transform.SetPositionAndRotation(
+                wrist_pos + (wrist_rot * offset_rot * offset_pos) 
+                , wrist_rot * offset_rot
+                );
+
+            transform.localScale *= 0.33f;
+        }
 
         return posOut;
     }
@@ -867,11 +945,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
             harm_script.ui_parent = gameObject;
             harm_script.UpdateValue(Mathf.RoundToInt(damage), false);
             harm_script.origin = origin_point;
-            harm_script.ply_init_distance = Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), origin_point));
-            harm_obj.transform.localScale *= (harm_script.ply_init_distance / Mathf.Abs(Vector3.Distance( Networking.LocalPlayer.GetPosition(), SetUIForward())));
-            harm_script.scale_init_stored = transform.localScale; // Must occur BEFORE the ui_harm_scale
-            if (gameController.local_ppp_options != null) { harm_obj.transform.localScale *= gameController.local_ppp_options.ui_harm_scale; }
-            UnityEngine.Debug.Log("[HARM_TEST] harm_script.ply_init_distance = " + harm_script.ply_init_distance + " compare to " + Mathf.Abs(Vector3.Distance(SetUIForward(), Networking.LocalPlayer.GetPosition())));
             harm_script.target_id = defender_id;
             if (playerAttributes != null) { harm_script.duration = playerAttributes.combo_send_duration; }
             harm_script.ui_text.color = defender_color;
@@ -882,9 +955,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else
         {
             PTSHarmNumberList[internal_id].origin = origin_point;
-            PTSHarmNumberList[internal_id].ply_init_distance = Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), origin_point));
             PTSHarmNumberList[internal_id].ui_text.color = defender_color;
-            if (gameController.local_ppp_options != null) { PTSHarmNumberList[internal_id].scale_init = gameController.local_ppp_options.ui_harm_scale * PTSHarmNumberList[internal_id].scale_init_stored;  }
             PTSHarmNumberList[internal_id].UpdateValue(Mathf.RoundToInt(damage));
         }
 
@@ -945,11 +1016,25 @@ public class UIPlyToSelf : UdonSharpBehaviour
     public void TestHarmNumber()
     {
         ShowHarmNumber(0, 10, harmTester.transform.position);
+        
+        if (gameController != null && gameController.local_ppp_options != null)
+        {
+            PPP_Options ppp_options = gameController.local_ppp_options;
+            HarmTesterUI harmtester_script = harmTesterUI.GetComponent<HarmTesterUI>();
+            float scaleOtherUI = ((0.0f + ppp_options.ui_other_scale) / 1.0f);
+            float posOtherUI = ((1.0f + ppp_options.ui_other_scale) / 2.0f);
+            harmTesterUI.transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleOtherUI;
+            harmTesterUI.transform.position = harmTester.transform.position + new Vector3(0.0f, 1.2f * posOtherUI, 0.0f);
+            if (playerAttributes != null) { harmtester_script.duration = playerAttributes.combo_send_duration; }
+            harmtester_script.timer = 0;
+            harmTesterUI.SetActive(true);
+        }
+        
     }
 
     private void SetRenderQueueFromParent(Transform parent_transform)
     {
-        map_element_spawn[] array_working = new map_element_spawn[1000];
+        /*map_element_spawn[] array_working = new map_element_spawn[1000];
         Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
         foreach (Transform t in AllChildren)
         {
@@ -958,7 +1043,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             {
                 component.material.renderQueue = (int)RenderQueue.Overlay;
             }
-        }
+        }*/
     }
 
 }
