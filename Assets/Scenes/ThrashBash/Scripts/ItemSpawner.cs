@@ -47,7 +47,7 @@ public class ItemSpawner : UdonSharpBehaviour
     [NonSerialized][UdonSynced] public float item_spawn_frequency_mul = 1.0f; // Setup in the in-game advanced options menu; affects both impulse time and global spawn chance
     [NonSerialized][UdonSynced] public float item_spawn_duration_mul = 1.0f; // Setup in the in-game advanced options menu; affects both powerups and weapons
 
-    [NonSerialized] [UdonSynced] public int item_spawn_global_index = -1;
+    //[NonSerialized] [UdonSynced] public int item_spawn_global_index = -1;
     [NonSerialized] [UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
     [NonSerialized] [UdonSynced] public bool item_spawn_powerups_enabled = true; // Should powerups be allowed to spawn?
     [NonSerialized] [UdonSynced] public bool item_spawn_weapons_enabled = true; // Should weapons be allowed to spawn?
@@ -237,7 +237,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.item_team_id = 0; } // On Infected, only Survivors may get powerups
             else if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
             else { child_powerup.item_team_id = -1; }
-            child_powerup.item_stored_global_index = item_spawn_global_index;
+            //child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_type = (int)item_type_name.Powerup;
             child_powerup.item_is_template = false;
             child_powerup.powerup_type = item_index;
@@ -261,7 +261,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_weapon.item_team_id = 0; } // On Infected, only Survivors may get weapons
             else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
             else { child_weapon.item_team_id = -1; }
-            child_weapon.item_stored_global_index = item_spawn_global_index;
+            //child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
             child_weapon.iweapon_type = item_index - (int)powerup_type_name.ENUM_LENGTH;

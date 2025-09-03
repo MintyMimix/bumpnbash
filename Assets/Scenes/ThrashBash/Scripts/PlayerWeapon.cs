@@ -235,7 +235,10 @@ public class PlayerWeapon : UdonSharpBehaviour
                 use_ready = true;
                 ToggleParticle(true);
             }
-            else { waiting_for_toss = false; }
+            else { 
+                waiting_for_toss = false; 
+                ToggleParticle(false); 
+            }
         }
 
         if (pickup_rb != null)
@@ -570,6 +573,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (weapon_type == (int)weapon_type_name.ThrowableItem) 
             { 
                 weapon_extra_data = RollForPowerupBombExtraData();
+                OnDeserialization();
             }
         }
     }
@@ -582,7 +586,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             if (!waiting_for_toss)
             {
-                gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f);
+                //gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f);
                 waiting_for_toss = true;
                 if (pickup_rb != null) { pickup_rb.useGravity = true; }
                 if (!Networking.GetOwner(gameObject).IsUserInVR())

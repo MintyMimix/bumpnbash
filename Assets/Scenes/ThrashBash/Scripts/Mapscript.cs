@@ -113,7 +113,7 @@ public class Mapscript : UdonSharpBehaviour
             if (t.GetComponent<ItemSpawner>() != null)
             {
                 array_working[it_cnt] = component;
-                array_working[it_cnt].item_spawn_global_index = it_cnt;
+                //array_working[it_cnt].item_spawn_global_index = it_cnt;
                 it_cnt++;
             }
         }

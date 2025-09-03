@@ -13,6 +13,7 @@ public class UIArrow : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image image_cb;
     [SerializeField] public UnityEngine.UI.Button button_increment, button_decrement;
     [SerializeField] public TMP_Text caption;
+    [SerializeField] public RectTransform caption_transform;
 
     [Header("Configurables")]
     [Tooltip("Should the value reset to its min if going past its max, and vice versa?")]

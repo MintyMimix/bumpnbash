@@ -75,15 +75,22 @@ public class UIMessagesToSelf : UdonSharpBehaviour
 
     public void SetUIForward()
     {
-        var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        var scaleUI = 1.0f * 0.66f;
+        float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        float scaleUI = 1.0f * 0.5f;
         if (gameController != null && gameController.local_ppp_options != null && gameController.local_uiplytoself != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
-            
-            scaleUI *= (ppp_options.ui_scale);
+            int useWrist = 0;
+            useWrist = ppp_options.ui_wrist;
+
+            for (int i = 0; i < gameController.local_uiplytoself.text_queue_limited_lines; i++)
+            {
+                PTMTextStack[i].gameObject.SetActive(useWrist > 0);
+            }
+
+            heightUI *= (ppp_options.ui_scale);
             PTMCanvas.sizeDelta = new Vector2(500, 300);
-            PTMCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
+            PTMCanvas.sizeDelta = new Vector2(500 * ((1.0f + ppp_options.ui_stretch) / 2.0f), 300 * ((1.0f + ppp_options.ui_separation) / 2.0f));
 
             ((RectTransform)PTMTextStack[0].parent).sizeDelta = new Vector2(
                 ((RectTransform)PTMTextStack[0].parent).sizeDelta.x

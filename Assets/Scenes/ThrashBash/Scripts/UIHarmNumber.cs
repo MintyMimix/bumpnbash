@@ -18,6 +18,9 @@ public class UIHarmNumber : UdonSharpBehaviour
     [SerializeField] public float lower_at_pct = 0.40f;
     [SerializeField] public float offset = 0.1f;
 
+    [NonSerialized] public int global_index = -1;
+    [NonSerialized] public int ref_index = -1;
+
     [NonSerialized] public float timer = 0.0f;
     [NonSerialized] public Vector3 origin = Vector3.zero;
     //[NonSerialized] public float ply_init_distance = 0.0f;
@@ -34,7 +37,15 @@ public class UIHarmNumber : UdonSharpBehaviour
     {
         //scale_init = transform.localScale;
         if (duration > 0.0f && ui_text != null) { isOn = true; } //&& ui_parent != null && internal_id >= 0
-        else { Destroy(gameObject); }
+        else { ResetDisplay(); }
+        //else { Destroy(gameObject); }
+    }
+
+    public void ResetDisplay()
+    {
+        duration = 0.0f;
+        isOn = false;
+        gameObject.SetActive(false);
     }
 
     public void Update()

@@ -13,10 +13,15 @@ public class UIArrowTeamPanel : UIArrow
     [NonSerialized] public VRCPlayerApi player;
     [NonSerialized] public bool is_template = true;
     [NonSerialized] public int array_id = -1;
+    [NonSerialized] public float local_width_init = 380.0f;
+    [NonSerialized] public float local_xoffset_init = -205.0f;
+    [NonSerialized] private float HOST_MARGIN_SIZE = 15.0f;
 
     public void Start()
     {
         wrap_value = true;
+        local_width_init = caption_transform.sizeDelta.x;
+        local_xoffset_init = caption_transform.localPosition.x;
         UpdateOwnership();
     }
 
@@ -97,7 +102,7 @@ public class UIArrowTeamPanel : UIArrow
         //else if (!is_template) { Destroy(gameObject); }
 
         UpdateOwnership();
-    }
+        }
 
     public void UpdateOwnership()
     {
@@ -117,11 +122,19 @@ public class UIArrowTeamPanel : UIArrow
             button_decrement.gameObject.SetActive(true);
         }
 
+        float text_xoffset = local_xoffset_init;
+        float text_width = local_width_init;
         button_make_host.gameObject.SetActive(false);
-        if (parent_teampanel != null && parent_teampanel.gameController != null && Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer && player != null && player != Networking.LocalPlayer)
+        if (parent_teampanel != null && parent_teampanel.gameController != null && Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer && player != Networking.LocalPlayer && player != null)
         {
             button_make_host.gameObject.SetActive(true);
+            
+            text_xoffset -= (((RectTransform)button_make_host.gameObject.transform).sizeDelta.x) * 0.5f;
+            text_width -= (((RectTransform)button_make_host.gameObject.transform).sizeDelta.x);
         }
+        caption_transform.localPosition = new Vector3(text_xoffset, caption_transform.localPosition.y, caption_transform.localPosition.z);
+        caption_transform.sizeDelta = new Vector2(text_width, caption_transform.sizeDelta.y);
+
     }
 
     public void SignalToUpdateFromPanel()

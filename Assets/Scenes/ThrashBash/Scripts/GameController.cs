@@ -46,17 +46,20 @@ public enum weapon_stats_name
 
 public enum gamemode_name
 {
-    Survival, Clash, BossBash, Infection, FittingIn, KingOfTheHill, ENUM_LENGTH //,ENUM_LENGTH
+    Survival, Clash, BossBash, Infection, FittingIn, KingOfTheHill, ENUM_LENGTH
 }
 
 public enum dict_compare_name
 {
     Equals, GreaterThan, LessThan, GreaterThanOrEqualsTo, LessThanOrEqualsTo, ENUM_LENGTH
 }
-
+public enum prealloc_obj_name
+{
+    WeaponProjectile, WeaponHurtbox, ItemPowerup, UIHarmNumber, ENUM_LENGTH
+}
 public enum GLOBAL_CONST
 {
-    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24
+    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -291,7 +294,6 @@ public class GameController : UdonSharpBehaviour
 
     [NonSerialized][UdonSynced] public int gamemode_boss_id = 0; // the boss in big boss's ID
     [NonSerialized] public float music_volume_default = 1.0f;
-    [NonSerialized] public float music_volume_stored = 1.0f;
 
     //[NonSerialized] public int koth_decimal_division = 1000;
     [NonSerialized] public int[][] koth_progress_dict;
@@ -309,12 +311,23 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public PlayerHitbox local_plyhitbox;
 
     // Preallocated prefab objects used in place of create-destroy events
+    //[NonSerialized] public int generate_prealloc_stage = 0;
     [NonSerialized] public WeaponProjectile[] global_projectile_arr;
-    [NonSerialized] public ushort[] global_projectile_indices;
+    [NonSerialized] public int[] global_projectile_refs;
+    [NonSerialized] public int global_projectile_cnt = 0;
+    [NonSerialized] public int global_lowest_available_projectile_index = 0;
     [NonSerialized] public WeaponHurtbox[] global_hurtbox_arr;
-    [NonSerialized] public ushort[] global_hurtbox_indices;
+    [NonSerialized] public int[] global_hurtbox_refs;
+    [NonSerialized] public int global_hurtbox_cnt = 0;
+    [NonSerialized] public int global_lowest_available_hurtbox_index = 0;
     [NonSerialized] public ItemPowerup[] global_powerup_arr;
-    [NonSerialized] public ushort[] global_powerup_indices;
+    [NonSerialized] public int[] global_powerup_refs;
+    [NonSerialized] public int global_powerup_cnt = 0;
+    [NonSerialized] public int global_lowest_available_powerup_index = 0;
+    [NonSerialized] public UIHarmNumber[] global_harmnumber_arr;
+    [NonSerialized] public int[] global_harmnumber_refs;
+    [NonSerialized] public int global_harmnumber_cnt = 0;
+    [NonSerialized] public int global_lowest_available_harmnumber_index = 0;
 
     // -- Initialization --
     private void Start()
@@ -374,6 +387,23 @@ public class GameController : UdonSharpBehaviour
                 }
             }
         }
+
+        global_projectile_arr = new WeaponProjectile[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        global_projectile_refs = new int[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        for (int i = 0; i < global_projectile_refs.Length; i++) { global_projectile_refs[i] = -1; }
+        PreallocGlobalObj((int)prealloc_obj_name.WeaponProjectile);
+        global_hurtbox_arr = new WeaponHurtbox[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        global_hurtbox_refs = new int[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        for (int i = 0; i < global_hurtbox_refs.Length; i++) { global_hurtbox_refs[i] = -1; }
+        PreallocGlobalObj((int)prealloc_obj_name.WeaponHurtbox);
+        global_powerup_arr = new ItemPowerup[(int)GLOBAL_CONST.POWERUP_LIMIT_PER_PLAYER];
+        global_powerup_refs = new int[(int)GLOBAL_CONST.POWERUP_LIMIT_PER_PLAYER];
+        for (int i = 0; i < global_powerup_refs.Length; i++) { global_powerup_refs[i] = -1; }
+        PreallocGlobalObj((int)prealloc_obj_name.ItemPowerup);
+        global_harmnumber_arr = new UIHarmNumber[(int)GLOBAL_CONST.UDON_MAX_PLAYERS + 1]; // We want one for each player + 1 for the training dummy
+        global_harmnumber_refs = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS + 1];
+        for (int i = 0; i < global_harmnumber_refs.Length; i++) { global_harmnumber_refs[i] = -1; }
+        //PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber); // Can't allocate at this stage since we haven't defined local_uiplytoself yet
 
         music_volume_default = snd_game_music_source.volume;
         snd_game_sfx_clips = new AudioClip[(int)game_sfx_name.ENUM_LENGTH][];
@@ -440,7 +470,7 @@ public class GameController : UdonSharpBehaviour
         }
         else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 2.5f;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.5f;
             weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
             // To emulate a "projectile speed", we can determine the distance based on projectile time
             weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
@@ -492,6 +522,64 @@ public class GameController : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
         }
         return weapon_stats;
+    }
+
+    public int PreallocGlobalObj(int prealloc_obj_type)
+    {
+        int return_index = -1;
+        // Preallocate a batch of a specific object type so we can have them ready for future use
+        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile && template_WeaponProjectile != null)
+        {
+            for (int i = global_projectile_cnt; i < Mathf.Min(global_projectile_refs.Length, global_projectile_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
+            {
+                global_projectile_arr[i] = Instantiate(template_WeaponProjectile, transform).GetComponent<WeaponProjectile>();
+                global_projectile_arr[i].gameObject.SetActive(false);
+                global_projectile_arr[i].ResetProjectile();
+                global_projectile_arr[i].global_index = i;
+                global_projectile_refs[i] = -1;
+            }
+            return_index = global_projectile_refs[global_projectile_cnt];
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox && template_WeaponHurtbox != null)
+        {
+            for (int i = global_hurtbox_cnt; i < Mathf.Min(global_hurtbox_refs.Length, global_hurtbox_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
+            {
+                global_hurtbox_arr[i] = Instantiate(template_WeaponHurtbox, transform).GetComponent<WeaponHurtbox>();
+                global_hurtbox_arr[i].gameObject.SetActive(false);
+                global_hurtbox_arr[i].ResetHurtbox();
+                global_hurtbox_arr[i].global_index = i;
+                global_hurtbox_refs[i] = -1;
+            }
+            return_index = global_hurtbox_refs[global_hurtbox_cnt];
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup && template_ItemSpawner != null)
+        {
+            for (int i = global_powerup_cnt; i < Mathf.Min(global_powerup_refs.Length, global_powerup_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
+            {
+                GameObject powerup_obj = Instantiate(template_ItemSpawner.GetComponent<ItemSpawner>().child_powerup.gameObject, transform);
+                global_powerup_arr[i] = powerup_obj.GetComponent<ItemPowerup>();
+                global_powerup_arr[i].item_is_template = true;
+                global_powerup_arr[i].ResetPowerup();
+                //global_powerup_arr[i].gameObject.SetActive(false);
+                global_powerup_arr[i].global_index = i;
+                global_powerup_refs[i] = -1;
+            }
+            return_index = global_powerup_refs[global_powerup_cnt];
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.UIHarmNumber && local_uiplytoself != null && local_uiplytoself.PTSHarmNumberTemplate != null)
+        {
+            for (int i = global_harmnumber_cnt; i < Mathf.Min(global_harmnumber_refs.Length, global_harmnumber_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
+            {
+                GameObject harmnumber_obj = Instantiate(local_uiplytoself.PTSHarmNumberTemplate, local_uiplytoself.transform);
+                global_harmnumber_arr[i] = harmnumber_obj.GetComponent<UIHarmNumber>();
+                global_harmnumber_arr[i].ResetDisplay();
+                //global_powerup_arr[i].gameObject.SetActive(false);
+                global_harmnumber_arr[i].global_index = i;
+                global_harmnumber_refs[i] = -1;
+            }
+            return_index = global_powerup_refs[global_harmnumber_cnt];
+        }
+        return return_index;
     }
 
     // -- Continously Running --
@@ -603,10 +691,12 @@ public class GameController : UdonSharpBehaviour
         }
 
     }
+
     private void LocalPerSecondUpdate()
     {
         // Events that occur once per second based on local time (will always fire perfectly, but may not be synced with the server's game state)
 
+        // Round state
         float TimeLeft = (round_length - round_timer);
         if (round_state == (int)round_state_name.Queued && (queue_length - local_queue_timer) > 0)
         {
@@ -616,20 +706,19 @@ public class GameController : UdonSharpBehaviour
         else if (round_state == (int)round_state_name.Ongoing)
         {
             ply_in_game_auto_dict = GetPlayersInGame();
-            float stored_volume = music_volume_stored;
-            if (local_ppp_options != null) { stored_volume *= local_ppp_options.music_volume;  }
             // Time-based event SFX
-            if (Mathf.RoundToInt(TimeLeft) == 30 && round_length_enabled)
+            float calc_volume = music_volume_default;
+            if (local_ppp_options != null) { calc_volume = music_volume_default * local_ppp_options.music_volume; }
+            if (Mathf.RoundToInt(TimeLeft) == 30 && round_length_enabled && option_gamemode != (int)gamemode_name.Infection)
             {
                 PlaySFXFromArray(snd_game_sfx_sources[(int)game_sfx_name.Announcement], snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.HurryUp);
                 // Defean the music temporarily
-                snd_game_music_source.volume *= 0.05f;
+                snd_game_music_source.volume = calc_volume * 0.05f;
             }
-            else if ((Mathf.RoundToInt(TimeLeft) <= 28 || Mathf.RoundToInt(TimeLeft) > 30) && round_length_enabled && snd_game_music_source.volume != stored_volume)
+            else if ((Mathf.RoundToInt(TimeLeft) <= 28 || Mathf.RoundToInt(TimeLeft) > 30) && round_length_enabled && snd_game_music_source.volume != calc_volume && option_gamemode != (int)gamemode_name.Infection)
             {
                 // Undefean the music. We'll also check this on RoundEnd() just in case the round ends before this fires
-                
-                snd_game_music_source.volume = stored_volume;
+                snd_game_music_source.volume = calc_volume;
             }
 
             if (TimeLeft < 10.0f && round_length_enabled)
@@ -853,6 +942,7 @@ public class GameController : UdonSharpBehaviour
         {
             var plyUIToSelf = FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
             local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
+            PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
         }
 
         AdjustVoiceRange();
@@ -1402,6 +1492,7 @@ public class GameController : UdonSharpBehaviour
         if (player == Networking.LocalPlayer) {
             //networkJoinTime = Networking.GetServerTimeInSeconds();
             local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
+            PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
             local_plyAttr = plyAttributesComponent;
             local_plyweapon = plyWeaponObj.GetComponent<PlayerWeapon>();
             local_plyhitbox = plyHitboxObj.GetComponent<PlayerHitbox>();
@@ -2342,8 +2433,7 @@ public class GameController : UdonSharpBehaviour
 
         if (winner_name != null && winner_name.Length > 0)
         {
-            AddToLocalTextQueue("THE WINNER IS:", Color.white, over_length + 2.0f);
-            AddToLocalTextQueue(winner_name + "!", winning_color, over_length + 2.0f);
+            AddToLocalTextQueue("WINNER: " + winner_name + "!", winning_color, over_length + 2.0f);
             if (ui_round_scoreboard_canvas != null)
             {
                 ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = "WINNER: " + winner_name;
@@ -2369,7 +2459,7 @@ public class GameController : UdonSharpBehaviour
             local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && option_teamplay && winner_name.Contains(team_names[Mathf.Clamp(local_plyAttr.ply_team, 0, team_names.Length - 1)]));
             local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && !option_teamplay && winner_name.Contains(Networking.LocalPlayer.displayName));
 
-            if (snd_game_music_source.volume < music_volume_stored) { snd_game_music_source.volume = music_volume_stored; }
+            //if (snd_game_music_source.volume < music_volume_stored) { snd_game_music_source.volume = music_volume_stored; }
             snd_game_music_source.pitch = 1.0f;
             if (winner_name != null && winner_name.Length > 0 && local_is_winner)
             {
@@ -2625,13 +2715,38 @@ public class GameController : UdonSharpBehaviour
         float player_scale = float_in.y;
         byte extra_data = (byte)float_in.z;
 
-        var newProjectileObj = Instantiate(template_WeaponProjectile, transform);
+        if (global_projectile_cnt >= global_projectile_arr.Length || global_lowest_available_projectile_index >= global_projectile_arr.Length || global_lowest_available_projectile_index == -1)
+        {
+            UnityEngine.Debug.LogWarning("Exceeded maximum projectiles possible!");
+            return;
+        }
+        
+        if (global_projectile_arr[global_lowest_available_projectile_index] == null)
+        {
+            PreallocGlobalObj((int)prealloc_obj_name.WeaponProjectile);
+        }
+
+        //var newProjectileObj = Instantiate(template_WeaponProjectile, transform);
+        GameObject newProjectileObj = PreallocAddSlot((int)prealloc_obj_name.WeaponProjectile);
+        if (newProjectileObj == null) { return; }
+
+        WeaponProjectile projectile = newProjectileObj.GetComponent<WeaponProjectile>();
+        projectile.ResetProjectile();
+
         newProjectileObj.transform.parent = null;
         newProjectileObj.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f) * stats_from_weapon[(int)weapon_stats_name.Projectile_Size] * player_scale;
         newProjectileObj.transform.SetPositionAndRotation(fire_start_pos, fire_angle);
-
-        var projectile = newProjectileObj.GetComponent<WeaponProjectile>();
+        if (projectile.rb != null) 
+        { 
+            projectile.rb.position = fire_start_pos;
+            projectile.rb.rotation = fire_angle;
+            projectile.previousPosition = projectile.rb.position; 
+            projectile.rb.velocity = Vector3.zero;
+            projectile.rb.angularVelocity = Vector3.zero;
+        }
+        else { projectile.previousPosition = newProjectileObj.transform.position; }
         projectile.weapon_type = weapon_type;
+
         projectile.projectile_type = (int)stats_from_weapon[(int)weapon_stats_name.Projectile_Type];
         projectile.projectile_duration = stats_from_weapon[(int)weapon_stats_name.Projectile_Duration];
         projectile.projectile_start_ms = Networking.GetServerTimeInSeconds();
@@ -2692,6 +2807,7 @@ public class GameController : UdonSharpBehaviour
         projectile.UpdateProjectileModel();
         newProjectileObj.SetActive(true);
 
+
     }
 
     [NetworkCallable]
@@ -2702,10 +2818,23 @@ public class GameController : UdonSharpBehaviour
         float dist_scale = float_in.z;
         byte extra_data = (byte)float_in.w;
 
-        var newHurtboxObj = Instantiate(template_WeaponHurtbox, transform);
+        if (global_hurtbox_cnt >= global_hurtbox_arr.Length || global_lowest_available_hurtbox_index >= global_hurtbox_arr.Length || global_lowest_available_hurtbox_index == -1)
+        {
+            UnityEngine.Debug.LogWarning("Exceeded maximum hurtboxes possible!");
+            return;
+        }
+
+        if (global_hurtbox_arr[global_lowest_available_hurtbox_index] == null)
+        {
+            PreallocGlobalObj((int)prealloc_obj_name.WeaponHurtbox);
+        }
+
+        GameObject newHurtboxObj = PreallocAddSlot((int)prealloc_obj_name.WeaponHurtbox);
+        if (newHurtboxObj == null) { return; }
+        WeaponHurtbox hurtbox = newHurtboxObj.GetComponent<WeaponHurtbox>();
+        hurtbox.ResetHurtbox();
 
         newHurtboxObj.transform.parent = null;
-        var hurtbox = newHurtboxObj.GetComponent<WeaponHurtbox>();
 
         float scaleBias = 1.0f;
         // Explosive type weapons should not be resized as harshly as other hurtbox types
@@ -2766,7 +2895,6 @@ public class GameController : UdonSharpBehaviour
         hurtbox.SetMesh();
         //hurtbox.local_offset = actual_distance;
         newHurtboxObj.SetActive(true);
-
     }
 
     public void LocalDeclareSpectatorIntent(bool spectator_desired)
@@ -3108,7 +3236,7 @@ public class GameController : UdonSharpBehaviour
             source.loop = true;
             source.clip = clip_to_play;
             source.volume = music_volume_default * volume_scale;
-            music_volume_stored = source.volume;
+            //music_volume_stored = source.volume;
             music_clip_playing = clip_to_play;
             source.Play();
         }
@@ -3609,6 +3737,151 @@ public class GameController : UdonSharpBehaviour
         //Quaternion.AngleAxis(-angleOffset, Vector3.up) * 
         Quaternion rotateTo = Quaternion.LookRotation(targetDir, Vector3.up);
         return rotateTo;
+    }
+
+    public int PreallocNextAvailableIndex(int[] refs_arr)
+    {
+        if (refs_arr == null || refs_arr.Length == 0) { return -1; }
+        int smallest_index_found = -1; int i = 0;
+        while (i < refs_arr.Length)
+        {
+            if ((smallest_index_found + 1) == refs_arr[i]) { smallest_index_found = refs_arr[i]; i = 0; }
+            else if (smallest_index_found + 1 >= refs_arr.Length) { return -1; }
+            i++;
+        }
+        if (smallest_index_found + 1 >= refs_arr.Length) { return -1; }
+        return (smallest_index_found + 1);
+    }
+
+    public GameObject PreallocAddSlot(int prealloc_obj_type)
+    {
+        GameObject return_obj = null;
+        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile)
+        {
+            return_obj = global_projectile_arr[global_lowest_available_projectile_index].gameObject;
+            WeaponProjectile projectile = global_projectile_arr[global_lowest_available_projectile_index];
+            global_projectile_refs[global_projectile_cnt] = global_lowest_available_projectile_index;
+            projectile.ref_index = global_projectile_cnt;
+            global_projectile_cnt++;
+            global_lowest_available_projectile_index = PreallocNextAvailableIndex(global_projectile_refs);
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox)
+        {
+            return_obj = global_hurtbox_arr[global_lowest_available_hurtbox_index].gameObject;
+            WeaponHurtbox hurtbox = global_hurtbox_arr[global_lowest_available_hurtbox_index];
+            global_hurtbox_refs[global_hurtbox_cnt] = global_lowest_available_hurtbox_index;
+            hurtbox.ref_index = global_hurtbox_cnt;
+            global_hurtbox_cnt++;
+            global_lowest_available_hurtbox_index = PreallocNextAvailableIndex(global_hurtbox_refs);
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
+        {
+            return_obj = global_powerup_arr[global_lowest_available_powerup_index].gameObject;
+            ItemPowerup powerup = global_powerup_arr[global_lowest_available_powerup_index];
+            global_powerup_refs[global_powerup_cnt] = global_lowest_available_powerup_index;
+            powerup.ref_index = global_powerup_cnt;
+            global_powerup_cnt++;
+            global_lowest_available_powerup_index = PreallocNextAvailableIndex(global_powerup_refs);
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.UIHarmNumber)
+        {
+            return_obj = global_harmnumber_arr[global_lowest_available_harmnumber_index].gameObject;
+            UIHarmNumber harmnumber = global_harmnumber_arr[global_lowest_available_harmnumber_index];
+            global_harmnumber_refs[global_harmnumber_cnt] = global_lowest_available_harmnumber_index;
+            harmnumber.ref_index = global_harmnumber_cnt;
+            global_harmnumber_cnt++;
+            global_lowest_available_harmnumber_index = PreallocNextAvailableIndex(global_harmnumber_refs);
+        }
+
+        return return_obj;
+    }
+
+    public void PreallocClearSlot(int prealloc_obj_type, int global_index, ref int ref_index)
+    {
+        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile)
+        {
+            if (ref_index > -1 && global_projectile_refs != null)
+            {
+                // Free the index from the refs table by swapping it with the most recent entry in the list
+                if (global_projectile_cnt > 0 && global_projectile_cnt <= global_projectile_refs.Length)
+                {
+                    global_projectile_refs[ref_index] = global_projectile_refs[global_projectile_cnt - 1];
+                    global_projectile_arr[global_projectile_refs[ref_index]].ref_index = ref_index;
+                    global_projectile_refs[global_projectile_cnt - 1] = -1;
+                    ref_index = -1;
+                    global_projectile_cnt--;
+                }
+
+                // Free the index from the global table
+                if (global_index < global_lowest_available_projectile_index || global_lowest_available_projectile_index == -1)
+                {
+                    global_lowest_available_projectile_index = global_index;
+                }
+            }
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox)
+        {
+            if (ref_index > -1 && global_hurtbox_refs != null)
+            {
+                // Free the index from the refs table by swapping it with the most recent entry in the list
+                if (global_hurtbox_cnt > 0 && global_hurtbox_cnt <= global_hurtbox_refs.Length)
+                {
+                    global_hurtbox_refs[ref_index] = global_hurtbox_refs[global_hurtbox_cnt - 1];
+                    global_hurtbox_arr[global_hurtbox_refs[ref_index]].ref_index = ref_index;
+                    global_hurtbox_refs[global_hurtbox_cnt - 1] = -1;
+                    ref_index = -1;
+                    global_hurtbox_cnt--;
+                }
+
+                // Free the index from the global table
+                if (global_index < global_lowest_available_hurtbox_index || global_lowest_available_hurtbox_index == -1)
+                {
+                    global_lowest_available_hurtbox_index = global_index;
+                }
+            }
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
+        {
+            if (ref_index > -1 && global_powerup_refs != null)
+            {
+                // Free the index from the refs table by swapping it with the most recent entry in the list
+                if (global_powerup_cnt > 0 && global_powerup_cnt <= global_powerup_refs.Length)
+                {
+                    global_powerup_refs[ref_index] = global_powerup_refs[global_powerup_cnt - 1];
+                    global_powerup_arr[global_powerup_refs[ref_index]].ref_index = ref_index;
+                    global_powerup_refs[global_powerup_cnt - 1] = -1;
+                    ref_index = -1;
+                    global_powerup_cnt--;
+                }
+
+                // Free the index from the global table
+                if (global_index < global_lowest_available_powerup_index || global_lowest_available_powerup_index == -1)
+                {
+                    global_lowest_available_powerup_index = global_index;
+                }
+            }
+        }
+        else if (prealloc_obj_type == (int)prealloc_obj_name.UIHarmNumber)
+        {
+            if (ref_index > -1 && global_harmnumber_refs != null)
+            {
+                // Free the index from the refs table by swapping it with the most recent entry in the list
+                if (global_harmnumber_cnt > 0 && global_harmnumber_cnt <= global_harmnumber_refs.Length)
+                {
+                    global_harmnumber_refs[ref_index] = global_harmnumber_refs[global_harmnumber_cnt - 1];
+                    global_harmnumber_arr[global_harmnumber_refs[ref_index]].ref_index = ref_index;
+                    global_harmnumber_refs[global_harmnumber_cnt - 1] = -1;
+                    ref_index = -1;
+                    global_harmnumber_cnt--;
+                }
+
+                // Free the index from the global table
+                if (global_index < global_lowest_available_harmnumber_index || global_lowest_available_harmnumber_index == -1)
+                {
+                    global_lowest_available_harmnumber_index = global_index;
+                }
+            }
+        }
     }
 
 }

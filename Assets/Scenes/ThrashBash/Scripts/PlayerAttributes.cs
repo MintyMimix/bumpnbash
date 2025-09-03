@@ -192,7 +192,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         else
         {
             float spec_mod = 1.0f;
-            if (in_spectator_area) { spec_mod = 2.5f; }
+            if (in_spectator_area) { spec_mod = 4.5f; }
             Networking.LocalPlayer.SetWalkSpeed(2.0f * spec_mod);
             Networking.LocalPlayer.SetRunSpeed(4.0f * spec_mod);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * spec_mod);
@@ -536,10 +536,29 @@ public class PlayerAttributes : UdonSharpBehaviour
                 switch (i)
                 {
                     case (int)powerup_stat_name.Scale:
-                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_scale = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale *= powerup.powerup_stat_value[i]; }
-                        ply_scale = Mathf.Max(0.05f, ply_scale);
+                        Vector2 scale_cap = new Vector2(0.15f, 1000.0f);
+                        if (ply_training) { scale_cap.y = 5.0f; }
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) 
+                        {
+                            powerup.powerup_stat_value[i] = Mathf.Clamp(powerup.powerup_stat_value[i], scale_cap.x, scale_cap.y);
+                            ply_scale = powerup.powerup_stat_value[i]; 
+                        }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) 
+                        {
+                            if (ply_scale + powerup.powerup_stat_value[i] > scale_cap.y) { powerup.powerup_stat_value[i] = (scale_cap.y - ply_scale); }
+                            else if (ply_scale + powerup.powerup_stat_value[i] < scale_cap.x && powerup.powerup_stat_value[i] < 0) { powerup.powerup_stat_value[i] = (scale_cap.x - ply_scale); }
+                            else if (ply_scale + powerup.powerup_stat_value[i] < scale_cap.x && powerup.powerup_stat_value[i] > 0) { powerup.powerup_stat_value[i] = (ply_scale - scale_cap.x); }
+                            ply_scale += powerup.powerup_stat_value[i]; 
+                        }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) 
+                        {
+                            if (powerup.powerup_stat_value[i] < 0) { powerup.powerup_stat_value[i] = 0; }
+                            else if(ply_scale * powerup.powerup_stat_value[i] > scale_cap.y) { powerup.powerup_stat_value[i] = (scale_cap.y / ply_scale); }
+                            else if (ply_scale * powerup.powerup_stat_value[i] < scale_cap.x) { powerup.powerup_stat_value[i] = (scale_cap.x / ply_scale); }
+                            ply_scale *= powerup.powerup_stat_value[i]; 
+                        }
+                        // If after managing caps the result is a powerup that does nothing, just set its duration to be minimal
+                        //if (powerup.powerup_stat_value[i] == 0) { powerup.powerup_duration = 0.001f; powerup.power }
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;
@@ -594,9 +613,6 @@ public class PlayerAttributes : UdonSharpBehaviour
                     case (int)powerup_stat_name.Scale:
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale -= powerup.powerup_stat_value[i]; }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale /= powerup.powerup_stat_value[i]; }
-
-                        if (ply_training) { ply_scale = Mathf.Clamp(ply_scale, 0.25f, 4.0f); }
-
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;

@@ -26,6 +26,7 @@ public enum powerup_stat_behavior_name
 
 public class ItemPowerup : ItemGeneric
 {
+
     [NonSerialized] public int powerup_type;
     [NonSerialized] public float powerup_duration;
     [NonSerialized] public double powerup_start_ms;
@@ -150,6 +151,17 @@ public class ItemPowerup : ItemGeneric
         CheckForSpawnerParent();
     }
 
+    public void ResetPowerup()
+    {
+        item_state = (int)item_state_name.Disabled;
+        item_owner_id = -1;
+        allow_effects_to_apply = false;
+        powerup_start_ms = 0;
+        powerup_timer_local = 0.0f;
+        powerup_timer_network = 0.0f;
+        Start();
+    }
+
     private void Update()
     {
         var m_Renderer = GetComponentInChildren<Renderer>();
@@ -176,7 +188,8 @@ public class ItemPowerup : ItemGeneric
         }
         else if ((item_state == (int)item_state_name.FadingFromOwner && item_is_template) || item_state == (int)item_state_name.Destroyed)
         {
-            Destroy(gameObject);
+            //Destroy(gameObject);
+            DisablePowerup();
         }
 
         if (gameController == null)
@@ -185,6 +198,16 @@ public class ItemPowerup : ItemGeneric
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
+    }
+
+    public void DisablePowerup()
+    {
+        // To-do: get to the bottom of why / how we so frequently have instances where global_lowest_available_powerup_index = 24, but global_powerup_cnt is far lower, which should never happen
+        if (global_index > -1 && ref_index > -1 && gameController.global_powerup_refs != null)
+        {
+            gameController.PreallocClearSlot((int)prealloc_obj_name.ItemPowerup, global_index, ref ref_index);
+        }
+        gameObject.SetActive(false);
     }
 
     private void LateUpdate()
@@ -220,6 +243,14 @@ public class ItemPowerup : ItemGeneric
         return false;
     }
 
+    public void ResetTemplate()
+    {
+        item_state = (int)item_state_name.Disabled;
+        item_is_template = true;
+        item_owner_id = Networking.LocalPlayer.playerId;
+        spawner_parent = null;
+    }
+
     public void OnTriggerEnter(Collider other)
     {
         // Check if the player colliding with this is valid
@@ -229,9 +260,21 @@ public class ItemPowerup : ItemGeneric
         PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr != null)
         {
+            if (gameController.global_powerup_cnt >= gameController.global_powerup_arr.Length || gameController.global_lowest_available_powerup_index >= gameController.global_powerup_arr.Length || gameController.global_lowest_available_powerup_index == -1)
+            {
+                UnityEngine.Debug.LogWarning("Exceeded maximum powerups possible!");
+                return;
+            }
+            if (gameController.global_powerup_arr[gameController.global_lowest_available_powerup_index] == null)
+            {
+                gameController.PreallocGlobalObj(2);
+            }
+
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate
-            var powerup_obj = Instantiate(this.gameObject);
+            GameObject powerup_obj = gameController.PreallocAddSlot((int)prealloc_obj_name.ItemPowerup); 
+            if (powerup_obj == null) { return; }
             ItemPowerup powerup = powerup_obj.GetComponent<ItemPowerup>();
+
             powerup.item_state = (int)item_state_name.ActiveOnOwner;
             powerup.item_is_template = true;
             powerup.item_owner_id = Networking.LocalPlayer.playerId;
@@ -239,8 +282,13 @@ public class ItemPowerup : ItemGeneric
             powerup.powerup_type = powerup_type;
             powerup.powerup_duration = powerup_duration;
             powerup.spawner_parent = null;
+            powerup.item_snd_source = item_snd_source;
+            powerup.item_snd_clips = item_snd_clips;
+            powerup.powerup_snd_clips = powerup_snd_clips;
+            powerup.powerup_sprites = powerup_sprites;
             powerup.SetPowerupStats(powerup_type);
             powerup_obj.transform.position = Networking.LocalPlayer.GetPosition();
+            powerup_obj.SetActive(true);
             plyAttr.SendTutorialMessage(powerup_type);
             if (plyAttr.ply_training) { plyAttr.ResetTutorialMessage(powerup_type); }
             powerup.allow_effects_to_apply = true;

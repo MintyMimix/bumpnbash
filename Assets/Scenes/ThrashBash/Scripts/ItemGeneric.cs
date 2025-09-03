@@ -38,7 +38,9 @@ public class ItemGeneric : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public int item_state = (int)item_state_name.Spawning;
     [NonSerialized] public int item_owner_id = -1;
     [NonSerialized] public sbyte item_team_id = 0; // -1: all, -2: FFA only
-    [NonSerialized] public int item_stored_global_index = -1;
+    [NonSerialized] public int global_index = -1;
+    [NonSerialized] public int ref_index = -1;
+    //[NonSerialized] public int item_stored_global_index = -1;
     [NonSerialized] public int item_type;
     [NonSerialized] public bool item_is_template = false;
     [SerializeField] public ItemSpawner spawner_parent;
