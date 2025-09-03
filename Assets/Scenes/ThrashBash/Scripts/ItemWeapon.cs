@@ -97,7 +97,8 @@ public class ItemWeapon : ItemGeneric
         
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
-        if (plyWeapon != null && plyWeapon.weapon_type != (int)weapon_type_name.BossGlove)
+        bool player_is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1;
+        if (plyWeapon != null && !player_is_boss)
         {
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate
             plyWeapon.weapon_temp_ammo = iweapon_ammo;
@@ -107,13 +108,18 @@ public class ItemWeapon : ItemGeneric
             plyWeapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
             if (iweapon_snd_clips != null && iweapon_type >= 0 && iweapon_type < iweapon_snd_clips.Length)
             {
+                if (gameController.local_plyAttr != null) 
+                { 
+                    gameController.local_plyAttr.SendTutorialMessage((int)powerup_type_name.ENUM_LENGTH + iweapon_type);
+                    if (gameController.local_plyAttr.ply_training) { gameController.local_plyAttr.ResetTutorialMessage((int)powerup_type_name.ENUM_LENGTH + iweapon_type); }
+                }
                 gameController.PlaySFXFromArray(plyWeapon.snd_source_weaponcharge, iweapon_snd_clips, iweapon_type);
                 //Debug.Log(gameObject.name + ": Attempting to play sound " + iweapon_snd_clips[iweapon_type].name + " for type " + iweapon_type);
             }
             if (gameController.local_uiplytoself != null && iweapon_type >= 0 && iweapon_sprites != null && iweapon_type < iweapon_sprites.Length) { gameController.local_uiplytoself.PTSWeaponSprite.sprite = iweapon_sprites[iweapon_type]; }
             item_is_template = false;
         }
-        else if (plyWeapon != null && plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash) 
+        else if (plyWeapon != null && player_is_boss)
         {
             gameController.PlaySFXFromArray(plyWeapon.snd_source_weaponcharge, item_snd_clips, (int)item_snd_clips_name.Spawn);
         }
@@ -131,6 +137,11 @@ public class ItemWeapon : ItemGeneric
             item_state = (int)item_state_name.Destroyed;
         }
 
+    }
+
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        OnTriggerEnter(gameController.FindPlayerOwnedObject(player, "PlayerHitbox").GetComponent<Collider>());
     }
 
 }

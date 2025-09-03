@@ -53,7 +53,6 @@ public enum dict_compare_name
 public class GameController : UdonSharpBehaviour
 {
 
-    [NonSerialized][UdonSynced] public int host_id = 0; // Takes place of Instance Master
     [NonSerialized] public bool is_host = false; // Takes place of Networking.IsMaster
     // To-do: Replacing Networking.IsMaster events with is_host
 
@@ -113,6 +112,11 @@ public class GameController : UdonSharpBehaviour
 
     [SerializeField] public Room_Ready room_ready_script;
     [SerializeField] public GameObject room_ready_spawn;
+    [SerializeField] public GameObject room_training;
+    [SerializeField] public GameObject room_training_portal;
+    [SerializeField] public GameObject room_training_hallway_spawn;
+    [SerializeField] public GameObject room_training_arena_spawn;
+
     [SerializeField] public Mapscript[] mapscript_list;
     [NonSerialized][UdonSynced] public sbyte map_selected = -1;
     [NonSerialized][UdonSynced] public string maps_active_str = "";
@@ -204,9 +208,9 @@ public class GameController : UdonSharpBehaviour
 
     [Header("Voice Settings")]
     [Tooltip("Range 0 - 1,000,000. The near radius, in meters, where volume begins to fall off. (VRC Default: 0; Game Default: 25)")]
-    [SerializeField] public int voice_distance_near = 500; // default "near 0" //25 //250
+    [SerializeField] public int voice_distance_near = 500; // default "near 0" 
     [Tooltip("Range 0 - 1,000,000. This sets the end of the range for hearing the user's voice, in meters. Default is 25 meters. You can lower this to make another player's voice not travel as far, all the way to 0 to effectively 'mute' the player. (VRC Default: 25; Game Default: 250)")]
-    [SerializeField] public int voice_distance_far = 2000; // default 25 //250 //1000
+    [SerializeField] public int voice_distance_far = 12500; // default 25 
     [Tooltip("Range 0-24. Add boost to the Player's voice in decibels. (VRC Default: 15; Game Default: 18)")]
     [SerializeField] public int voice_gain = 20; //default 15 //20
 
@@ -289,6 +293,7 @@ public class GameController : UdonSharpBehaviour
     {
         ui_initialized = false;
         skybox.mainTexture = default_skybox_tex;
+        
         //DebugTestDictFunctions();
         //item_spawns = new ItemSpawner[0];
         //ply_ready_arr = new int[0];
@@ -309,6 +314,8 @@ public class GameController : UdonSharpBehaviour
             mapscript_list[i].gameObject.SetActive(false);
             mapscript_list[i].gameObject.SetActive(false);
         }
+        //room_training.SetActive(false);
+        room_training_portal.SetActive(false);
 
         team_colors_bright = new Color32[team_colors.Length];
         for (int j = 0; j < team_colors.Length; j++)
@@ -324,6 +331,20 @@ public class GameController : UdonSharpBehaviour
         {
             ResetPlyDicts();
             ResetGameOptionsToDefault(false);
+            if (mapscript_list != null && mapscript_list.Length > 0)
+            {
+                foreach (ItemSpawner itemSpawner in mapscript_list[0].GetItemSpawnerFromParent(room_training.transform))
+                {
+                    if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                    itemSpawner.item_spawn_powerups_enabled = true;
+                    itemSpawner.item_spawn_weapons_enabled = true;
+                    itemSpawner.item_spawn_frequency_mul = 1.0f;
+                    itemSpawner.item_spawn_duration_mul = 1.0f;
+                    itemSpawner.SetSpawnChances();
+                    if (itemSpawner.item_spawn_state == (int)item_spawn_state_name.Disabled) { itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable; }
+                    else { itemSpawner.SyncSpawns(); }
+                }
+            }
         }
 
         music_volume_default = snd_game_music_source.volume;
@@ -435,7 +456,7 @@ public class GameController : UdonSharpBehaviour
     private void Update()
     {
         // Host handling
-        is_host = host_id == Networking.LocalPlayer.playerId;
+        is_host = Networking.GetOwner(gameObject).playerId == Networking.LocalPlayer.playerId;
 
         // Local handling
         round_timer = (float)Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), round_start_ms);
@@ -853,20 +874,16 @@ public class GameController : UdonSharpBehaviour
     public void ChangeHost(int new_owner_id)
     {
         if (Networking.LocalPlayer != Networking.GetOwner(gameObject)) { return; }
-        host_id = new_owner_id;
         RequestSerialization();
         Networking.SetOwner(VRCPlayerApi.GetPlayerById(new_owner_id), gameObject);
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ProcessOwnerChanged", Networking.LocalPlayer.playerId, new_owner_id);
+        //Use on public override void OnOwnershipTransferred(VRCPlayerApi newOwner) instead
+        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ProcessOwnerChanged", Networking.LocalPlayer.playerId, new_owner_id);
         //ForceActive();
     }
 
-
-    [NetworkCallable]
-    public void ProcessOwnerChanged(int old_owner_id, int new_owner_id)
+    public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
-        host_id = new_owner_id;
-        is_host = host_id == Networking.LocalPlayer.playerId; 
-        // do things
+        is_host = Networking.GetOwner(gameObject).playerId == Networking.LocalPlayer.playerId;
     }
 
     public void ChangeGamemode()
@@ -1219,11 +1236,16 @@ public class GameController : UdonSharpBehaviour
     {
         if (map_selected < 0) { RefreshSetupUI(); return; }
 
-        if ((round_state == (int)round_state_name.Queued && !Networking.IsMaster) || (round_state == (int)round_state_name.Loading && Networking.IsMaster)) 
+        if ((round_state == (int)round_state_name.Queued && !Networking.IsMaster) || round_state == (int)round_state_name.Loading) 
         {
             Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
             AddToLocalTextQueue("You're Going To:", Color.white, load_length); 
-            AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length); 
+            AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length);
+            if (local_plyAttr != null && local_plyAttr.ply_training && local_plyAttr.ply_team >= 0)
+            {
+                TeleportLocalPlayerToReadyRoom();
+                room_training_portal.SetActive(false);
+            }
         }
 
         for (int i = 0; i < mapscript_list.Length; i++)
@@ -1270,6 +1292,13 @@ public class GameController : UdonSharpBehaviour
 
         map_selected_local = map_selected;
 
+        if (mapscript_list[map_selected].voice_distance >= 0)
+        {
+            voice_distance_near = mapscript_list[map_selected].voice_distance;
+            voice_distance_far = voice_distance_near * 25;
+            AdjustVoiceRange();
+        }
+
         RefreshSetupUI();
     }
 
@@ -1295,7 +1324,6 @@ public class GameController : UdonSharpBehaviour
             var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
             var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
             plyWeaponObj.SetActive(true);
-            plyWeaponObj.GetComponent<PlayerWeapon>().SetupTutorialMessages();
             plyHitboxObj.SetActive(true);
 
             if (option_gamemode == (int)gamemode_name.BossBash && ply_parent_arr[1][i] == 1)
@@ -1312,8 +1340,12 @@ public class GameController : UdonSharpBehaviour
 
             if (!player.isLocal) { continue; }
 
+            room_training.SetActive(false);
+            room_training_portal.SetActive(false);
             // To-do: IsNetworkSettled / IsClogged check for this player data
             PlayerAttributes playerData = FindPlayerAttributes(player);
+            playerData.ply_training = false;
+            playerData.ResetTutorialMessage();
             //UnityEngine.Debug.Log("You are in the game! After all, you, " + player.playerId + ", have the key " + ply_parent_arr[0][i] + " and value of " + ply_parent_arr[1][i] + "!");
             TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length);
             ToggleReadyRoomCollisions(false);
@@ -1377,10 +1409,7 @@ public class GameController : UdonSharpBehaviour
             PlaySFXFromArray(snd_game_music_source, mapscript_list[map_selected].snd_game_music_clips, -1, 1, true);
         }
         //Networking.LocalPlayer.Immobilize(false);
-
-        // Queue must be in reverse order due to text being bottom-to-top
-
-        
+       
         int team_to_search = GetGlobalTeam(Networking.LocalPlayer.playerId);
         Color color_team = Color.white; Color color_personal = Color.white;
         if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length && team_to_search >= 0) { color_personal = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
@@ -1519,8 +1548,11 @@ public class GameController : UdonSharpBehaviour
 
     public void AdjustVoiceRange()
     {
-        Networking.LocalPlayer.SetVoiceDistanceNear(voice_distance_near * largest_ply_scale); // default "near 0"
-        Networking.LocalPlayer.SetVoiceDistanceFar(voice_distance_far * largest_ply_scale); // default 25
+        //if (GetGlobalTeam(Networking.LocalPlayer.playerId) < 0)
+        float largest_voice_scale = largest_ply_scale;
+        largest_voice_scale = Mathf.Pow(10.0f, Mathf.Min(0.0f, largest_ply_scale - 1.0f));
+        Networking.LocalPlayer.SetVoiceDistanceNear(voice_distance_near * largest_voice_scale); // default "near 0"
+        Networking.LocalPlayer.SetVoiceDistanceFar(voice_distance_far * largest_voice_scale); // default 25
         Networking.LocalPlayer.SetVoiceGain(voice_gain * largest_ply_scale); //default 15
     }
 
@@ -1998,7 +2030,8 @@ public class GameController : UdonSharpBehaviour
         }
 
         float scaleFactor = 1.0f; float scaleMaxBias = 4.0f;
-        if (local_plyAttr != null) { scaleFactor = local_plyAttr.ply_scale; }
+        if (local_plyAttr != null) { scaleFactor = local_plyAttr.ply_scale; local_plyAttr.ResetPowerups(); }
+        scaleFactor *= 2.0f;
         Bounds spawnZoneBounds = spawnzone.GetComponent<Collider>().bounds;
         float min_x = Mathf.Lerp(spawnZoneBounds.min.x, spawnZoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
         float max_x = Mathf.Lerp(spawnZoneBounds.max.x, spawnZoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
@@ -2021,7 +2054,8 @@ public class GameController : UdonSharpBehaviour
     public void TeleportLocalPlayerToReadyRoom()
     {
         Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
-
+        room_training.SetActive(false);
+        room_training_portal.SetActive(true);
         var plyWeapon = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
         var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
         //plyWeapon.SetActive(false);
@@ -2031,6 +2065,7 @@ public class GameController : UdonSharpBehaviour
 
         if (local_plyAttr != null)
         {
+            local_plyAttr.ply_training = false;
             if (local_plyAttr.ply_state != (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
@@ -2046,6 +2081,36 @@ public class GameController : UdonSharpBehaviour
         }
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_ready_spawn.transform.position, rotateTo); //faceScoreboard * Networking.LocalPlayer.GetRotation()
+        platformHook.custom_force_unhook = false;
+    }
+
+    public void TeleportLocalPlayerToTrainingHall()
+    {
+        Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
+        room_training.SetActive(true);
+        if (local_plyAttr != null) { local_plyAttr.ply_training = true; }
+        var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        plyWeaponObj.SetActive(true);
+        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+        ToggleReadyRoomCollisions(false);
+        platformHook.custom_force_unhook = true;
+        Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
+        platformHook.custom_force_unhook = false;
+    }
+
+    public void TeleportLocalPlayerToTrainingArena()
+    {
+        Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
+        room_training.SetActive(true);
+        if (local_plyAttr != null) { local_plyAttr.ply_training = true; local_plyAttr.ply_state = (int)player_state_name.Alive; }
+        var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        plyWeaponObj.SetActive(true);
+        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true); }
+        ToggleReadyRoomCollisions(false);
+        platformHook.custom_force_unhook = true;
+        Networking.LocalPlayer.TeleportTo(room_training_arena_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
     }
 
@@ -2781,6 +2846,26 @@ public class GameController : UdonSharpBehaviour
         else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
         return output;
     }
+
+
+    public string PowerupTypeToStr(int in_powerup_type)
+    {
+        string output = "";
+        if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = "Size Up"; }
+        else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = "Size Down"; }
+        else if (in_powerup_type == (int)powerup_type_name.SpeedUp) { output = "Speed Boost"; }
+        else if (in_powerup_type == (int)powerup_type_name.AtkUp) { output = "Attack Up"; }
+        else if (in_powerup_type == (int)powerup_type_name.AtkDown) { output = "Attack Down"; }
+        else if (in_powerup_type == (int)powerup_type_name.DefUp) { output = "Defense Up"; }
+        else if (in_powerup_type == (int)powerup_type_name.DefDown) { output = "Defense Down"; }
+        else if (in_powerup_type == (int)powerup_type_name.LowGrav) { output = "Low Gravity"; }
+        else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = "Heal (50%)"; }
+        else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = "Heal (100%)"; }
+        else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = "Multi-Jump"; }
+        else { output = "(PLACEHOLDER)"; }
+        return output;
+    }
+
     public string WeaponTypeToStr(int in_weapon_type)
     {
         string output = "";

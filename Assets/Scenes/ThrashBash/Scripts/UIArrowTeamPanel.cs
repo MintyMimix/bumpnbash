@@ -24,6 +24,8 @@ public class UIArrowTeamPanel : UIArrow
         {
             bool toggle_should_be_on = Networking.IsMaster;
             if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+            else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
+
             if (toggle_should_be_on && button_increment.interactable == false) { button_increment.interactable = true; }
             else if (!toggle_should_be_on && button_increment.interactable == true) { button_increment.interactable = false; }
             if (toggle_should_be_on && button_decrement.interactable == false) { button_decrement.interactable = true; }
@@ -97,12 +99,17 @@ public class UIArrowTeamPanel : UIArrow
 
     public void UpdateOwnership()
     {
-        if (parent_teampanel.gameController.team_count <= 1 || !Networking.IsMaster)
+        bool toggle_should_be_on = Networking.IsMaster;
+        if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+        else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
+
+        if (parent_teampanel.gameController.team_count <= 1 || !toggle_should_be_on)
         {
+
             button_increment.gameObject.SetActive(false);
             button_decrement.gameObject.SetActive(false);
         }
-        else if (parent_teampanel.gameController.team_count > 1 && Networking.IsMaster)
+        else if (parent_teampanel.gameController.team_count > 1 && toggle_should_be_on)
         {
             button_increment.gameObject.SetActive(true);
             button_decrement.gameObject.SetActive(true);
@@ -113,7 +120,7 @@ public class UIArrowTeamPanel : UIArrow
     {
         if (player != null)
         {
-            parent_teampanel.gameController.ChangeTeam(player.playerId, current_value, false);
+            parent_teampanel.gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, current_value, false);
         }
     }
 }

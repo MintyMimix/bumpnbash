@@ -38,22 +38,31 @@ public class UIArrow : UdonSharpBehaviour
     public int IncrementValue()
     {
         ConfigurablesSanityCheck();
+        int old_value = current_value;
         if ((current_value + increment_size) > max_value && wrap_value) { current_value = min_value; }
         else if ((current_value + increment_size) <= max_value) { current_value += increment_size; }
+        OnValueChanged(old_value, current_value);
         return current_value;
     }
 
     public int DecrementValue()
     {
         ConfigurablesSanityCheck();
+        int old_value = current_value;
         if ((current_value - increment_size) < min_value && wrap_value) { current_value = max_value; }
         else if ((current_value - increment_size) >= min_value) { current_value -= increment_size; }
+        OnValueChanged(old_value, current_value);
         return current_value;
     }
 
-    public void SetDefaultCaptionREPLACETHISEVENT()
+    public virtual void OnValueChanged(int old_value, int new_value)
+    {
+        // Do things in the parent object when the value changes
+    }
+
+    /*public void SetDefaultCaptionREPLACETHISEVENT()
     {
         if (caption == null) { return; }
         else { caption.text = current_value.ToString(); }
-    }
+    }*/
 }

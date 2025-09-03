@@ -15,7 +15,7 @@ public class UITabGroup : UdonSharpBehaviour
     [NonSerialized] public UITabChild[] tab_list;
     [SerializeField] public GameObject[] ToggleObjects;
     [SerializeField] public Color[] ToggleObjectColors;
-    [SerializeField] public Image background;
+    [SerializeField] public GameObject background;
 
     void Start()
     {
@@ -76,7 +76,7 @@ public class UITabGroup : UdonSharpBehaviour
                 if (ToggleObjectColors != null && i < ToggleObjectColors.Length && ToggleObjectColors[i] != null)
                 {
                     tabChild.background.color = ToggleObjectColors[i];
-                    background.color = tabChild.background.color;
+                    background.GetComponent<Image>().color = tabChild.background.color;
                 }
                 else { tabChild.background.color = Color.white; }
             }

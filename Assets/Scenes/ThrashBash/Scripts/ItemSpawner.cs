@@ -21,7 +21,10 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] public ItemWeapon child_weapon;
     [SerializeField] public GameObject child_marker;
     [Header("Spawner Options")]
+    [Tooltip("Should the marker object be visible?")]
     [SerializeField] public bool show_marker_in_game = true;
+    [Tooltip("Will this spawn be used for the training room? (Always active)")]
+    [SerializeField] public bool training_spawner = false;
     [Tooltip("How long an item should linger in the world after being spawned, in seconds")]
     [SerializeField] [UdonSynced] public float item_spawn_linger;
     [Tooltip("The number of seconds that need to pass before the chance for an item to be spawned is rolled")]
@@ -66,8 +69,18 @@ public class ItemSpawner : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
+
+        if (child_powerup.gameObject != null && child_powerup.gameObject.activeInHierarchy) { child_powerup.gameObject.SetActive(false); }
+        if (child_weapon.gameObject != null && child_weapon.gameObject.activeInHierarchy) { child_weapon.gameObject.SetActive(false); }
+        if (child_marker.gameObject != null && child_marker.gameObject.activeInHierarchy) { child_marker.gameObject.SetActive(false); }
+
         SetSpawnChances();
         StartTimer(item_spawn_impulse * (1.0f/item_spawn_frequency_mul));
+    }
+
+    private void OnEnable()
+    {
+        SyncSpawns();
     }
 
     public void SetSpawnChances(byte gamemode)
@@ -99,20 +112,15 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (player != Networking.LocalPlayer) { return; }
-        wait_for_join_sync = true;
-        RequestSerialization();
+        if (player == Networking.LocalPlayer) { wait_for_join_sync = true; }
+        else if (Networking.IsMaster) { RequestSerialization(); }
     }
 
     public override void OnDeserialization()
     {
         if (wait_for_join_sync)
         {
-            if (item_spawn_state == (int)item_spawn_state_name.InWorld)
-            {
-                DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
-                SpawnItem(item_spawn_index);
-            }
+            SyncSpawns();
             wait_for_join_sync = false;
         }
         if (gameController != null) { item_spawn_chances = gameController.ConvertStrToIntArray(item_spawn_chances_str); }
@@ -121,6 +129,15 @@ public class ItemSpawner : UdonSharpBehaviour
     public override void OnPostSerialization(SerializationResult result)
     {
         if (wait_for_join_sync && result.success) { wait_for_join_sync = false; }
+    }
+
+    public void SyncSpawns()
+    {
+        if (item_spawn_state == (int)item_spawn_state_name.InWorld)
+        {
+            DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+            SpawnItem(item_spawn_index);
+        }
     }
 
     private void Update()
@@ -176,7 +193,7 @@ public class ItemSpawner : UdonSharpBehaviour
         }
     }
 
-    public void StartTimer(double duration)
+     public void StartTimer(double duration)
     {
         item_timer_start_ms = Networking.GetServerTimeInSeconds();
         //item_timer_local = 0.0f;
@@ -242,7 +259,8 @@ public class ItemSpawner : UdonSharpBehaviour
     public void DespawnItem(int reason_code, int owner_id, bool playSFX)
     {
         bool playSFXfiltered = playSFX;
-         
+        if (training_spawner) { playSFXfiltered = false; }
+
         // Powerup
         if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && child_powerup != null)
         {

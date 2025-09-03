@@ -203,7 +203,7 @@ public class ItemPowerup : ItemGeneric
         if (!CheckValidCollisionEvent(other)) { return; }
 
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
-        var plyAttr = gameController.local_plyAttr;
+        PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr != null) 
         { 
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate
@@ -217,6 +217,8 @@ public class ItemPowerup : ItemGeneric
             powerup.powerup_duration = powerup_duration;
             powerup.spawner_parent = null;
             powerup.SetPowerupStats(powerup_type);
+            plyAttr.SendTutorialMessage(powerup_type);
+            if (plyAttr.ply_training) { plyAttr.ResetTutorialMessage(powerup_type); }
             plyAttr.ProcessPowerUp(powerup_obj, true);
             item_is_template = false;
         }
@@ -234,6 +236,11 @@ public class ItemPowerup : ItemGeneric
             item_state = (int)item_state_name.Destroyed;
         }
 
+    }
+
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        OnTriggerEnter(gameController.FindPlayerOwnedObject(player, "PlayerHitbox").GetComponent<Collider>());
     }
 
     public void FadeOutAndDestroy()

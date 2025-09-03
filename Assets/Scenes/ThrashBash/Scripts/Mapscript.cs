@@ -19,6 +19,7 @@ public class Mapscript : UdonSharpBehaviour
     [SerializeField] public float map_snd_radius;
     [SerializeField] public float map_gravity_scale = 1.0f;
     [SerializeField] public byte min_players_to_extend_room = 12;
+    [SerializeField] public int voice_distance = 500;
     [SerializeField] public Texture skybox_tex;
     [SerializeField] public Transform map_readyroom_center;
     [SerializeField] public AudioClip[] snd_game_music_clips;
@@ -51,7 +52,7 @@ public class Mapscript : UdonSharpBehaviour
         //Debug.Log("[" +map_name + "] BOUNCEPADS: " + map_bouncepads.Length);
     }
 
-    private Collider[] GetCollidersFromParent(Transform parent_transform)
+    public Collider[] GetCollidersFromParent(Transform parent_transform)
     {
         Collider[] array_working = new Collider[1000];
         ushort it_cnt = 0;
@@ -76,7 +77,7 @@ public class Mapscript : UdonSharpBehaviour
         return array_condensed;
     }
 
-    private map_element_spawn[] GetSpawnzonesFromParent(Transform parent_transform)
+    public map_element_spawn[] GetSpawnzonesFromParent(Transform parent_transform)
     {
         map_element_spawn[] array_working = new map_element_spawn[1000];
         ushort it_cnt = 0;
@@ -101,7 +102,7 @@ public class Mapscript : UdonSharpBehaviour
         return array_condensed;
     }
 
-    private ItemSpawner[] GetItemSpawnerFromParent(Transform parent_transform)
+    public ItemSpawner[] GetItemSpawnerFromParent(Transform parent_transform)
     {
         ItemSpawner[] array_working = new ItemSpawner[1000];
         ushort it_cnt = 0;
@@ -126,7 +127,7 @@ public class Mapscript : UdonSharpBehaviour
         return array_condensed;
     }
 
-    private BouncePad[] GetBouncePadFromParent(Transform parent_transform)
+    public BouncePad[] GetBouncePadFromParent(Transform parent_transform)
     {
         BouncePad[] array_working = new BouncePad[1000];
         ushort it_cnt = 0;
@@ -154,7 +155,7 @@ public class Mapscript : UdonSharpBehaviour
         return array_condensed;
     }
 
-    private CaptureZone[] GetCapturezonesFromParent(Transform parent_transform)
+    public CaptureZone[] GetCapturezonesFromParent(Transform parent_transform)
     {
         CaptureZone[] array_working = new CaptureZone[1000];
         ushort it_cnt = 0;
@@ -180,7 +181,7 @@ public class Mapscript : UdonSharpBehaviour
         return array_condensed;
     }
 
-    private Transform[] GetCamPointsFromParent(Transform parent_transform)
+    public Transform[] GetCamPointsFromParent(Transform parent_transform)
     {
         Transform[] array_working = new Transform[1000];
         ushort it_cnt = 0;

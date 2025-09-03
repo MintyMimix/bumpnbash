@@ -66,7 +66,8 @@ public class ItemGeneric : UdonSharpBehaviour
 
         // We also only care if a playerHitbox is colliding with this (layers should make this impossible, but just in case)
         // 2025-07-03 Update: We can also consider WeaponHurtbox, but if only if it belongs to a punching glove
-        if (other.GetComponent<PlayerHitbox>() == null && other.GetComponent<WeaponHurtbox>() == null) { return false; }
+        bool isPlayer = other.gameObject.layer == LayerMask.GetMask("Player") || other.gameObject.layer == LayerMask.GetMask("PlayerLocal");
+        if (other.GetComponent<PlayerHitbox>() == null && other.GetComponent<WeaponHurtbox>() == null && !isPlayer) { return false; }
         else if (other.GetComponent<WeaponHurtbox>() != null && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Strike && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Kapow) { return false; }
 
         // We only care if someone else got this if this is a free-floating non-template item (i.e. neither handled by a spawner nor created by a player)
@@ -79,7 +80,7 @@ public class ItemGeneric : UdonSharpBehaviour
         // We are good on checks if this is FFA, but teams need more processing
         if (!gameController.option_teamplay || item_team_id < 0) { return true; }
 
-        var plyAttr = gameController.local_plyAttr;
+        PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr == null) { return false; } // To-do: should this be true?
 
         return item_team_id == plyAttr.ply_team;

@@ -14,6 +14,7 @@ public class Scoreboard : UdonSharpBehaviour
     public GameObject template_scoreboard_panel;
     public GameObject[] scoreboard_obj_list;
     public GridLayoutGroup scoreboard_grid;
+    public TMP_Text scoreboard_header_text;
 
     // Scaling: fixed column count, where spacing = dims * (4 - column-count) and scale = (4 - column_count)
 
