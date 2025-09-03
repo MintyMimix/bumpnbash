@@ -90,4 +90,30 @@ public class Scoreboard : UdonSharpBehaviour
             ((RectTransform)scoreboard_obj_list[i].transform).localScale = new Vector3(grid_result[1], grid_result[2], grid_result[3]);
         }
     }
+
+    public void RearrangeScoreboard(int[] leaderboard_arr)
+    {
+        if (leaderboard_arr == null || leaderboard_arr.Length == 0) { return; }
+        //UnityEngine.Debug.Log("Scoreboard rearranged based on: " + gameController.ConvertIntArrayToString(leaderboard_arr));
+        // First, unparent all of the filled templates
+        for (int j = 0; j < scoreboard_obj_list.Length; j++)
+        {
+            if (scoreboard_obj_list[j] == null) { continue; }
+            scoreboard_obj_list[j].transform.SetParent(null, false);
+        }
+        // Then, reparent in order of the leaderboard
+        for (int i = 0; i < leaderboard_arr.Length; i++)
+        {
+            for (int j = 0; j < scoreboard_obj_list.Length; j++)
+            {
+                if (scoreboard_obj_list[j] == null) { continue; }
+                UIScoreboardPanelTemplate score_panel = scoreboard_obj_list[j].GetComponent<UIScoreboardPanelTemplate>();
+                if (score_panel == null || score_panel.plyAttr == null) { scoreboard_obj_list[j].transform.SetParent(scoreboard_grid.transform, false); continue; }
+
+                if ((gameController.option_teamplay && score_panel.plyAttr.ply_team == leaderboard_arr[i])
+                    || (!gameController.option_teamplay && score_panel.player.playerId == leaderboard_arr[i])) 
+                { scoreboard_obj_list[j].transform.SetParent(scoreboard_grid.transform, false); }
+            }
+        }
+    }
 }

@@ -12,12 +12,11 @@ public class Room_Ready : UdonSharpBehaviour
 
     public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
-
         // Have the local player sync their own attribute stating readiness. PlayerAttributes syncs continously.
         if (player == Networking.LocalPlayer)
         {
             var plyAttr = gameController.local_plyAttr;
-            if (plyAttr != null) { 
+            if (plyAttr != null && plyAttr.ply_state == (int)player_state_name.Inactive) { 
                 plyAttr.ply_state = (int)player_state_name.Joined; 
 
                 if (gameController.GetGlobalTeam(player.playerId) < 0 && plyAttr.ply_team < 0)

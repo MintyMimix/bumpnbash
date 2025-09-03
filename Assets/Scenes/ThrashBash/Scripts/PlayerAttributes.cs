@@ -34,6 +34,11 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized][UdonSynced] public float ply_atk = 1.0f;
     [NonSerialized][UdonSynced] public float ply_def = 1.0f;
     [NonSerialized] public float ply_grav = 1.0f;
+    [NonSerialized][UdonSynced] public int ply_jumps_add = 0;
+    [NonSerialized] public int ply_jumps_tracking = 0;
+    [NonSerialized] public bool ply_jump_pressed = false;
+    [NonSerialized] public float ply_firerate = 1.0f;
+
     [NonSerialized] public float ply_respawn_duration;
     [NonSerialized] public VRCPlayerApi last_hit_by_ply;
     [NonSerialized] public float last_hit_by_duration = 20.0f;
@@ -49,6 +54,9 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float combo_send_duration = 2.0f;
     [NonSerialized] public float combo_send_timer = 0.0f;
 
+    [NonSerialized] public float hazard_cooldown = 0.5f;
+    [NonSerialized] public float hazard_timer = 0.0f;
+
     [NonSerialized] public GameObject[] powerups_active;
 
     [NonSerialized][UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
@@ -56,6 +64,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
     [NonSerialized] public bool plyEyeHeight_change = false;
+
 
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
@@ -127,7 +136,6 @@ public class PlayerAttributes : UdonSharpBehaviour
             last_hit_by_ply = null;
         }
 
-
         // Handle last kill
         if (last_kill_timer < last_kill_duration && last_kill_ply > -1)
         {
@@ -151,6 +159,9 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Handle receive combos
         if (Networking.LocalPlayer.IsPlayerGrounded()) { combo_receive = 0; }
 
+        // Handle hazard
+        if (hazard_timer < hazard_cooldown) { hazard_timer += Time.deltaTime; }
+
         // Handle player stats
         // To-do: this more efficiently
         if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) { 
@@ -170,6 +181,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         Networking.GetOwner(gameObject).SetManualAvatarScalingAllowed(true);
 
+        if (Networking.LocalPlayer.IsPlayerGrounded()) { ply_jumps_tracking = 0; }
     }
 
     private void FixedUpdate()
@@ -186,10 +198,12 @@ public class PlayerAttributes : UdonSharpBehaviour
             else if (plyCurrentEyeHeight != plyEyeHeight_desired && lerp_delta >= plyEyeHeight_lerp_duration)
             {
                 Networking.LocalPlayer.SetAvatarEyeHeightByMeters(plyEyeHeight_desired);
+                if (ply_scale > gameController.largest_ply_scale) { gameController.SendCustomNetworkEvent(NetworkEventTarget.Owner, "UpdateLargestPlayer", ply_scale); }
                 plyEyeHeight_change = false;
             }
             else if (plyCurrentEyeHeight == plyEyeHeight_desired) 
-            { 
+            {
+                if (ply_scale > gameController.largest_ply_scale) { gameController.SendCustomNetworkEvent(NetworkEventTarget.Owner, "UpdateLargestPlayer", ply_scale); }
                 plyEyeHeight_change = false; 
             }
         }
@@ -204,6 +218,14 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         //if (ply_scale == 1.0f && plyEyeHeight_default != prevHeight) { ResetDefaultEyeHeight(); }
+    }
+
+    public void TryHapticEvent(int haptic_event_type)
+    {
+        GameObject weapon_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        PlayerWeapon weapon_script = null;
+        if (weapon_obj != null) { weapon_script = weapon_obj.GetComponent<PlayerWeapon>(); }
+        if (weapon_script != null) { weapon_script.PlayHapticEvent(haptic_event_type); } //Debug.Log("TRY HAPTIC: " + haptic_event_type); }
     }
 
     [NetworkCallable]
@@ -224,6 +246,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], gameController.snd_game_sfx_clips[(int)game_sfx_name.HitSend], damage_type, 1 + 0.1f * (combo_send));
         combo_send++;
 
+        TryHapticEvent((int)game_sfx_name.HitSend);
     }
 
     [NetworkCallable]
@@ -231,6 +254,10 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
         if (ply_state != (int)player_state_name.Alive) { return; }
+        // We want to ensure hazards aren't processed
+        if (damage_type == (int)damage_type_name.HazardBurn && (hazard_timer < hazard_cooldown)) { return; } 
+        else { hazard_timer = 0.0f; }
+
         var calcDmg = damage; 
         var modForceDirection = forceDirection; // To-do: make this into a slider, game setting, or serialized field
 
@@ -244,14 +271,19 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         var calcForce = modForceDirection; //(modForceDirection + new Vector3(0.0f, 0.33f, 0.0f));
         var xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
-        var calcMagnitude = 0.005f * Mathf.Pow(xDmg, 1.85f) + 20.0f;
+        var calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
             // (100.0f + (xDmg / 3.0f))
             // / (1 + Mathf.Exp(-0.02f * (xDmg - 100.0f)));
         calcForce *= calcMagnitude;
         UnityEngine.Debug.Log("Resulting force magnitude: " + calcMagnitude);
-            //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
+        //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
 
-        Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
+        // Don't apply additional force if this is a hazard
+        if (damage_type != (int)damage_type_name.HazardBurn)
+        {
+            Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
+        }
+
         // To-Do: make last hit by a function scaled based on damage (i.e. whoever dealt the most damage prior to the player hitting the ground gets kill credit)
         if (!hit_self) { 
             ply_dp += calcDmg; 
@@ -263,6 +295,8 @@ public class PlayerAttributes : UdonSharpBehaviour
                 var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
                 plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type);
             }
+
+            TryHapticEvent((int)game_sfx_name.HitReceive);
         }
     }
 
@@ -275,11 +309,12 @@ public class PlayerAttributes : UdonSharpBehaviour
         //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
-        ply_points++;
+        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
         gameController.AddToLocalTextQueue("You knocked out " + VRCPlayerApi.GetPlayerById(defenderPlyId).displayName + "!");
+        TryHapticEvent((int)game_sfx_name.Kill);
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
         if (Networking.IsMaster) { gameController.CheckForRoundGoal(); }
     }
@@ -287,13 +322,19 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void HandleLocalPlayerDeath()
     {
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Death], gameController.snd_game_sfx_clips[(int)game_sfx_name.Death]);
+        TryHapticEvent((int)game_sfx_name.Death);
         ply_respawn_timer = 0;
         if (ply_state == (int)player_state_name.Alive && gameController.round_state == (int)round_state_name.Ongoing)
         {
             ply_state = (int)player_state_name.Respawning;
-            ply_deaths++;
-            // Check if we are in lives mode, and if so, if we are on the team that tracks lives
-            if (!gameController.option_goal_points_a || (!gameController.option_goal_points_b && ply_team == 1 && gameController.option_gamemode != (int)round_mode_name.Infection) ) { ply_lives--; }
+
+            if (gameController.option_gamemode != (int)gamemode_name.FittingIn
+                || (gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)) { ply_deaths++; }
+            // Check if we are in a gamemode that tracks lives, and if so, if we are on the team that tracks lives
+            if (gameController.option_gamemode == (int)gamemode_name.Survival || (ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
+            { 
+                ply_lives--;
+            }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
         {
@@ -301,29 +342,48 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
-            //UnityEngine.Debug.Log("Stop trying to die while respawning!");
+            //if (gameController.option_gamemode == (int)gamemode_name.FittingIn && local_respawn_count >= gameController.option_gm_goal) { ply_lives = 0; }
         }
         else
         {
             //UnityEngine.Debug.Log("Whoa, you died in an unusual way! Contact a developer!");
         }
 
-        // To-Do: Manage behavior based on gamemode
-        if (gameController.option_gamemode == (int)round_mode_name.Infection && ply_team != 1)
+        ResetPowerups();
+        if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
+
+        // Manage behavior based on gamemode
+        if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team != 1)
         {
             UnityEngine.Debug.Log("Requesting game master to change team to Infected...");
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, 1, false);
             ply_team = 1;
+            ply_points = 0;
+        }
+        else if (gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)
+        {
+            ply_scale += (float)((float)gameController.option_gm_config_a / 100.0f);
+            plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+            plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+            plyEyeHeight_change = true;
+            if (ply_scale > (float)((float)gameController.option_gm_goal / 100.0f)) 
+            { 
+                ply_lives = 0;
+                gameController.AddToLocalTextQueue("You've grown too big! (" + ply_scale * 100.0f + "% vs max of " + gameController.option_gm_goal + "%)");
+            }
         }
 
         if (ply_lives > 0)
         {
-            ply_dp = ply_dp_default;
+            // Reset the player's damage value to default, unless this is Boss Bash or Fitting In and they fell off without being struck (anti-exploit measure)
+            if (!(last_hit_by_ply == null && (gameController.option_gamemode == (int)gamemode_name.BossBash || gameController.option_gamemode == (int)gamemode_name.FittingIn)))
+            { ply_dp = ply_dp_default; }
             // Edge case: if this is on infection, it's possible for this event to off after RoundEnd() [usually for the master].
             // So, check if our local team is 1, but the networked team is 0, and if the lives calculated from the networked team is 1 (the lives count for Infection).
-            var total_lives = 0;
-            if (gameController.option_gamemode == (int)round_mode_name.Infection && ply_team == 1 && gameController.GetGlobalTeam(Networking.LocalPlayer.playerId) == 0 
-                && gameController.CheckSpecificTeamLives(0, ref total_lives) <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); }
+            var total_lives = 0; var members_alive = 0;
+            gameController.CheckSingleTeamLives(0, ref members_alive, ref total_lives);
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1 && gameController.GetGlobalTeam(Networking.LocalPlayer.playerId) == 0
+                && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); }
             else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
         }
         else
@@ -344,10 +404,11 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.AddToLocalTextQueue("Knocked out!");
         }
 
-        ResetPowerups();
+        if (gameController != null && gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
         if (Networking.IsMaster) { gameController.CheckForRoundGoal(); }
+        else { gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal"); }
 
     }
 
@@ -371,6 +432,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_scale = powerup.powerup_stat_value[i]; }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale += powerup.powerup_stat_value[i]; }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale *= powerup.powerup_stat_value[i]; }
+                        ply_scale = Mathf.Max(0.05f, ply_scale);
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;
@@ -399,6 +461,11 @@ public class PlayerAttributes : UdonSharpBehaviour
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_dp = powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_dp += powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_dp *= powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
+                        break;
+                    case (int)powerup_stat_name.Jumps:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_jumps_add = Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_jumps_add += Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_jumps_add *= Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
                         break;
                     default:
                         break;
@@ -440,6 +507,10 @@ public class PlayerAttributes : UdonSharpBehaviour
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_grav -= powerup.powerup_stat_value[i]; }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_grav /= powerup.powerup_stat_value[i]; }
                         break;
+                    case (int)powerup_stat_name.Jumps:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_jumps_add -= Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_jumps_add /= Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
+                        break;
                     // We do not have a case for damage, because those are intended to be permanent
                     default:
                         break;
@@ -472,7 +543,28 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
             index_iter++;
         }
+    }
 
+    [NetworkCallable]
+    public void SetPoints(ushort amount)
+    {
+        ply_points = amount;
+    }
+
+    public override void InputJump(bool value, UdonInputEventArgs args)
+    {
+        base.InputJump(value, args);
+        if (value && !ply_jump_pressed) 
+        {
+            if (!Networking.LocalPlayer.IsPlayerGrounded() && ply_jumps_tracking < ply_jumps_add)
+            {
+                Vector3 plyVel = Networking.LocalPlayer.GetVelocity();
+                Networking.LocalPlayer.SetVelocity(new Vector3(plyVel.x, 4.0f + (1.0f - ply_grav), plyVel.z));
+                ply_jumps_tracking++;
+            }
+            ply_jump_pressed = true;
+        }
+        else if (!value && ply_jump_pressed) { ply_jump_pressed = false; }
     }
 
 }

@@ -17,7 +17,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public RectTransform PTSCanvas;
     [SerializeField] public TMP_Text[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
+    [SerializeField] public RectTransform PTSTimerTransform;
     [SerializeField] public TMP_Text PTSTimer;
+    [SerializeField] public Sprite PTSTimerImage;
     [SerializeField] public TMP_Text PTSLives;
     [SerializeField] public UnityEngine.UI.Image PTSLivesImage;
     [SerializeField] public Sprite PTSLivesSprite;
@@ -33,10 +35,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image PTSTeamPoleImage;
     [SerializeField] public TMP_Text PTSTeamText;
     [SerializeField] public UnityEngine.UI.Image PTSTeamCBSpriteImage;
+    [SerializeField] public TMP_Text PTSPlacementText;
+    [SerializeField] public UnityEngine.UI.Image PTSWeaponSprite;
+    [SerializeField] public TMP_Text PTSWeaponText;
 
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
 
+    [SerializeField] public Transform PTSCapturePanel;
+    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureSprites;
+    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureOverlays;
+    [NonSerialized] public TMP_Text[] PTSCaptureTexts;
 
     [NonSerialized] public PlayerAttributes playerAttributes;
 
@@ -57,13 +66,23 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [SerializeField] public float ui_check_gamevars_impulse = 0.4f; // How often should we check for game variables (i.e. team lives, points, etc.)
     [NonSerialized] public float ui_check_gamevars_timer = 0.0f;
+
+    [NonSerialized] public int[] gamevars_leaderboard_arr;
+    [NonSerialized] public int[] gamevars_progress_arr;
+    [NonSerialized] public string gamevars_leader_name;
     [NonSerialized] public int[] gamevars_local_team_points;
+    [NonSerialized] public int[] gamevars_local_team_deaths;
     [NonSerialized] public int[] gamevars_local_team_lives;
     [NonSerialized] public int gamevars_local_highest_team;
     [NonSerialized] public int gamevars_local_highest_points;
     [NonSerialized] public int gamevars_local_highest_ply_id;
+    [NonSerialized] public int gamevars_local_lowest_team;
+    [NonSerialized] public int gamevars_local_lowest_deaths;
+    [NonSerialized] public int gamevars_local_lowest_ply_id;
     [NonSerialized] public int gamevars_local_total_lives;
-    [NonSerialized] public string gamevars_local_players_alive;
+    [NonSerialized] public int gamevars_local_team_members_alive;
+    [NonSerialized] public byte gamevars_local_players_alive;
+    [NonSerialized] public byte gamevars_local_teams_alive;
 
     void Start()
     {
@@ -80,6 +99,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             text_queue_limited_timers[t] -= ((t - 1) * text_queue_limited_extend);
         }
+
         RectTransform temp_parent = null;
         for (int i = 0; i < PTSPowerupPanel.transform.childCount; i++)
         {
@@ -102,6 +122,37 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 item_index++;
             }
         }
+
+        temp_parent = null;
+        for (int i = 0; i < PTSCapturePanel.transform.childCount; i++)
+        {
+            var child = (RectTransform)transform.GetChild(i);
+            if (child.name.Contains("PTSCapturePanel")) { temp_parent = child; break; }
+        }
+
+        foreach (GameObject child in (Transform)temp_parent)
+        {
+            if (child.name.Contains("PTSCaptureSprite")) { item_size++; }
+        }
+
+        PTSCaptureSprites = new UnityEngine.UI.Image[item_size];
+        PTSCaptureOverlays = new UnityEngine.UI.Image[item_size];
+        PTSCaptureTexts = new TMP_Text[item_size];
+        foreach (Transform child in (Transform)temp_parent)
+        {
+            if (child.name.Contains("PTSCaptureSprite"))
+            {
+                PTSCaptureSprites[item_index] = child.GetComponent<UnityEngine.UI.Image>();
+                child.gameObject.SetActive(false);
+                foreach (Transform subchild in child)
+                {
+                    if (subchild.name.Contains("PTSCaptureOverlay")) { PTSCaptureOverlays[item_index] = subchild.GetComponent<UnityEngine.UI.Image>(); ; }
+                    if (subchild.name.Contains("PTSCaptureText")) { PTSCaptureTexts[item_index] = subchild.GetComponent<TMP_Text>(); ; }
+                }
+                item_index++;
+            }
+        }
+
         ui_show_intro_text = true;
         if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
         ui_demo_enabled = true;
@@ -138,9 +189,94 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     public void UpdateGameVariables()
     {
-        gamevars_local_team_points = gameController.CheckAllTeamPoints(ref gamevars_local_highest_team, ref gamevars_local_highest_points, ref gamevars_local_highest_ply_id);
-        gamevars_local_team_lives = gameController.CheckAllTeamLives(ref gamevars_local_total_lives, ref gamevars_local_players_alive);
-        ui_check_gamevars_timer = 0.0f;
+        if (gameController.round_state != (int)round_state_name.Start)
+        {
+            int team_total_lives = 0;
+            gameController.CheckRoundGoalProgress(out gamevars_leaderboard_arr, out gamevars_progress_arr, out gamevars_leader_name);
+            gamevars_local_team_points = gameController.CheckAllTeamPoints(ref gamevars_local_highest_team, ref gamevars_local_highest_points, ref gamevars_local_highest_ply_id);
+            gamevars_local_team_deaths = gameController.CheckAllTeamPoints(ref gamevars_local_lowest_team, ref gamevars_local_lowest_deaths, ref gamevars_local_lowest_ply_id, true);
+            gamevars_local_team_lives = gameController.CheckAllTeamLives(ref gamevars_local_players_alive, ref gamevars_local_teams_alive);
+            gameController.CheckSingleTeamLives(playerAttributes.ply_team, ref gamevars_local_team_members_alive, ref team_total_lives);
+            ui_check_gamevars_timer = 0.0f;
+            if (gameController.ui_round_scoreboard_canvas != null && gameController.ui_round_scoreboard_canvas.GetComponent<Scoreboard>() != null)
+            {
+                gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RefreshScores();
+                gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RearrangeScoreboard(gamevars_leaderboard_arr);
+            }
+        }
+    }
+
+    public int GetGameRank(int player_id, PlayerAttributes inPlyAttr)
+    {
+        if (player_id < 0 || gamevars_leaderboard_arr == null || gameController == null || inPlyAttr == null || inPlyAttr.ply_team < 0) { return -1; }
+        else if (player_id == Networking.LocalPlayer.playerId && Networking.GetOwner(gameObject) != VRCPlayerApi.GetPlayerById(player_id)) { return -1; }
+        int rank = -1;
+
+        int total_lives = 0;
+        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_lives.Length) { total_lives = gamevars_local_team_lives[inPlyAttr.ply_team]; }
+        int total_points = 0; 
+        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_points.Length) { total_points = gamevars_local_team_points[inPlyAttr.ply_team]; }
+        int total_deaths = 0;
+        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_deaths.Length) { total_deaths = gamevars_local_team_deaths[inPlyAttr.ply_team]; }
+
+        // We perform the below to get a dense rank (e.g. if points are {3, 3, 2, 1, 1, 0}, ranks should be {1, 1, 3, 4, 4, 6} instead of {1, 2, 3, 4, 5, 6})
+        for (int i = 0; i < gamevars_progress_arr.Length; i++)
+        {
+            if (gameController.option_gamemode == (int)gamemode_name.Survival)
+            {
+                // If we are in Survival, check if your lives matches the iterating team/player's
+                if (gameController.option_teamplay && total_lives == gamevars_progress_arr[i]) { rank = i; break; }
+                else if (!gameController.option_teamplay && inPlyAttr.ply_lives == gamevars_progress_arr[i]) { rank = i; break; }
+            }
+            else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
+            {
+                // If we are in Fitting In, check if your deaths matches the iterating team/player's
+                if (gameController.option_teamplay && total_deaths == gamevars_progress_arr[i]) { rank = i; break; }
+                else if (!gameController.option_teamplay && inPlyAttr.ply_deaths == gamevars_progress_arr[i]) { rank = i; break; }
+            }
+            else
+            {
+                // Otherwise, check if your points matches the iterating team/player's
+                if (gameController.option_teamplay && total_points == gamevars_progress_arr[i]) { rank = i; break; }
+                else if (!gameController.option_teamplay && inPlyAttr.ply_points == gamevars_progress_arr[i]) { rank = i; break; }
+            }
+
+            // And if we still can't find anything, just find your individual rank in the array
+            if (gameController.option_teamplay && gamevars_leaderboard_arr[i] == inPlyAttr.ply_team) { rank = i; break; }
+            else if (!gameController.option_teamplay && gamevars_leaderboard_arr[i] == player_id) { rank = i; break; }
+        }
+        return rank;
+    }
+
+
+    public string RankToString(int inRank)
+    {
+        int rank = inRank + 1;
+        if (rank < 1) 
+        {
+            PTSPlacementText.color = Color.white;
+            return "(Invalid)"; 
+        }
+        else if (rank == 1) 
+        {
+            PTSPlacementText.color = new Color32(255, 225, 0, 255);
+            return "1st"; 
+        }
+        else if (rank == 2) 
+        {
+            PTSPlacementText.color = new Color32(240, 248, 255, 255);
+            return "2nd"; 
+        }
+        else if (rank == 3) 
+        {
+            PTSPlacementText.color = new Color32(255, 166, 78, 255);
+            return "3rd"; 
+        }
+        else 
+        {
+            PTSPlacementText.color = new Color32(123, 223, 185, 255);
+            return rank.ToString() + "th"; 
+        }
     }
 
     public void ProcessTextQueue()
@@ -225,8 +361,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
             ui_demo_enabled = false;
             if (ui_show_intro_text) {
                 AddToTextQueue("Step in the square to join the game!");
-                AddToTextQueue(" ");
-                AddToTextQueue("This game is in very early development; there may be major bugs or issues!");
+                AddToTextQueue(" -- PREVIEW BUILD VERSION 0.16.0 --");
+                AddToTextQueue("This game is in development; there may be major bugs or issues!");
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
             }
             ui_show_intro_text = false;
@@ -238,11 +374,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             ui_check_gamevars_timer += Time.deltaTime;
         }
-        /*else
+        else
         {
             UpdateGameVariables();
             //gameController.RefreshSetupUI(); // Don't actually do this; only good for debugging but is redundant and lag spiking otherwise
-        }*/
+        }
 
         // Sort out better without all the debug
         if (playerAttributes == null) 
@@ -257,10 +393,24 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else if ((round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
         else if (!(round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
-        var TimerText = Mathf.Floor(gameController.round_length - gameController.round_timer + 1.0f).ToString();
+        float TimerValue = gameController.round_length - gameController.round_timer + 1.0f;
+        string TimerText = Mathf.FloorToInt(TimerValue).ToString();
+        PTSTimerTransform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
         if (gameController.round_state == (int)round_state_name.Start) { TimerText = ""; }
         else if (gameController.round_state == (int)round_state_name.Ready) { TimerText = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString(); }
+        else
+        {
+            if (TimerValue < 10.0f) 
+            { 
+                PTSTimer.color = new Color(1.0f, 0.4f, 0.4f, 1.0f);
+                float scaleAdd = ((TimerValue * 10.0f) % 5.0f) / 5.0f;
+                //if (scaleAdd < 0.05f) { gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitReceive], gameController.snd_ready_sfx_clips, (int)ready_sfx_name.TimerTick, 0.5f); }
+                PTSTimerTransform.localScale = new Vector3(1.0f + scaleAdd, 1.0f + scaleAdd, 1.0f + scaleAdd);
+            }
+            else { PTSTimer.color = Color.white; }
+        }
         PTSTimer.text = TimerText;
+        
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
@@ -317,88 +467,145 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
 
-        var FlagText = "";
+        string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
         if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0 
             && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team) 
         {
             
-            int members_alive = gamevars_local_team_lives[playerAttributes.ply_team];
-            int total_points = gamevars_local_team_points[playerAttributes.ply_team];
-            
-            if (!gameController.option_teamplay || gameController.option_gamemode == (int)round_mode_name.Infection) 
+            int members_alive = 0; int team_total_lives = 0;
+            if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gamevars_local_team_lives.Length) { members_alive = gamevars_local_team_members_alive; }
+            int total_points = 0;
+            if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gamevars_local_team_points.Length) { total_points = gamevars_local_team_points[playerAttributes.ply_team]; }
+            int local_rank = GetGameRank(Networking.LocalPlayer.playerId, playerAttributes);
+            string rank_str = RankToString(local_rank);
+            // If we are in Survival, display # of players alive on your team
+            if (gameController.option_gamemode == (int)gamemode_name.Survival)
             {
-                if (gameController.option_goal_points_a && gameController.option_gamemode != (int)round_mode_name.Infection) { FlagText = gamevars_local_highest_points.ToString(); }
-                else { FlagText = members_alive.ToString(); }
+                PlacementText = rank_str;
+                FlagText = "\n\n" + members_alive.ToString() + " Alive";
             }
-            else if (gameController.option_gamemode == (int)round_mode_name.BossBash)
+            // If this is Clash, display the leader's point count
+            else if (gameController.option_gamemode == (int)gamemode_name.Clash)
             {
-                if (playerAttributes.ply_team == 1)
-                { // If we are the boss, override the flag to instead display KOs
-                    FlagText = playerAttributes.ply_points.ToString() + "/" + gameController.option_goal_value_a;
-                    PTSTeamPoleImage.enabled = false;
-                    PTSTeamFlagImage.sprite = PTSPointsSprite;
-                    PTSTeamCBSpriteImage.sprite = PTSPointsSprite;
+                PlacementText = rank_str;
+                if (local_rank == 0) { FlagText = ""; }
+                else
+                {
+                    FlagText = "\n\n1st:\n" + gamevars_progress_arr[0].ToString() + " KO";
+                    if (gamevars_progress_arr[0] != 1) { FlagText += "s"; }
                 }
-                else { FlagText = total_points.ToString(); }
             }
-            else if (gameController.option_goal_points_a) 
-            { 
+            // If we are in Boss Bash, display your team's KOs
+            else if (gameController.option_gamemode == (int)gamemode_name.BossBash)
+            {
+                FlagText = total_points.ToString() + " KO";
+                if (total_points != 1) { FlagText += "s"; }
+                PTSTeamPoleImage.enabled = false;
+                PTSTeamFlagImage.sprite = PTSPointsSprite;
+                PTSTeamCBSpriteImage.sprite = PTSPointsSprite;
+            }
+            // If we are in Infection, display the Survivor's players alive count
+            else if (gameController.option_gamemode == (int)gamemode_name.Infection)
+            {
+                FlagText = gamevars_local_team_lives[0].ToString() + " Alive";
+            }
+            // To-do: If this is King of the Hill, display the total capture time remaining
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            {
+                PlacementText = rank_str;
+                if (local_rank == 0) { FlagText = ""; }
+                else
+                {
+                    FlagText = "\n\n1st:\n" + Mathf.RoundToInt(gameController.option_gm_goal - (gamevars_progress_arr[0] / gameController.koth_decimal_division)).ToString() + "s";
+                }
+            }
+            // If we are in Fitting In, display the leader's death count
+            else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
+            {
+                PlacementText = rank_str;
+                if (local_rank == 0) { FlagText = ""; }
+                else
+                {
+                    FlagText = "\n\n1st:\n" + gamevars_progress_arr[0].ToString() + " Falls";
+                }
+            }
+
                 // If we are in points mode, display the team with the highest points, and highlight the text color based on who it is
-                FlagText = Mathf.Max(gamevars_local_team_points).ToString();
+                /*FlagText = Mathf.Max(gamevars_local_team_points).ToString();
                 PTSTeamText.color = new Color32(
                     (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].r)),
                     (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].g)),
                     (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].b)),
-                    (byte)gameController.team_colors[gamevars_local_highest_team].a);
-            }
-            else { FlagText = members_alive.ToString() + " (" + gamevars_local_total_lives.ToString() + ")"; }
+                    (byte)gameController.team_colors[gamevars_local_highest_team].a);*/
         }
         PTSTeamText.text = FlagText;
+        PTSPlacementText.text = PlacementText;
 
 
         var LivesText = "";
         if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
+        else if (gameController.option_gamemode == (int)gamemode_name.Survival || (playerAttributes.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
         {
-            PTSLivesImage.sprite = PTSPointsSprite;
-            if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
-            {
-                // If this is boss bash, display the boss's points as a total death counter
-                var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
-                if (bossAttr != null)
-                {
-                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_goal_value_a;
-                }
-                else { LivesText = "?"; }
-                PTSLives.color = Color.white;
-                PTSLivesImage.color = Color.white;
-                PTSLivesImage.sprite = PTSDeathsSprite;
-            }
-            else if (gameController.option_gamemode == (int)round_mode_name.Infection)
-            {
-                if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
-                PTSLives.color = Color.white;
-                PTSLivesImage.color = Color.white;
-                PTSLivesImage.sprite = PTSDeathsSprite;
-            }
-            else
-            {
-                if (gameController.option_teamplay && gamevars_local_team_points.Length > playerAttributes.ply_team) { LivesText = Mathf.RoundToInt(gamevars_local_team_points[playerAttributes.ply_team]).ToString() + "/" + gameController.option_goal_value_a; }
-                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_goal_value_a; }
-                PTSLives.color = Color.white;
-                PTSLivesImage.color = PTSTeamFlagImage.color;
-            }
-        }
-        else
-        {
+            // If we are in survival mode or are the boss, display lives
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTSLivesImage.sprite = PTSLivesSprite;
             float livesRatio = (float)((float)playerAttributes.ply_lives / (float)gameController.plysettings_lives);
-            if (livesRatio < 1.0f) { livesRatio -= 0.5f*(float)(1.0f / (float)gameController.plysettings_lives); }
+            if (livesRatio < 1.0f) { livesRatio -= 0.5f * (float)(1.0f / (float)gameController.plysettings_lives); }
             livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
             PTSLivesImage.color = Color.white;
             PTSLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
+        }
+        else if (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.gamemode_boss_id >= 0)
+        {
+            // If this is boss bash, display the boss's points as a total death counter
+            var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
+            if (bossAttr != null)
+            {
+                LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_gm_goal;
+            }
+            else { LivesText = "?"; }
+            PTSLives.color = Color.white;
+            PTSLivesImage.color = Color.white;
+            PTSLivesImage.sprite = PTSDeathsSprite;
+        }
+        else if (gameController.option_gamemode == (int)gamemode_name.Infection)
+        {
+            // If this is infection, display the total infections
+            if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
+            PTSLives.color = Color.white;
+            PTSLivesImage.color = Color.white;
+            PTSLivesImage.sprite = PTSDeathsSprite;
+        }
+        // If this is King of the Hill, display the total capture time remaining
+        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+        {
+            float timeLeft;
+            if (gameController.option_teamplay && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)gamevars_local_team_points[playerAttributes.ply_team] / gameController.koth_decimal_division)); }
+            else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); }
+            LivesText = timeLeft.ToString();
+            float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
+            PTSLives.color = new Color(timeRatio, 1.0f, timeRatio / 1.5f, 1.0f);
+            PTSLivesImage.color = PTSTeamFlagImage.color;
+            PTSLivesImage.sprite = PTSTimerImage;
+        }
+        // If this is Fitting In, display the number of deaths
+        else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
+        {
+            if (gameController.option_teamplay && gamevars_local_team_deaths != null && gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_deaths[playerAttributes.ply_team]).ToString(); }
+            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString(); }
+            PTSLives.color = Color.white;
+            PTSLivesImage.color = Color.white;
+            PTSLivesImage.sprite = PTSDeathsSprite;
+        }
+        else
+        {
+            // Otherwise, display points
+            if (gameController.option_teamplay && gamevars_local_team_points != null && gamevars_local_team_points.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_points[playerAttributes.ply_team]).ToString() + "/" + gameController.option_gm_goal; }
+            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_gm_goal; }
+            PTSLives.color = Color.white;
+            PTSLivesImage.color = PTSTeamFlagImage.color;
+            PTSLivesImage.sprite = PTSPointsSprite;
         }
         PTSLives.text = LivesText;
 
@@ -421,14 +628,58 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     PTSPowerupSprites[i].sprite = powerup.powerup_sprites[powerup.powerup_type];
 
                     TMP_Text PTSPowerupSpriteText = PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>();
-                    PTSPowerupSpriteText.text =
-                        (Mathf.Floor((float)(powerup.powerup_duration - powerup.powerup_timer_network) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
-                    if ((float)(powerup.powerup_duration - powerup.powerup_timer_network) <= 5.0f) { PTSPowerupSpriteText.color = new Color(1.0f, 0.4f,0.4f, 1.0f); }
+                    float powerup_time_left = (float)(powerup.powerup_duration - powerup.powerup_timer_network);
+                    if (powerup_time_left < 10.0f)
+                    {
+                        PTSPowerupSpriteText.text =
+                            (Mathf.Floor(powerup_time_left * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
+                    }
+                    else
+                    {
+                        PTSPowerupSpriteText.text = Mathf.Floor(powerup_time_left).ToString();
+                    }
+                    if (powerup_time_left <= 5.0f) { PTSPowerupSpriteText.color = new Color(1.0f, 0.4f, 0.4f, 1.0f); }
                     else { PTSPowerupSpriteText.color = Color.white; }
                 //
                 }
 
             }
+        }
+
+        // Handle weapon stats
+        if (gameController != null && gameController.local_plyweapon != null && PTSWeaponSprite != null && PTSWeaponText != null && gameController.local_plyweapon.weapon_type != gameController.local_plyweapon.weapon_type_default)
+        {
+            string weaponTxt = "";
+            PTSWeaponText.color = Color.white;
+            if (gameController.local_plyweapon.weapon_temp_ammo > -1) 
+            { 
+                weaponTxt += gameController.local_plyweapon.weapon_temp_ammo.ToString();
+                if (gameController.local_plyweapon.weapon_temp_ammo < 3) { PTSWeaponText.color = new Color(1.0f, 0.8f, 0.4f, 1.0f); }
+            }
+            if (gameController.local_plyweapon.weapon_temp_duration > -1) 
+            { 
+                if (weaponTxt.Length > 0) { weaponTxt += " (^)"; }
+                else { weaponTxt = "^"; }
+                float weapon_time_left = gameController.local_plyweapon.weapon_temp_duration - gameController.local_plyweapon.weapon_temp_timer;
+                if (weapon_time_left < 10.0f)
+                {
+                    weaponTxt = weaponTxt.Replace("^", (Mathf.Floor(weapon_time_left * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'));
+                }
+                else
+                {
+                    weaponTxt = weaponTxt.Replace("^", Mathf.Floor(weapon_time_left).ToString());
+                }
+                if (weapon_time_left <= 5.0f) { PTSWeaponText.color = new Color(1.0f, 0.4f, 0.4f, 1.0f); }
+            }
+
+            PTSWeaponText.text = weaponTxt;
+            if (!PTSWeaponSprite.gameObject.activeInHierarchy) { PTSWeaponSprite.gameObject.SetActive(true); }
+        }
+        else 
+        {
+            if (PTSWeaponText != null) { PTSWeaponText.text = ""; }
+            if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
+
         }
     }
 
@@ -442,11 +693,25 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSCanvas.sizeDelta = new Vector2(gameController.local_ppp_options.ui_separation * (5.0f / 3.0f), gameController.local_ppp_options.ui_separation);
             //gameController.local_ppp_options.ui_scale
         }
+        Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity() / Time.fixedDeltaTime, plyForward);
+        Vector3 velAdd = Vector3.zero;
+
+        if (playerAttributes != null && plyMagInForward > 0)
+        {
+            //scaleUI * 0.003f * heightUI * 
+            //velAdd = playerAttributes.ply_speed * 0.003f * plyMagInForward * plyForward; //* 0.05f;\
+            //velAdd *= 2.0f;
+        }
+        //if (Networking.LocalPlayer.IsUserInVR()) { velAdd *= 2.0f; }
+
         //if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
         //else { scaleUI *= 0.5f; }
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
-        transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * heightUI);
-        transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
+        transform.SetPositionAndRotation(
+            Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI) + velAdd
+            , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
+            );
     }
 
 }

@@ -27,7 +27,7 @@ public class UIArrowTeamPanel : UIArrow
             if (array_id >= 0 && parent_teampanel.gameController.ply_tracking_dict_keys_arr != null && array_id < parent_teampanel.gameController.ply_tracking_dict_keys_arr.Length)
             {
                 current_value = parent_teampanel.gameController.ply_tracking_dict_values_arr[array_id];
-                caption.text += " [" + current_value + "]";
+                //caption.text += " [" + current_value + "]";
             }
             // Check if the player disconnected
             else if (VRCPlayerApi.GetPlayerById(player.playerId) != null)

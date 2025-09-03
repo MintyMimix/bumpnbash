@@ -29,7 +29,7 @@ public class PlayerHitbox : UdonSharpBehaviour
 
     private void FixedUpdate()
     {
-        if (playerAttributes != null)
+        if (playerAttributes != null && owner != null)
         {
             var scaleHitbox = playerAttributes.ply_scale;
             transform.localScale = new Vector3(scaleHitbox, default_hitbox_size * scaleHitbox, scaleHitbox);
@@ -71,6 +71,7 @@ public class PlayerHitbox : UdonSharpBehaviour
         //rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by hurtboxes even when standing still
         if (playerAttributes != null) {
             if (owner == Networking.LocalPlayer && material_id != (int)hitbox_mat_name.Invisible) { SetMaterial((int)hitbox_mat_name.Invisible); }
+            else if (owner == Networking.LocalPlayer && gameObject.layer != LayerMask.NameToLayer("LocalPlayerHitbox")) { gameObject.layer = LayerMask.NameToLayer("LocalPlayerHitbox"); }
             else if (owner != Networking.LocalPlayer && playerAttributes.ply_state == (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Respawning)
             {
                 SetMaterial((int)hitbox_mat_name.Respawning);

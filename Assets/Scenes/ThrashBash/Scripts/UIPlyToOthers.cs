@@ -10,7 +10,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
 {
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
-    [SerializeField] public GameObject PTSTopPanel;
+    [SerializeField] public GameObject PTOTopPanel;
     [SerializeField] public TMP_Text PTOInfo;
     [SerializeField] public TMP_Text PTOLives;
     [SerializeField] public UnityEngine.UI.Image PTOLivesImage;
@@ -26,6 +26,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image PTOTeamPoleImage;
     [SerializeField] public TMP_Text PTOTeamText;
     [SerializeField] public UnityEngine.UI.Image PTOTeamCBSpriteImage;
+    [SerializeField] public GameObject PTOVictoryStar;
 
     [NonSerialized] public PlayerAttributes playerAttributes;
 
@@ -43,7 +44,6 @@ public class UIPlyToOthers : UdonSharpBehaviour
         playerAttributes = gameController.FindPlayerAttributes(newOwner);
     }
 
-
     private void Update()
     {
         if (gameController == null)
@@ -58,8 +58,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         // Sort out better without all the debug
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
-        if (round_ready && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
-        else if (!round_ready && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
+        if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
+        else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
@@ -122,32 +122,9 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         var LivesText = "";
         if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
+        else if (gameController.option_gamemode == (int)gamemode_name.Survival || (playerAttributes.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
         {
-            PTOLivesImage.sprite = PTOPointsSprite;
-            if (gameController.option_goal_time) {
-                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
-                PTOLives.color = Color.white;
-                PTOLivesImage.color = PTOTeamFlagImage.color;
-            }
-            else if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
-            {    
-                // If this is boss bash, everyone but the boss should have a death counter
-                LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString();
-                PTOLives.color = Color.white;
-                PTOLivesImage.sprite = PTODeathsSprite;
-                PTOLivesImage.color = Color.white;
-            }
-            else
-            {
-                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(ref_uiplytoself.gamevars_local_team_points[playerAttributes.ply_team]).ToString(); }
-                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString(); }
-                PTOLives.color = Color.white;
-                PTOLivesImage.color = PTOTeamFlagImage.color;
-            }
-        }
-        else
-        {
+            // If we are in survival mode or are the boss, display lives
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTOLivesImage.sprite = PTOLivesSprite;
             PTOLivesImage.color = Color.white;
@@ -156,29 +133,55 @@ public class UIPlyToOthers : UdonSharpBehaviour
             livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
             PTOLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
         }
+        else if ((playerAttributes.ply_team != 1 && gameController.option_gamemode == (int)gamemode_name.BossBash) || gameController.option_gamemode == (int)gamemode_name.FittingIn)
+        {
+            // If this is Fitting In, display a death counter. For Boss Bash, make sure it's always a personal counter rather than a team counter.
+            if (gameController.option_gamemode != (int)gamemode_name.BossBash && gameController.option_teamplay && ref_uiplytoself != null && ref_uiplytoself.gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(ref_uiplytoself.gamevars_local_team_deaths[playerAttributes.ply_team]).ToString(); }
+            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString(); }
+            PTOLives.color = Color.white;
+            PTOLivesImage.sprite = PTODeathsSprite;
+            PTOLivesImage.color = Color.white;
+
+            // However, if WE are the boss, make others show their personal KO count instead, so we can prioritize targets accordingly
+            if (gameController.local_plyAttr != null && gameController.local_plyAttr.ply_team == 1)
+            {
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString(); 
+                PTOLivesImage.sprite = PTOPointsSprite;
+                PTOLivesImage.color = PTOTeamFlagImage.color;
+            }
+         }
+        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+        {
+            float timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); 
+            LivesText = timeLeft.ToString();
+            float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
+            PTOLives.color = new Color(1.0f, timeRatio / 1.5f, timeRatio / 1.0f, 1.0f);
+            PTOLivesImage.color = PTOLivesImage.color;
+            if (ref_uiplytoself != null) { PTOLivesImage.sprite = ref_uiplytoself.PTSTimerImage; }
+        }
+        else
+        {
+            // Otherwise, display points
+            if (gameController.option_teamplay && ref_uiplytoself != null && ref_uiplytoself.gamevars_local_team_points != null && ref_uiplytoself.gamevars_local_team_points.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(ref_uiplytoself.gamevars_local_team_points[playerAttributes.ply_team]).ToString(); }
+            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString(); }
+            PTOLivesImage.sprite = PTOPointsSprite;
+            PTOLives.color = Color.white;
+            PTOLivesImage.color = PTOTeamFlagImage.color;
+        }
         PTOLives.text = LivesText;
 
-        /*
-        var showText = "Damage: " + playerAttributes.ply_dp
-            + "%\nLives: " + playerAttributes.ply_lives
-            + "%\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
-            + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
-        if (gameController.option_teamplay) { showText += "\nTeam: " + playerAttributes.ply_team; } 
-        switch (playerAttributes.ply_state)
+        // Display victory star if in first place
+        if (ref_uiplytoself != null && ref_uiplytoself.gamevars_leaderboard_arr != null && ref_uiplytoself.gamevars_leaderboard_arr.Length > 0)
         {
-            case (int)player_state_name.Inactive:
-                showText = "(Inactive)";
-                break;
-            case (int)player_state_name.Respawning:
-                showText = "-- Respawning --\n" + showText;
-                break;
-            case (int)player_state_name.Dead:
-                showText = "Defeated!\n" + showText;
-                break;
-            default:
-                break;
+            if (ref_uiplytoself.GetGameRank(owner.playerId, playerAttributes) == 0
+                && gameController.option_gamemode != (int)gamemode_name.BossBash
+                && gameController.option_gamemode != (int)gamemode_name.Infection
+                //&& gameController.round_state != (int)round_state_name.Start
+                ) { PTOVictoryStar.SetActive(true); }
+            //else if (gameController.option_teamplay && ref_uiplytoself.gamevars_leaderboard_arr[0] == playerAttributes.ply_team) { PTOVictoryStar.SetActive(true); }
+            //else if (!gameController.option_teamplay && ref_uiplytoself.gamevars_leaderboard_arr[0] == owner.playerId) { PTOVictoryStar.SetActive(true); }
+            else { PTOVictoryStar.SetActive(false); }
         }
-        PTOInfo.text = showText;*/
     }
 
     private void FixedUpdate()

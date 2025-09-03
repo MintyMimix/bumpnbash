@@ -37,6 +37,11 @@ public class map_element_hazard : BouncePad
 
     public void DamagePlayer(VRCPlayerApi player)
     {
+        if (gameController == null) { return; }
+        var plyAttr = gameController.FindPlayerAttributes(player);
+        if (plyAttr == null) { return; }
+        if (plyAttr.hazard_timer < plyAttr.hazard_cooldown) { return; }
+
         damage_ticks++;
         damage_cooldown_timer = 0.0f;
 
@@ -59,22 +64,17 @@ public class map_element_hazard : BouncePad
                 break;
         }
 
-        if (gameController == null) { return; }
-        var plyAttr = gameController.FindPlayerAttributes(player);
-        if (plyAttr == null) { return; }
-        plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, -1, (int)damage_type_name.Burn, false);
-        
+        plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, -1, (int)damage_type_name.HazardBurn, false);
+        Bounce(player);
     }
 
-    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
-        Bounce(player);
         DamagePlayer(player);
     }
 
-    public override void OnPlayerCollisionEnter(VRCPlayerApi player)
+    public override void OnPlayerCollisionStay(VRCPlayerApi player)
     {
-        Bounce(player);
         DamagePlayer(player);
     }
 

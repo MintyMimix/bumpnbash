@@ -11,6 +11,7 @@ public class map_element_spawn : UdonSharpBehaviour
     [SerializeField] public int min_players = 0;
     [SerializeField] public int team_id = -1;
     [NonSerialized] public int spawnzone_global_index = -1;
+    [NonSerialized] public bool is_enabled = true;
 
     void Start()
     {
@@ -23,18 +24,8 @@ public class map_element_spawn : UdonSharpBehaviour
         ToggleSpawn(false);
     }
 
-    void ReportEligibleSpawns(int team_id)
+    public void ToggleSpawn(bool toggleBool)
     {
-
-    }
-
-    void ReportSpawnsFarthestFromPlayers(int team_id)
-    {
-
-    }
-
-    void ToggleSpawn(bool toggleBool)
-    {
-
+        is_enabled = toggleBool;
     }
 }

@@ -66,9 +66,9 @@ public class ItemSpawner : UdonSharpBehaviour
     private void Update()
     {
         if (item_spawn_state == (int)item_spawn_state_name.Disabled) {
-            if (child_powerup.gameObject.activeInHierarchy) { child_powerup.gameObject.SetActive(false); }
-            if (child_weapon.gameObject.activeInHierarchy) { child_weapon.gameObject.SetActive(false); }
-            if (child_marker.gameObject.activeInHierarchy) { child_marker.gameObject.SetActive(false); }
+            if (child_powerup.gameObject != null && child_powerup.gameObject.activeInHierarchy) { child_powerup.gameObject.SetActive(false); }
+            if (child_weapon.gameObject != null && child_weapon.gameObject.activeInHierarchy) { child_weapon.gameObject.SetActive(false); }
+            if (child_marker.gameObject != null && child_marker.gameObject.activeInHierarchy) { child_marker.gameObject.SetActive(false); }
             return; 
         }
         else
@@ -121,7 +121,6 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.item_team_id = item_spawn_team;
             child_powerup.SetTeamColor(item_spawn_team);
             child_powerup.item_stored_global_index = item_spawn_global_index;
-            child_powerup.item_state = (int)item_state_name.InWorld;
             child_powerup.item_type = (int)item_type_name.Powerup;
             child_powerup.item_is_template = false;
             child_powerup.powerup_type = item_index;
@@ -131,6 +130,8 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.powerup_timer_local = 0.0f;
             child_powerup.powerup_timer_network = 0.0f;
             child_powerup.gameObject.SetActive(true);
+            // This must be the last step, in case we try to destroy it on the same frame we are spawning it in
+            child_powerup.item_state = (int)item_state_name.InWorld;
         }
         // Weapon
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
@@ -141,7 +142,16 @@ public class ItemSpawner : UdonSharpBehaviour
             child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
-            // To-do: weapon configuration; make sure to use (item_index - (int)powerup_type_name.ENUM_LENGTH) for type
+            child_weapon.iweapon_type = item_index - (int)powerup_type_name.ENUM_LENGTH;
+            child_weapon.SetiWeaponStats();
+            // If the type is -2, that means set the stat to the spawner's powerup duration
+            if (child_weapon.iweapon_type >= 0)
+            {
+                if (child_weapon.iweapon_type < child_weapon.iweapon_ammo_list.Length && child_weapon.iweapon_ammo_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_ammo = Mathf.RoundToInt(item_spawn_powerup_duration); }
+                if (child_weapon.iweapon_type < child_weapon.iweapon_duration_list.Length && child_weapon.iweapon_duration_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_duration = item_spawn_powerup_duration; }
+            }
+            child_weapon.gameObject.SetActive(true);
+            child_weapon.item_state = (int)item_state_name.InWorld;
         }
 
         item_spawn_state = (int)item_spawn_state_name.InWorld;
@@ -153,32 +163,32 @@ public class ItemSpawner : UdonSharpBehaviour
     [NetworkCallable]
     public void DespawnItem(int reason_code, int owner_id, bool playSFX)
     {
-        var playSFXfiltered = playSFX;
-
+        bool playSFXfiltered = playSFX;
+         
         // Powerup
-        if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH)
+        if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && child_powerup != null)
         {
             child_powerup.item_state = (int)item_state_name.Disabled;
-            child_powerup.powerup_type = (int)powerup_type_name.Fallback;
+            //child_powerup.powerup_type = (int)powerup_type_name.Fallback;
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
-            if (playSFXfiltered) {
+            if (playSFXfiltered && child_powerup != null && child_powerup.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
                 gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
             }
             child_powerup.gameObject.SetActive(false);
         }
         // Weapon
-        /*else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH)
+        else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_state = (int)item_state_name.Disabled;
+            child_weapon.iweapon_type = 0;
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
-            if (playSFXfiltered) {
+            if (playSFXfiltered && child_weapon != null && child_weapon.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
                 gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
             }
             child_weapon.gameObject.SetActive(false);
-            // To-do: weapon configuration; make sure to use (item_index - (int)powerup_type_name.ENUM_LENGTH) for type
-        }*/
+        }
         
         if (item_spawn_state == (int)item_spawn_state_name.Disabled) { return; }
 
@@ -215,7 +225,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
         for (int i = 0; i < item_chances.Length; i++)
         {
-            if (i == item_chances.Length - 1) { index_rolled = item_chances.Length; break; } // Regardless of our how high our roll is, if we hit the end of the chance table, just assume it's the best outcome
+            if (i == item_chances.Length - 1) { index_rolled = item_chances.Length - 1; break; } // Regardless of our how high our roll is, if we hit the end of the chance table, just assume it's the best outcome
             else if (
                 (i > 0 && roll < item_chances[i] && roll >= item_chances[i - 1]) || (i == 0 && roll < item_chances[i])
                 )
@@ -236,33 +246,38 @@ public class ItemSpawner : UdonSharpBehaviour
         }
 
         var minLen = Math.Min(item_spawn_chances_config_keys.Length, item_spawn_chances_config_values.Length);
-        if (item_spawn_chances_config_keys.Length != item_spawn_chances_config_values.Length) { Debug.LogWarning(gameObject.name + ": Key-Value pair for item spawn chances do not match! (Keys: " + item_spawn_chances_config_keys.Length.ToString() + ", Values: " + item_spawn_chances_config_values.Length.ToString() + ")"); }
+        if (item_spawn_chances_config_keys.Length != item_spawn_chances_config_values.Length) { Debug.LogWarning(transform.parent.gameObject.name + " of " + gameObject.name + ": Key-Value pair for item spawn chances do not match! (Keys: " + item_spawn_chances_config_keys.Length.ToString() + ", Values: " + item_spawn_chances_config_values.Length.ToString() + ")"); }
         for (int i = 0; i < minLen; i++)
         {
             if (i < (int)powerup_type_name.ENUM_LENGTH)
             {
                 var powerup_type_name_enum_index = gameController.KeyToPowerupType(item_spawn_chances_config_keys[i]);
                 outArr[powerup_type_name_enum_index] = item_spawn_chances_config_values[i];
+                //Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": PARSED POWERUP " + powerup_type_name_enum_index + " from key of " + item_spawn_chances_config_keys[i] + " and value of " + item_spawn_chances_config_values[i]);
             }
             else if (i - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
             {
                 var weapon_type_name_enum_index = gameController.KeyToWeaponType(item_spawn_chances_config_keys[i]);
-                outArr[weapon_type_name_enum_index] = item_spawn_chances_config_values[i];
+                outArr[weapon_type_name_enum_index + (int)powerup_type_name.ENUM_LENGTH] = item_spawn_chances_config_values[i];
+                //Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": PARSED WEAPON " + weapon_type_name_enum_index + " from key of " + item_spawn_chances_config_keys[i] + " and value of " + item_spawn_chances_config_values[i]);
             }
         }
-        //UnityEngine.Debug.Log(gameObject.name + ": Parsed inspector array: " + gameController.DebugPrintFloatArray(outArr));
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": Parsed inspector array: " + gameController.DebugPrintFloatArray(outArr));
         return outArr;
     }
 
     public float[] NormalizeChances(float[] inArr)
     {
-        if (inArr.Length <= 0) { Debug.LogError(gameObject.name + ": Attempted to normalize chances for an empty array!"); return inArr; } // if passing a null array, don't bother
+        if (inArr.Length <= 0) { Debug.LogError(transform.parent.gameObject.name + " of " + gameObject.name + ": Attempted to normalize chances for an empty array!"); return inArr; } // if passing a null array, don't bother
         var chance_total = 0.0f;
         for (int i = 0; i < inArr.Length; i++)
         {
             chance_total += inArr[i];
         }
-        if (chance_total <= 0.0f) { Debug.LogError(gameObject.name + ": Attempted to normalize chances when the combined value is 0!"); return inArr; } // if passing a null array, don't bother
+        if (chance_total <= 0.0f) { Debug.LogError(transform.parent.gameObject.name + " of " + gameObject.name + ": Attempted to normalize chances when the combined value is 0!"); return inArr; } // if passing a null array, don't bother
+
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + " in array: " + gameController.DebugPrintFloatArray(inArr));
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + " total chance calculation: " + chance_total);
 
         var normalized_chances = new float[inArr.Length];
         for (int j = 0; j < inArr.Length; j++)
@@ -271,7 +286,7 @@ public class ItemSpawner : UdonSharpBehaviour
             else { normalized_chances[j] = (inArr[j] / chance_total) + normalized_chances[j - 1]; }
         }
 
-        //UnityEngine.Debug.Log(gameObject.name + ": Normalized array array: " + gameController.DebugPrintFloatArray(normalized_chances) + " with total chances of " + chance_total);
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": Normalized array: " + gameController.DebugPrintFloatArray(normalized_chances) + " with total chances of " + chance_total);
         return normalized_chances;
     }
 
@@ -282,7 +297,7 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             outArr[i] = (int)Mathf.RoundToInt(inArr[i] * 10000.0f);
         }
-        //UnityEngine.Debug.Log(gameObject.name + ": Converted chance array to int " + gameController.DebugPrintIntArray(outArr));
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": Converted chance array to int " + gameController.ConvertIntArrayToString(outArr));
         return outArr;
     }
 

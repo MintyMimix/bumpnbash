@@ -29,6 +29,7 @@ public class Mapscript : UdonSharpBehaviour
     [NonSerialized] public map_element_spawn[] map_spawnzones;
     [NonSerialized] public ItemSpawner[] map_item_spawns;
     [NonSerialized] public BouncePad[] map_bouncepads;
+    [NonSerialized] public CaptureZone[] map_capturezones;
     [SerializeField] public GameObject room_game_extended;
 
     // Unused, but store just to be safe
@@ -44,7 +45,8 @@ public class Mapscript : UdonSharpBehaviour
         map_spawnzones = GetSpawnzonesFromParent(transform); // If we have more than 1000 of these, there's a problem
         map_item_spawns = GetItemSpawnerFromParent(transform); // If we have more than 1000 of these, there's a problem
         map_bouncepads = GetBouncePadFromParent(transform); // If we have more than 1000 of these, there's a problem
-        Debug.Log("[" +map_name + "] BOUNCEPADS: " + map_bouncepads.Length);
+        map_capturezones = GetCapturezonesFromParent(transform);
+        //Debug.Log("[" +map_name + "] BOUNCEPADS: " + map_bouncepads.Length);
     }
 
     private Collider[] GetCollidersFromParent(Transform parent_transform)
@@ -129,18 +131,44 @@ public class Mapscript : UdonSharpBehaviour
         Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
         foreach (Transform t in AllChildren)
         {
-            Debug.Log("["+ parent_transform.name + "] ( " + it_cnt + ") Search transform: " + t.name);
+            //Debug.Log("["+ parent_transform.name + "] ( " + it_cnt + ") Search transform: " + t.name);
             BouncePad component = t.GetComponent<BouncePad>();
             if (t.GetComponent<BouncePad>() != null)
             {
                 array_working[it_cnt] = component;
                 array_working[it_cnt].bouncepad_global_index = it_cnt;
                 //array_working[it_cnt].gameObject.SetActive(false);
-                Debug.Log("[" + parent_transform.name + "] ( " + it_cnt + ") BOUNCEPAD: " + component.name);
+                //Debug.Log("[" + parent_transform.name + "] ( " + it_cnt + ") BOUNCEPAD: " + component.name);
                 it_cnt++;
             }
         }
         BouncePad[] array_condensed = new BouncePad[it_cnt];
+        for (int i = 0; i < it_cnt; i++)
+        {
+            array_condensed[i] = array_working[i];
+        }
+        array_working = array_condensed;
+
+        return array_condensed;
+    }
+
+    private CaptureZone[] GetCapturezonesFromParent(Transform parent_transform)
+    {
+        CaptureZone[] array_working = new CaptureZone[1000];
+        ushort it_cnt = 0;
+        Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
+        foreach (Transform t in AllChildren)
+        {
+            CaptureZone component = t.GetComponent<CaptureZone>();
+            if (t.GetComponent<CaptureZone>() != null)
+            {
+                array_working[it_cnt] = component;
+                array_working[it_cnt].global_index = it_cnt;
+                component.gameObject.SetActive(false);
+                it_cnt++;
+            }
+        }
+        CaptureZone[] array_condensed = new CaptureZone[it_cnt];
         for (int i = 0; i < it_cnt; i++)
         {
             array_condensed[i] = array_working[i];

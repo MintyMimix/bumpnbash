@@ -10,12 +10,12 @@ using VRC.Udon.Common.Interfaces;
 
 public enum powerup_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToPowerupType()
 {
-    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, PartialHeal, FullHeal, Fallback, ENUM_LENGTH
+    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, PartialHeal, FullHeal, Multijump, ENUM_LENGTH
 }
 
 public enum powerup_stat_name
 {
-   Scale, Speed, Atk, Def, Grav, Damage, ENUM_LENGTH
+   Scale, Speed, Atk, Def, Grav, Damage, Jumps, ENUM_LENGTH
 }
 
 public enum powerup_stat_behavior_name
@@ -31,7 +31,6 @@ public class ItemPowerup : ItemGeneric
     [NonSerialized] public double powerup_timer_local = 0.0f;
     [NonSerialized] public double powerup_timer_network = 0.0f;
 
-    [NonSerialized] public bool allow_multiple_owners = false;
     [NonSerialized] public bool render_powerup = true;
 
     [SerializeField] public AudioClip[] powerup_snd_clips;
@@ -58,6 +57,8 @@ public class ItemPowerup : ItemGeneric
         powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Null;
         powerup_stat_value[(int)powerup_stat_name.Damage] = 0.0f;
         powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Null;
+        powerup_stat_value[(int)powerup_stat_name.Jumps] = 0.0f;
+        powerup_stat_behavior[(int)powerup_stat_name.Jumps] = (int)powerup_stat_behavior_name.Null;
 
         foreach (Transform child in transform)
         {
@@ -117,6 +118,10 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Multiply;
                 powerup_duration = 0.001f; // Heals do not need to be displayed as a buff
                 break;
+            case (int)powerup_type_name.Multijump:
+                powerup_stat_value[(int)powerup_stat_name.Jumps] = 1.0f;
+                powerup_stat_behavior[(int)powerup_stat_name.Jumps] = (int)powerup_stat_behavior_name.Add;
+                break;
             default:
                 break;
         }
@@ -157,7 +162,7 @@ public class ItemPowerup : ItemGeneric
         if (item_state == (int)item_state_name.ActiveOnOwner && item_is_template) {
             FadeOutAndDestroy();
         }
-        else if (item_state == (int)item_state_name.FadingFromOwner && item_is_template)
+        else if ((item_state == (int)item_state_name.FadingFromOwner && item_is_template) || item_state == (int)item_state_name.Destroyed)
         {
             Destroy(gameObject);
         }
@@ -200,7 +205,6 @@ public class ItemPowerup : ItemGeneric
         var plyAttr = gameController.local_plyAttr;
         if (plyAttr != null) 
         { 
-            
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate
             var powerup_obj = Instantiate(this.gameObject);
             ItemPowerup powerup = powerup_obj.GetComponent<ItemPowerup>();
@@ -219,19 +223,22 @@ public class ItemPowerup : ItemGeneric
         // Despawn powerup for everyone else, with reason code of "someone else got it"
         // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
         //item_snd_source.transform.position = spawner_parent.transform.position;
-        if (CheckForSpawnerParent() && !allow_multiple_owners)
+        bool has_spawner_parent = CheckForSpawnerParent();
+        if (has_spawner_parent && !allow_multiple_owners)
         {
             spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, true);
         }
-        else if (!item_is_template)
+        else if (!has_spawner_parent && item_state != (int)item_state_name.Spawning)
         {
-            Destroy(gameObject);
+            item_state = (int)item_state_name.Destroyed;
         }
+
     }
 
     public void FadeOutAndDestroy()
     {
-        var plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(item_owner_id));
+        PlayerAttributes plyAttr = null;
+        if (item_owner_id > -1) { plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(item_owner_id)); }
         if (plyAttr != null) { plyAttr.ProcessPowerUp(gameObject, false); }
 
         item_state = (int)item_state_name.FadingFromOwner;

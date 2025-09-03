@@ -61,7 +61,7 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
         cb_image.color = flag_image.color;
         points_image.color = flag_image.color;
 
-        if (!gameController.option_goal_points_a || (!gameController.option_goal_points_b && plyAttr.ply_team == 1 && gameController.option_gamemode != (int)round_mode_name.Infection))
+        if (gameController.option_gamemode == (int)gamemode_name.Survival || (plyAttr.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
         {
             lives_obj.SetActive(true);
         }

@@ -68,25 +68,25 @@ public class PPP_Options : UdonSharpBehaviour
             for (int i = 0; i < infos.Length; i++)
             {
 
-                if (!PlayerData.HasKey(player, "LocalOptions_UIScale"))
+                if (!PlayerData.HasKey(player, "UIScale"))
                 {
                     ui_uiscaleslider.value = 10.0f;
                     UpdateUIScale();
                     break;
                 }
-                if (!PlayerData.HasKey(player, "LocalOptions_UISeparation"))
+                if (!PlayerData.HasKey(player, "UISeparation"))
                 {
                     ui_uiseparationslider.value = 30.0f;
                     UpdateUISeparation();
                     break;
                 }
-                if (!PlayerData.HasKey(player, "LocalOptions_MusicVolume"))
+                if (!PlayerData.HasKey(player, "MusicVolume"))
                 {
                     ui_uimusicslider.value = 10.0f;
                     UpdateMusicVolume();
                     break;
                 }
-                if (!PlayerData.HasKey(player, "LocalOptions_SoundVolume"))
+                if (!PlayerData.HasKey(player, "SoundVolume"))
                 {
                     ui_uisoundslider.value = 10.0f;
                     UpdateSoundVolume();
@@ -113,7 +113,7 @@ public class PPP_Options : UdonSharpBehaviour
     public void RefreshComponents()
     {
         float out_UIScale;
-        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "LocalOptions_UIScale", out out_UIScale))
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIScale", out out_UIScale))
         {
             ui_uiscaleslider.value = out_UIScale;
         }
@@ -124,7 +124,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         float out_UISeparation;
-        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "LocalOptions_UISeparation", out out_UISeparation))
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UISeparation", out out_UISeparation))
         {
             ui_uiseparationslider.value = out_UISeparation;
         }
@@ -135,7 +135,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         float out_MusicVolume;
-        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "LocalOptions_MusicVolume", out out_MusicVolume))
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "MusicVolume", out out_MusicVolume))
         {
             ui_uimusicslider.value = out_MusicVolume;
         }
@@ -146,7 +146,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         float out_SoundVolume;
-        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "LocalOptions_SoundVolume", out out_SoundVolume))
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "SoundVolume", out out_SoundVolume))
         {
             ui_uisoundslider.value = out_SoundVolume;
         }
@@ -156,14 +156,15 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateSoundVolume();
         }
 
-        ui_colorblindtoggle.isOn = PlayerData.GetBool(Networking.LocalPlayer, "LocalOptions_Colorblind");
+        ui_colorblindtoggle.isOn = PlayerData.GetBool(Networking.LocalPlayer, "Colorblind");
     }
 
     public void UpdateUIScale()
     {
         ui_scale = ui_uiscaleslider.value / 10.0f;
-        var ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        var ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>();
+        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+        UIPlyToSelf ui_plyself_script = null;
+        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
         if (ui_plyself_obj != null && ui_plyself_script != null)
         {
             if (!ui_plyself_script.ui_show_intro_text)
@@ -177,13 +178,13 @@ public class PPP_Options : UdonSharpBehaviour
         else { ui_uiscaletext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("LocalOptions_UIScale", ui_uiscaleslider.value);
+        PlayerData.SetFloat("UIScale", ui_uiscaleslider.value);
     }
 
     public void UpdateUISeparation()
     {
         ui_separation = ui_uiseparationslider.value * 10.0f;
-        var ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
         if (ui_plyself_obj != null && ui_plyself_obj.GetComponent<UIPlyToSelf>() != null)
         {
             ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
@@ -194,7 +195,7 @@ public class PPP_Options : UdonSharpBehaviour
         else { ui_uiseparationtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("LocalOptions_UISeparation", ui_uiseparationslider.value);
+        PlayerData.SetFloat("UISeparation", ui_uiseparationslider.value);
     }
 
     public void UpdateMusicVolume()
@@ -206,7 +207,7 @@ public class PPP_Options : UdonSharpBehaviour
         else { ui_uimusictext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("LocalOptions_MusicVolume", ui_uimusicslider.value);
+        PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         gameController.snd_game_music_source.volume = gameController.music_volume_default * music_volume;
     }
 
@@ -219,7 +220,7 @@ public class PPP_Options : UdonSharpBehaviour
         else { ui_uisoundtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("LocalOptions_SoundVolume", ui_uisoundslider.value);
+        PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
     }
 
     public void UpdateColorblind()
@@ -228,7 +229,7 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.RefreshSetupUI();
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetBool("LocalOptions_Colorblind", ui_colorblindtoggle.isOn);
+        PlayerData.SetBool("Colorblind", ui_colorblindtoggle.isOn);
         
     }
 

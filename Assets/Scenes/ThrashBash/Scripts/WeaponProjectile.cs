@@ -10,7 +10,7 @@ using VRC.Udon;
 
 public enum projectile_type_name
 {
-    Bullet, ArcDown, ArcUp, ENUM_LENGTH
+    Bullet, ArcDown, ArcUp, Bomb, Laser, ENUM_LENGTH
 }
 
 public class WeaponProjectile : UdonSharpBehaviour
@@ -20,6 +20,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public int owner_id;
     [NonSerialized] public float owner_scale;
     [NonSerialized] public bool keep_parent;
+    //[NonSerialized] public int keep_parent_ext;
     [NonSerialized] public Vector3 pos_start;
     [NonSerialized] public float projectile_distance;
     [NonSerialized] public float projectile_duration;
@@ -28,16 +29,32 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] private double projectile_timer_network = 0.0f;
     [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameController gameController;
+    [SerializeField] public GameObject[] projectile_mdl;
     [NonSerialized] public GameObject weapon_parent;
     [NonSerialized] public float actual_distance;
     [NonSerialized] public Vector3 previousPosition;
     [NonSerialized] private Rigidbody rb;
     [NonSerialized] private bool projectile_hit_on_this_frame = false;
+    [NonSerialized] public Vector3 pos_end;
+    [NonSerialized] public bool contact_made = false;
+    [NonSerialized] public bool has_physics = false;
 
     private void Start()
     {
         rb = this.GetComponent<Rigidbody>();
         previousPosition = rb.position;
+    }
+
+    public void UpdateProjectileModel()
+    {
+        if (weapon_type >= 0 && weapon_type < projectile_mdl.Length && projectile_mdl[weapon_type] != null)
+        {
+            for (int i = 0; i < projectile_mdl.Length; i++)
+            {
+                if (i == weapon_type) { projectile_mdl[i].SetActive(true); }
+                else { projectile_mdl[i].SetActive(false); }
+            }
+        }
     }
 
     private float CalcDistanceAtTime(double time_elapsed)
@@ -47,7 +64,7 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     private Vector3 CalcPosAtTime(double time_elapsed)
     {
-        var outPos = rb.position;
+        Vector3 outPos = rb.position;
         switch (projectile_type)
         {
             case (int)projectile_type_name.Bullet:
@@ -64,49 +81,86 @@ public class WeaponProjectile : UdonSharpBehaviour
     {
         projectile_timer_local += Time.deltaTime;
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
+
+        if (projectile_hit_on_this_frame && pos_end != null)
+        {
+            rb.MovePosition(pos_end);
+            OnProjectileHit(pos_end, contact_made);
+        }
     }
 
     private void FixedUpdate()
     {
-        
-        // Before anything else, if we have a parent, make sure we're positioned and rotated with the parent properly
-        if (keep_parent && weapon_parent != null)
+
+        // Before anything else, if we have a parent, make sure we're positioned and rotated with the parent
+        if (keep_parent && weapon_parent != null && !projectile_hit_on_this_frame)
         {
+            // New behavior: just immediately detonate the projectile and have the hurtbox handle the sizing instead
             rb.MoveRotation(weapon_parent.transform.rotation);
-            rb.MovePosition(weapon_parent.transform.position + (weapon_parent.transform.right * CalcDistanceAtTime(projectile_timer_network)));
+            //rb.MovePosition(weapon_parent.transform.position + (weapon_parent.transform.right * CalcDistanceAtTime(projectile_timer_network)));
+            pos_end = weapon_parent.transform.position;
+            contact_made = false;
+            projectile_hit_on_this_frame = true;
         }
 
-        // Then we calculate the next position, either based on lerp from the distance or raycast if there's an obstacle between our current and next position
-        var lerpPos = Vector3.Lerp(rb.position, CalcPosAtTime(projectile_timer_network), Mathf.Min(1.0f,(float)(projectile_timer_network / projectile_duration)));
-        var rayPos = RaycastToNextPos(projectile_timer_network);
-        if (rayPos.x != -999999 && !projectile_hit_on_this_frame) 
-        { 
-            rb.MovePosition(rayPos);
-            projectile_hit_on_this_frame = true;
-            OnProjectileHit(rayPos, true);
-            //Debug.Log("[PROJECTILE] Create projectile at RayPos!");
+        // If this is not a physics object, we calculate the next position, either based on lerp from the distance or raycast if there's an obstacle between our current and next position
+        if (!has_physics) {
+            Vector3 lerpPos = Vector3.Lerp(rb.position, CalcPosAtTime(projectile_timer_network), Mathf.Min(1.0f, (float)(projectile_timer_network / projectile_duration)));
+            Vector3 rayPos = RaycastToNextPos(projectile_timer_network);
+            if (rayPos.x != -999999 && !projectile_hit_on_this_frame)
+            {
+                pos_end = rayPos;
+                projectile_hit_on_this_frame = true;
+                contact_made = true;
+                //rb.MovePosition(rayPos);
+                //projectile_hit_on_this_frame = true;
+                //OnProjectileHit(rayPos, true);
+                //Debug.Log("[PROJECTILE] Create projectile at RayPos!");
+            }
+            else
+            {
+                rb.MovePosition(lerpPos);
+                if (!projectile_hit_on_this_frame && (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration))
+                {
+                    pos_end = CalcPosAtTime(projectile_duration);
+                    projectile_hit_on_this_frame = true;
+                    contact_made = false;
+                    //OnProjectileHit(CalcPosAtTime(projectile_duration), false);
+                    //Debug.Log("[PROJECTILE] Create projectile because of lifetime!");
+                }
+            }
         }
-        else 
-        { 
-            rb.MovePosition(lerpPos);
+        // If this a physics object, all we care about is lifetime
+        else
+        {
             if (!projectile_hit_on_this_frame && (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration))
             {
+                pos_end = rb.position;
                 projectile_hit_on_this_frame = true;
-                OnProjectileHit(CalcPosAtTime(projectile_duration), false);
-                //Debug.Log("[PROJECTILE] Create projectile because of lifetime!");
+                contact_made = false;
             }
         }
     }
 
-    public void OnProjectileHit(Vector3 position, bool contact_made)
+    public void OnProjectileHit(Vector3 position, bool is_contact_made)
     {
         //NetworkCreateHurtBox(Vector3 position, float damage, double start_ms, int player_id, int weapon_type)
-        actual_distance = Vector3.Distance(pos_start, this.GetComponent<Rigidbody>().position);
+        //actual_distance = Vector3.Distance(pos_start, this.GetComponent<Rigidbody>().position);
         if (owner_id == Networking.LocalPlayer.playerId)
         {
-            var plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
-            var damage = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
+
+            PlayerAttributes plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
+            float damage = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
             damage *= plyAttr.ply_atk * (plyAttr.ply_scale * gameController.scale_damage_factor);
+            float ply_scale = plyAttr.ply_scale;
+            float dist_scale = 1.0f;
+            // For a Laser type projectile, we want to instead position the hurtbox at the midway point between start and current, and scale it according to that distance
+            if (projectile_type == (int)projectile_type_name.Laser) 
+            {
+                position = Vector3.Lerp(pos_start, rb.position, 0.5f);
+                dist_scale = Vector3.Distance(pos_start, position);
+            }
+
             gameController.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
@@ -114,14 +168,14 @@ public class WeaponProjectile : UdonSharpBehaviour
                 , damage
                 , Networking.GetServerTimeInSeconds()
                 , keep_parent
-                , plyAttr.ply_scale
+                , ply_scale
                 , owner_id
                 , weapon_type
-                , actual_distance
+                , dist_scale
                 );
         
             // Play the striking sound, if applicable
-            if (weapon_parent != null && weapon_parent.GetComponent<PlayerWeapon>() != null && contact_made && owner_id == Networking.LocalPlayer.playerId)
+            if (weapon_parent != null && weapon_parent.GetComponent<PlayerWeapon>() != null && is_contact_made && owner_id == Networking.LocalPlayer.playerId)
             {
                 var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
                 gameController.PlaySFXFromArray(
@@ -161,7 +215,7 @@ public class WeaponProjectile : UdonSharpBehaviour
             }
         }
         // Did we hit the environment?
-        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment"))
+        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment") && !has_physics)
         {
             return true;
         }
@@ -173,7 +227,8 @@ public class WeaponProjectile : UdonSharpBehaviour
         if (CheckCollider(other))
         {
             projectile_hit_on_this_frame = true;
-            OnProjectileHit(rb.position, true);
+            pos_end = rb.position;
+            //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at TriggerEnter!");
         }
     }
@@ -183,7 +238,8 @@ public class WeaponProjectile : UdonSharpBehaviour
         if (CheckCollider(collision.collider))
         {
             projectile_hit_on_this_frame = true;
-            OnProjectileHit(rb.position, true);
+            pos_end = rb.position;
+            //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at CollisionEter!");
         }
     }

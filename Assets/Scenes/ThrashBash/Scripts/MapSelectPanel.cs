@@ -29,7 +29,8 @@ public class MapSelectPanel : UdonSharpBehaviour
         for (int i = 0; i < map_obj_list.Length; i++)
         {
             MapSelectTemplate panel_attr = map_obj_list[i].GetComponent<MapSelectTemplate>();
-            panel_attr.Refresh();
+            Destroy(map_obj_list[i]);
+            //panel_attr.Refresh();
         }
 
         // Then create a new one based on the length of the mapscript list
