@@ -11,7 +11,7 @@ using static VRC.SDKBase.VRCPlayerApi;
 
 public enum damage_type_name
 {
-    Strike, ForceExplosion, Kapow, ENUM_LENGTH
+    Strike, ForceExplosion, Kapow, Burn, ENUM_LENGTH
 }
 
 public class WeaponHurtbox : UdonSharpBehaviour
@@ -29,25 +29,30 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [NonSerialized] public int damage_type;
     [NonSerialized] public GameObject weapon_parent; // WARNING: Only use if keep_parent is on from WeaponProjectile
     [NonSerialized] public float local_offset;
+    [NonSerialized] public PlayerAttributes owner_plyAttr;
+    [NonSerialized] private Rigidbody rb;
+    [NonSerialized] private Rigidbody weapon_rb;
 
     private void Start()
     {
         players_struck = new int[0];
+        rb = gameObject.GetComponent<Rigidbody>();
     }
 
     private void OnEnable()
     {
-        if (weapon_parent != null) { local_offset = Vector3.Distance(transform.position, weapon_parent.transform.position); }
+        if (weapon_parent != null) { weapon_rb = weapon_parent.GetComponent<Rigidbody>(); local_offset = Vector3.Distance(transform.position, weapon_rb.position);  }
+        owner_plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(owner_id));
     }
 
     private void FixedUpdate()
     {
         if (weapon_parent != null) {
-            var layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
-            Vector3 next_pos = weapon_parent.transform.position + (weapon_parent.transform.right * local_offset);
-            var ray_cast = Physics.Linecast(weapon_parent.transform.position, next_pos, out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
-            if (hitInfo.collider != null) { transform.position = hitInfo.point; }
-            else { transform.position = next_pos; }
+            var layers_to_hit = LayerMask.GetMask("PlayerHitbox", "Environment");
+            Vector3 next_pos = weapon_rb.position + (weapon_parent.transform.right * local_offset);
+            var ray_cast = Physics.Linecast(weapon_rb.position, next_pos, out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
+            if (CheckCollider(hitInfo.collider)) { rb.MovePosition(hitInfo.point); }
+            else { rb.MovePosition(next_pos); }
         }
     }
 
@@ -61,26 +66,26 @@ public class WeaponHurtbox : UdonSharpBehaviour
             Destroy(gameObject);
         }
 
+        rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by the player hitbox trigger 
 
-        var playerAttributes = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(owner_id));
         var m_Renderer = GetComponent<Renderer>();
-        if (playerAttributes != null && m_Renderer != null && playerAttributes.gameController.team_colors != null && playerAttributes.ply_team >= 0)
+        if (owner_plyAttr != null && m_Renderer != null && owner_plyAttr.gameController.team_colors != null && owner_plyAttr.ply_team >= 0)
         {
-            if (playerAttributes.gameController.option_teamplay)
+            if (owner_plyAttr.gameController.option_teamplay)
             {
                 m_Renderer.material.SetColor("_Color",
                     new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].b)),
                     (byte)0));
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor",
                     new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
-                    (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].b)),
+                    (byte)owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].a));
             }
             else
             {
@@ -92,40 +97,84 @@ public class WeaponHurtbox : UdonSharpBehaviour
     }
 
     // Attacker-focused code 
+
+    private bool CheckCollider(Collider other)
+    {
+        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return false; }
+        // Did we hit a hitbox?
+        if (other.gameObject.GetComponent<PlayerHitbox>() != null)
+        {
+            if (owner_id != Networking.GetOwner(other.gameObject).playerId)
+            {
+                return true;
+            }
+        }
+        // Did we hit the environment?
+        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment"))
+        {
+            return true;
+        }
+        return false;
+    }
+
     private void OnTriggerStay(Collider other)
     {
         if (other == null) { return; }
         // Run this only if we are the owner of the hurtbox
         if (owner_id != Networking.LocalPlayer.playerId) { return; }
-        // And that we're not colliding with our own hurtbox
+        // Check that we are colliding with an actual hitbox
         var plyHitbox = other.gameObject.GetComponent<PlayerHitbox>();
         if (plyHitbox == null) { return; }
-        var colliderOwner = Networking.GetOwner(plyHitbox.gameObject);
-        if (colliderOwner.playerId == Networking.LocalPlayer.playerId) { return; }
 
-        // Then, add the player struck to the exclusion list
-        var players_ext = new int[players_struck.Length + 1];
+        //processing_collider = true;
+
+        // And check we're not colliding with our own hurtbox
+        var colliderOwner = Networking.GetOwner(plyHitbox.gameObject);
+        // Add the player struck to the exclusion list, regardless of if it is our own
+        int[] players_ext = new int[players_struck.Length + 1];
         for (int i = 0; i < players_struck.Length; i++)
         {
+            if (players_struck[i] == colliderOwner.playerId) { return; }
             players_ext[i] = players_struck[i];
-            if (players_ext[i] == colliderOwner.playerId) { return; }
         }
         players_ext[players_struck.Length] = colliderOwner.playerId;
         players_struck = players_ext;
+        //Debug.Log("PLAYERS STRUCK: " + gameController.ConvertIntArrayToString(players_ext) + " WHICH DOES NOT INCLUDE " + colliderOwner.playerId);
 
-        // Finally, calculate the force direction and tell the player they've been hit
-        var force_dir = Vector3.Normalize(colliderOwner.GetPosition() - transform.position);
-        force_dir = new Vector3(force_dir.x, 0, force_dir.z);
+        //  What if we had rocket jumping punches? (change hit_self = true to return if this breaks something)
+
+        var hit_self = false;
+        if (colliderOwner.playerId == Networking.LocalPlayer.playerId) { 
+            if (other.gameObject.layer == LayerMask.NameToLayer("Environment")
+                && !(gameController.option_gamemode == (int)round_mode_name.BossBash && owner_plyAttr != null && owner_plyAttr.ply_team == 1)) 
+            {
+                hit_self = true;
+            }
+            else { return; }
+        }
 
         // Check teams as well
         if (
             gameController.GetGlobalTeam(colliderOwner.playerId)
             == gameController.GetGlobalTeam(owner_id)
             && gameController.option_teamplay
+            && !hit_self
             ) { return; }
 
-        gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, owner_id, damage_type);
+        // Finally, calculate the force direction and tell the player they've been hit
+        var force_dir = Vector3.Normalize(colliderOwner.GetPosition() - rb.position);
+        force_dir = new Vector3(force_dir.x, 0, force_dir.z);
 
+        if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, owner_id, damage_type, false); }
+        else
+        {
+            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, owner_id, damage_type, true);
+            var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
+            gameController.PlaySFXFromArray(
+                plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type
+            );
+        }
+        return;
     }
 
 }

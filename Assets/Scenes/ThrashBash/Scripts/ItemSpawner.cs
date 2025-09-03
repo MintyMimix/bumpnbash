@@ -52,6 +52,11 @@ public class ItemSpawner : UdonSharpBehaviour
 
     private void Start()
     {
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(ParseInspectorSpawnChances()));
         item_spawn_chances_str = gameController.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization();
@@ -81,7 +86,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (!RollForSpawn()) { StartTimer(item_spawn_impulse); }
             else {
                 // Spawn the item
-                if (Networking.LocalPlayer.isMaster)
+                if (Networking.IsMaster)
                 {
                     item_spawn_index = RollForItem(item_spawn_chances);
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
@@ -90,7 +95,7 @@ public class ItemSpawner : UdonSharpBehaviour
          }
         else if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
-            if (Networking.LocalPlayer.isMaster)
+            if (Networking.IsMaster)
             {
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true);
             }
@@ -103,7 +108,7 @@ public class ItemSpawner : UdonSharpBehaviour
         item_timer_local = 0.0f;
         item_timer_network = 0.0f;
         item_timer_duration = duration;
-        if (Networking.LocalPlayer.isMaster) { RequestSerialization(); }
+        if (Networking.IsMaster) { RequestSerialization(); }
     }
 
     [NetworkCallable]
@@ -163,7 +168,7 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.gameObject.SetActive(false);
         }
         // Weapon
-        else if (item_spawn_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
+        /*else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_state = (int)item_state_name.Disabled;
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
@@ -173,7 +178,9 @@ public class ItemSpawner : UdonSharpBehaviour
             }
             child_weapon.gameObject.SetActive(false);
             // To-do: weapon configuration; make sure to use (item_index - (int)powerup_type_name.ENUM_LENGTH) for type
-        }
+        }*/
+        
+        if (item_spawn_state == (int)item_spawn_state_name.Disabled) { return; }
 
         item_spawn_state = (int)item_spawn_state_name.Spawnable;
         if (show_marker_in_game) { child_marker.SetActive(true); }
@@ -203,7 +210,7 @@ public class ItemSpawner : UdonSharpBehaviour
     public int RollForItem(int[] item_chances)
     {
         if (item_chances == null || item_chances.Length <= 0) { return 0; }
-        var roll = UnityEngine.Random.Range((int)0, (int)10000);
+        var roll = UnityEngine.Random.Range((int)0, (int)(10000+1));
         var index_rolled = 0;
 
         for (int i = 0; i < item_chances.Length; i++)

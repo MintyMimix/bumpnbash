@@ -31,6 +31,9 @@ public class ItemPowerup : ItemGeneric
     [NonSerialized] public double powerup_timer_local = 0.0f;
     [NonSerialized] public double powerup_timer_network = 0.0f;
 
+    [NonSerialized] public bool allow_multiple_owners = false;
+    [NonSerialized] public bool render_powerup = true;
+
     [SerializeField] public AudioClip[] powerup_snd_clips;
     [SerializeField] public Sprite[] powerup_sprites;
 
@@ -75,30 +78,34 @@ public class ItemPowerup : ItemGeneric
             case (int)powerup_type_name.SizeDown:
                 powerup_stat_value[(int)powerup_stat_name.Scale] = (1.0f/2.0f);
                 powerup_stat_behavior[(int)powerup_stat_name.Scale] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.5f;
+                powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.SpeedUp:
-                powerup_stat_value[(int)powerup_stat_name.Speed] = 1.5f;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 1.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkUp:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 1.5f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 3.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.DefUp:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 1.5f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 3.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.AtkDown:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 0.5f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 0.33f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.DefDown:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 0.5f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 0.33f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.LowGrav:
-                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.25f;
+                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.25f;
+                powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.PartialHeal:
                 powerup_stat_value[(int)powerup_stat_name.Damage] = 0.5f;
@@ -118,6 +125,11 @@ public class ItemPowerup : ItemGeneric
 
     private void Start()
     {
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
         CheckForSpawnerParent();
     }
 
@@ -126,7 +138,7 @@ public class ItemPowerup : ItemGeneric
         var m_Renderer = GetComponentInChildren<Renderer>();
         
         // If powerup is a template, make sure it doesn't render in the world
-        if (item_is_template && m_Renderer.enabled)
+        if (m_Renderer.enabled && (item_is_template || !render_powerup))
         {
             m_Renderer.enabled = false;
             foreach (Transform child in transform)
@@ -148,6 +160,12 @@ public class ItemPowerup : ItemGeneric
         else if (item_state == (int)item_state_name.FadingFromOwner && item_is_template)
         {
             Destroy(gameObject);
+        }
+
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
     }
@@ -179,7 +197,7 @@ public class ItemPowerup : ItemGeneric
         if (!CheckValidCollisionEvent(other)) { return; }
 
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
-        var plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
+        var plyAttr = gameController.local_plyAttr;
         if (plyAttr != null) 
         { 
             
@@ -201,9 +219,13 @@ public class ItemPowerup : ItemGeneric
         // Despawn powerup for everyone else, with reason code of "someone else got it"
         // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
         //item_snd_source.transform.position = spawner_parent.transform.position;
-        if (CheckForSpawnerParent())
+        if (CheckForSpawnerParent() && !allow_multiple_owners)
         {
             spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, true);
+        }
+        else if (!item_is_template)
+        {
+            Destroy(gameObject);
         }
     }
 

@@ -14,6 +14,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
+    [SerializeField] public RectTransform PTSCanvas;
     [SerializeField] public TMP_Text[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
     [SerializeField] public TMP_Text PTSTimer;
@@ -47,19 +48,40 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [NonSerialized] public string text_queue_full_str = ""; // Queue system for local HUD messages, separated by the delineation character.
     [NonSerialized] public char text_queue_separator = '\r';
+    [SerializeField] public float text_queue_full_max_lines = 24; // What is the hardcap on queued messages?
     [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
     [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should an active message be displayed?
     [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
     [SerializeField] public float text_queue_limited_extend = 0.5f; // How much longer should an active message be displayed if it is not the top message?
     [NonSerialized] public float[] text_queue_limited_timers;
 
+    [SerializeField] public float ui_check_gamevars_impulse = 0.4f; // How often should we check for game variables (i.e. team lives, points, etc.)
+    [NonSerialized] public float ui_check_gamevars_timer = 0.0f;
+    [NonSerialized] public int[] gamevars_local_team_points;
+    [NonSerialized] public int[] gamevars_local_team_lives;
+    [NonSerialized] public int gamevars_local_highest_team;
+    [NonSerialized] public int gamevars_local_highest_points;
+    [NonSerialized] public int gamevars_local_highest_ply_id;
+    [NonSerialized] public int gamevars_local_total_lives;
+    [NonSerialized] public string gamevars_local_players_alive;
+
     void Start()
     {
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
+
         var item_index = 0;
         var item_size = 0;
         text_queue_limited_timers = new float[text_queue_limited_lines];
+        for (int t = 0; t < text_queue_limited_timers.Length; t++)
+        {
+            text_queue_limited_timers[t] -= ((t - 1) * text_queue_limited_extend);
+        }
         RectTransform temp_parent = null;
-        for (var i = 0; i < PTSPowerupPanel.transform.childCount; i++)
+        for (int i = 0; i < PTSPowerupPanel.transform.childCount; i++)
         {
             var child = (RectTransform)transform.GetChild(i);
             if (child.name.Contains("PTSPowerupPanel")) { temp_parent = child; break;  }
@@ -76,6 +98,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (child.name.Contains("PTSPowerupSprite")) 
             {
                 PTSPowerupSprites[item_index] = child.GetComponent<UnityEngine.UI.Image>();
+                child.gameObject.SetActive(false);
                 item_index++;
             }
         }
@@ -85,16 +108,39 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     }
 
-    public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
+    public void TransferOwner(VRCPlayerApi newOwner)
     {
         owner = newOwner;
-        playerAttributes = gameController.FindPlayerAttributes(newOwner);
+        if (gameController != null)
+        {
+            playerAttributes = gameController.FindPlayerAttributes(newOwner);
+        }
+    }
+
+    public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
+    {
+        TransferOwner(newOwner);
     }
 
     public void AddToTextQueue(string input)
     {
+        string[] queue_arr = text_queue_full_str.Split(text_queue_separator);
+        if (queue_arr.Length > text_queue_full_max_lines)
+        {
+            // If the queue is clogged, pop the next upcoming message 
+            queue_arr[text_queue_limited_lines] = "";
+            text_queue_full_str = String.Join(text_queue_separator, queue_arr, 0, queue_arr.Length - 1);
+        }
+
         if (text_queue_full_str.Length > 0) { text_queue_full_str += text_queue_separator; }
         text_queue_full_str += input;
+    }
+
+    public void UpdateGameVariables()
+    {
+        gamevars_local_team_points = gameController.CheckAllTeamPoints(ref gamevars_local_highest_team, ref gamevars_local_highest_points, ref gamevars_local_highest_ply_id);
+        gamevars_local_team_lives = gameController.CheckAllTeamLives(ref gamevars_local_total_lives, ref gamevars_local_players_alive);
+        ui_check_gamevars_timer = 0.0f;
     }
 
     public void ProcessTextQueue()
@@ -109,18 +155,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
         while (iteration < iterateAmount)
         {
             if (text_queue_full_str.Length == 0) { break; }
-            if (new_queue_timers[iteration] < text_queue_limited_duration + (iteration * text_queue_limited_extend))
+            if (new_queue_timers[iteration] < text_queue_limited_duration)
             {
                 new_queue_timers[iteration] += Time.deltaTime;
             }
             else
             {
-                // Shift timer entries up
+                // Shift timer entries up, and manage bonus time from queue position (+text_queue_limited_extended for each entry after 0)
                 for (int j = iteration; j < iterateAmount - 1; j++)
                 {
                     new_queue_timers[j] = new_queue_timers[j + 1];
+                    if (new_queue_timers[j] < (text_queue_limited_duration - text_queue_limited_extend)) { new_queue_timers[j] += text_queue_limited_extend; }
                 }
-                new_queue_timers[iterateAmount - 1] = 0.0f;
+                new_queue_timers[iterateAmount - 1] = 0.0f - ((iterateAmount - 1) * text_queue_limited_extend); // We want to add a little bonus time for those later in the queue
                 // Shift string entries up
                 for (int k = iteration; k < splitStr.Length - 1; k++)
                 {
@@ -138,10 +185,21 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     private void Update()
     {
-        if (owner != Networking.LocalPlayer || owner == null) { return; }
+        if (owner == null && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        {
+            TransferOwner(Networking.LocalPlayer);
+        }
+
+        if (owner != Networking.LocalPlayer) { return; }
+
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+            else { return; }
+        }
 
         ProcessTextQueue();
-
         
         string[] splitStr = text_queue_full_str.Split(text_queue_separator);
         for (int i = 0; i < text_queue_limited_lines; i++)
@@ -149,17 +207,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (i < splitStr.Length)
             {
                 PTSTextStack[i].text = splitStr[i].ToUpper();
-                float duration_modified = text_queue_limited_duration + (i * text_queue_limited_extend);
+                float duration_modified = text_queue_limited_duration;
                 float fade_time = duration_modified - (text_queue_limited_fade_time_percent * duration_modified);
                 if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
                 else { PTSTextStack[i].alpha = 1.0f; }
             }
             else { PTSTextStack[i].text = ""; }
         }
-        //if (ui_show_intro_text) { showTextSecondary += "Welcome! This game is in very early development; there may be major bugs or issues!"; }
-        //else {  }
-        //PTSPrimaryInfo.text = showTextPrimary;
-        //PTSSecondaryInfo.text = showTextSecondary;
 
         // Tick down demo timer
         if (ui_demo_enabled && ui_demo_timer < ui_demo_duration)
@@ -173,15 +227,35 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 AddToTextQueue("Step in the square to join the game!");
                 AddToTextQueue(" ");
                 AddToTextQueue("This game is in very early development; there may be major bugs or issues!");
+                if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
         }
 
+        // Tick down gamevars update timer
+        if (ui_check_gamevars_timer < ui_check_gamevars_impulse)
+        {
+            ui_check_gamevars_timer += Time.deltaTime;
+        }
+        /*else
+        {
+            UpdateGameVariables();
+            //gameController.RefreshSetupUI(); // Don't actually do this; only good for debugging but is redundant and lag spiking otherwise
+        }*/
+
         // Sort out better without all the debug
+        if (playerAttributes == null) 
+        { 
+            if (gameController != null && owner != null) { playerAttributes = gameController.FindPlayerAttributes(owner); }
+            else if (owner == null) { TransferOwner(Networking.GetOwner(gameObject)); }
+            return; 
+        }
+
+        bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
         if (ui_demo_enabled && !ui_show_intro_text) { PTSTopPanel.SetActive(true); }
-        else if ((gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Over || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
-        else if (!(gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Over || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
+        else if ((round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
+        else if (!(round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
         var TimerText = Mathf.Floor(gameController.round_length - gameController.round_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start) { TimerText = ""; }
@@ -191,7 +265,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTSDamage.text = DamageText;
-        PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp/100)), 255), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 255);
+        PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp/100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
 
         var InvulText = Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start || playerAttributes.ply_state != (int)player_state_name.Respawning)
@@ -244,13 +318,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         var FlagText = "";
-        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0) 
+        PTSTeamText.color = Color.white;
+        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0 
+            && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team) 
         {
-            int total_lives = 0;
-            int members_alive = gameController.CheckSpecificTeamLives(playerAttributes.ply_team, ref total_lives);
-            int total_points = gameController.CheckSpecificTeamPoints(playerAttributes.ply_team);
-
-            if (!gameController.option_teamplay || gameController.option_gamemode == (int)round_mode_name.Infection) { FlagText = members_alive.ToString(); }
+            
+            int members_alive = gamevars_local_team_lives[playerAttributes.ply_team];
+            int total_points = gamevars_local_team_points[playerAttributes.ply_team];
+            
+            if (!gameController.option_teamplay || gameController.option_gamemode == (int)round_mode_name.Infection) 
+            {
+                if (gameController.option_goal_points_a && gameController.option_gamemode != (int)round_mode_name.Infection) { FlagText = gamevars_local_highest_points.ToString(); }
+                else { FlagText = members_alive.ToString(); }
+            }
             else if (gameController.option_gamemode == (int)round_mode_name.BossBash)
             {
                 if (playerAttributes.ply_team == 1)
@@ -262,8 +342,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 }
                 else { FlagText = total_points.ToString(); }
             }
-            else if (gameController.option_goal_points_a) { FlagText = total_points.ToString(); }
-            else { FlagText = total_lives.ToString(); }
+            else if (gameController.option_goal_points_a) 
+            { 
+                // If we are in points mode, display the team with the highest points, and highlight the text color based on who it is
+                FlagText = Mathf.Max(gamevars_local_team_points).ToString();
+                PTSTeamText.color = new Color32(
+                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].r)),
+                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].g)),
+                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].b)),
+                    (byte)gameController.team_colors[gamevars_local_highest_team].a);
+            }
+            else { FlagText = members_alive.ToString() + " (" + gamevars_local_total_lives.ToString() + ")"; }
         }
         PTSTeamText.text = FlagText;
 
@@ -282,22 +371,22 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_goal_value_a;
                 }
                 else { LivesText = "?"; }
-                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-                PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = Color.white;
                 PTSLivesImage.sprite = PTSDeathsSprite;
             }
             else if (gameController.option_gamemode == (int)round_mode_name.Infection)
             {
-                LivesText = gameController.CheckSpecificTeamPoints(1).ToString();
-                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-                PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = Color.white;
                 PTSLivesImage.sprite = PTSDeathsSprite;
             }
             else
             {
-                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(gameController.CheckSpecificTeamPoints(playerAttributes.ply_team)).ToString() + "/" + gameController.option_goal_value_a; }
+                if (gameController.option_teamplay && gamevars_local_team_points.Length > playerAttributes.ply_team) { LivesText = Mathf.RoundToInt(gamevars_local_team_points[playerAttributes.ply_team]).ToString() + "/" + gameController.option_goal_value_a; }
                 else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_goal_value_a; }
-                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLives.color = Color.white;
                 PTSLivesImage.color = PTSTeamFlagImage.color;
             }
         }
@@ -305,29 +394,41 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTSLivesImage.sprite = PTSLivesSprite;
-            PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-            PTSLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
+            float livesRatio = (float)((float)playerAttributes.ply_lives / (float)gameController.plysettings_lives);
+            if (livesRatio < 1.0f) { livesRatio -= 0.5f*(float)(1.0f / (float)gameController.plysettings_lives); }
+            livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
+            PTSLivesImage.color = Color.white;
+            PTSLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
         }
         PTSLives.text = LivesText;
 
 
         // Handle powerup sprites
-        var powerup_len = (int)Mathf.Min(PTSPowerupSprites.Length, playerAttributes.powerups_active.Length);
-        for (int i = 0; i < PTSPowerupSprites.Length; i++)
+        if (playerAttributes.powerups_active != null)
         {
-            PTSPowerupSprites[i].sprite = gameController.Sprite_None;
-            PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = "";
-
-            if (i < powerup_len)
+            var powerup_len = (int)Mathf.Min(PTSPowerupSprites.Length, playerAttributes.powerups_active.Length);
+            for (int i = 0; i < PTSPowerupSprites.Length; i++)
             {
-                if (playerAttributes.powerups_active[i] == null) { continue; }
-                var powerup = playerAttributes.powerups_active[i].GetComponent<ItemPowerup>();
-                if (powerup == null) { continue; }
-                PTSPowerupSprites[i].sprite = powerup.powerup_sprites[powerup.powerup_type];
-                PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = 
-                    (Mathf.Floor((float)(powerup.powerup_duration - powerup.powerup_timer_network)*10.0f)/10.0f).ToString().PadRight(2, '.').PadRight(3,'0');
-            }
+                PTSPowerupSprites[i].transform.gameObject.SetActive(false);
+                PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = "";
 
+                if (i < powerup_len)
+                {
+                    if (playerAttributes.powerups_active[i] == null) { continue; }
+                    var powerup = playerAttributes.powerups_active[i].GetComponent<ItemPowerup>();
+                    if (powerup == null) { continue; }
+                    PTSPowerupSprites[i].transform.gameObject.SetActive(true);
+                    PTSPowerupSprites[i].sprite = powerup.powerup_sprites[powerup.powerup_type];
+
+                    TMP_Text PTSPowerupSpriteText = PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>();
+                    PTSPowerupSpriteText.text =
+                        (Mathf.Floor((float)(powerup.powerup_duration - powerup.powerup_timer_network) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
+                    if ((float)(powerup.powerup_duration - powerup.powerup_timer_network) <= 5.0f) { PTSPowerupSpriteText.color = new Color(1.0f, 0.4f,0.4f, 1.0f); }
+                    else { PTSPowerupSpriteText.color = Color.white; }
+                //
+                }
+
+            }
         }
     }
 
@@ -336,8 +437,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (owner != Networking.LocalPlayer || owner == null) { return; }
         var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         var scaleUI = 1.0f;
-        if (gameController.local_ppp_options != null) { 
-            scaleUI *= (gameController.local_ppp_options.ui_scale * 1.0f); 
+        if (gameController != null && gameController.local_ppp_options != null) { 
+            scaleUI *= (gameController.local_ppp_options.ui_scale);
+            PTSCanvas.sizeDelta = new Vector2(gameController.local_ppp_options.ui_separation * (5.0f / 3.0f), gameController.local_ppp_options.ui_separation);
+            //gameController.local_ppp_options.ui_scale
         }
         //if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
         //else { scaleUI *= 0.5f; }

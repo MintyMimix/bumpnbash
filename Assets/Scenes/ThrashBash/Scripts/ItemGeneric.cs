@@ -43,6 +43,12 @@ public class ItemGeneric : UdonSharpBehaviour
 
     internal bool CheckForSpawnerParent()
     {
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
+
         if (transform.parent == null) { return false; }
         if (transform.GetComponentInParent<ItemSpawner>() == null) { return false; }
         spawner_parent = transform.GetComponentInParent<ItemSpawner>();
@@ -67,7 +73,7 @@ public class ItemGeneric : UdonSharpBehaviour
         // We are good on checks if this is FFA, but teams need more processing
         if (!gameController.option_teamplay || item_team_id < 0) { return true; }
 
-        var plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
+        var plyAttr = gameController.local_plyAttr;
         if (plyAttr == null) { return false; } // To-do: should this be true?
 
         return item_team_id == plyAttr.ply_team;
@@ -77,27 +83,30 @@ public class ItemGeneric : UdonSharpBehaviour
     internal void SetTeamColor(int team_id)
     {
         var m_Renderer = GetComponent<MeshRenderer>();
-        if (spawner_parent.gameController.option_teamplay && team_id >= 0)
+        if (spawner_parent != null)
         {
-            m_Renderer.material.SetColor("_Color",
-                new Color32(
-                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].r)),
-                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].g)),
-                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].b)),
-                (byte)92));
-            m_Renderer.material.EnableKeyword("_EMISSION");
-            m_Renderer.material.SetColor("_EmissionColor",
-                new Color32(
-                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].r)),
-                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].g)),
-                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].b)),
-                92));
-        }
-        else
-        {
-            m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
-            m_Renderer.material.EnableKeyword("_EMISSION");
-            m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+            if (spawner_parent.gameController.option_teamplay && team_id >= 0)
+            {
+                m_Renderer.material.SetColor("_Color",
+                    new Color32(
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].b)),
+                    (byte)92));
+                m_Renderer.material.EnableKeyword("_EMISSION");
+                m_Renderer.material.SetColor("_EmissionColor",
+                    new Color32(
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].b)),
+                    92));
+            }
+            else
+            {
+                m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
+                m_Renderer.material.EnableKeyword("_EMISSION");
+                m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+            }
         }
     }
 

@@ -20,8 +20,30 @@ public class UIArrowTeamPanel : UIArrow
 
     public void Refresh()
     {
+        // Check if we can latch onto a player
+        if (player != null)
+        {
+            caption.text = player.displayName;
+            if (array_id >= 0 && parent_teampanel.gameController.ply_tracking_dict_keys_arr != null && array_id < parent_teampanel.gameController.ply_tracking_dict_keys_arr.Length)
+            {
+                current_value = parent_teampanel.gameController.ply_tracking_dict_values_arr[array_id];
+                caption.text += " [" + current_value + "]";
+            }
+            // Check if the player disconnected
+            else if (VRCPlayerApi.GetPlayerById(player.playerId) != null)
+            {
+                player = VRCPlayerApi.GetPlayerById(parent_teampanel.gameController.ply_tracking_dict_keys_arr[array_id]);
+                Refresh(); // Usually don't like recursion, but this should only ever fire off once
+            }
+        }
+        else if (array_id >= 0 && parent_teampanel.gameController.ply_tracking_dict_keys_arr != null && array_id < parent_teampanel.gameController.ply_tracking_dict_keys_arr.Length)
+        {
+            player = VRCPlayerApi.GetPlayerById(parent_teampanel.gameController.ply_tracking_dict_keys_arr[array_id]);
+        }
+
         // Sanitize input
         transform.parent.gameObject.gameObject.SetActive(true);
+
         max_value = parent_teampanel.gameController.team_count - 1;
         min_value = 0;
         increment_size = 1;
@@ -35,35 +57,41 @@ public class UIArrowTeamPanel : UIArrow
             return;
         }
 
-        image_front.color = parent_teampanel.gameController.team_colors[current_value];
-        caption.color = new Color32(
-            (byte)Mathf.Min(255,(80 + parent_teampanel.gameController.team_colors[current_value].r)), 
-            (byte)Mathf.Min(255,(80 + parent_teampanel.gameController.team_colors[current_value].g)), 
-            (byte)Mathf.Min(255,(80 + parent_teampanel.gameController.team_colors[current_value].b)), 
-            (byte)parent_teampanel.gameController.team_colors[current_value].a);
-        if (player != null) 
-        { 
-            caption.text = player.displayName + " (" + array_id + ") ";
-            image_cb.sprite = parent_teampanel.gameController.team_sprites[current_value];
-            image_cb.color = image_front.color;
-            if (parent_teampanel.gameController.local_ppp_options != null && parent_teampanel.gameController.local_ppp_options.colorblind) { image_cb.enabled = true; }
-            else { image_cb.enabled = false; }
-            image_front.enabled = !image_cb.enabled;
-            image_back.enabled = !image_cb.enabled;
+        if (parent_teampanel.gameController.option_teamplay)
+        {
+            image_front.color = parent_teampanel.gameController.team_colors[current_value];
+            caption.color = new Color32(
+                (byte)Mathf.Min(255, (80 + parent_teampanel.gameController.team_colors[current_value].r)),
+                (byte)Mathf.Min(255, (80 + parent_teampanel.gameController.team_colors[current_value].g)),
+                (byte)Mathf.Min(255, (80 + parent_teampanel.gameController.team_colors[current_value].b)),
+                (byte)parent_teampanel.gameController.team_colors[current_value].a);
         }
-        else if (!is_template) { Destroy(gameObject); }
-        
+        else
+        {
+            image_front.color = Color.white;
+            caption.color = Color.white;
+        }
+
+        image_cb.sprite = parent_teampanel.gameController.team_sprites[current_value];
+        image_cb.color = image_front.color;
+        if (parent_teampanel.gameController.local_ppp_options != null && parent_teampanel.gameController.local_ppp_options.colorblind) { image_cb.enabled = true; }
+        else { image_cb.enabled = false; }
+        image_front.enabled = !image_cb.enabled;
+        image_back.enabled = !image_cb.enabled;
+
+        //else if (!is_template) { Destroy(gameObject); }
+
         UpdateOwnership();
     }
 
     public void UpdateOwnership()
     {
-        if (parent_teampanel.gameController.team_count <= 1 || !Networking.LocalPlayer.isMaster)
+        if (parent_teampanel.gameController.team_count <= 1 || !Networking.IsMaster)
         {
             button_increment.gameObject.SetActive(false);
             button_decrement.gameObject.SetActive(false);
         }
-        else if (parent_teampanel.gameController.team_count > 1 && Networking.LocalPlayer.isMaster)
+        else if (parent_teampanel.gameController.team_count > 1 && Networking.IsMaster)
         {
             button_increment.gameObject.SetActive(true);
             button_decrement.gameObject.SetActive(true);
@@ -72,7 +100,9 @@ public class UIArrowTeamPanel : UIArrow
 
     public void SignalToUpdateFromPanel()
     {
-        parent_teampanel.gameController.ChangeTeam(player.playerId, current_value, false);
+        if (player != null)
+        {
+            parent_teampanel.gameController.ChangeTeam(player.playerId, current_value, false);
+        }
     }
-
 }

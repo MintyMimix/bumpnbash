@@ -20,6 +20,12 @@ public class PlayerHitbox : UdonSharpBehaviour
     [NonSerialized] public int material_id;
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
+    //[NonSerialized] private Rigidbody rb;
+
+    private void Start()
+    {
+        //rb = this.GetComponent<Rigidbody>();
+    }
 
     private void FixedUpdate()
     {
@@ -31,6 +37,9 @@ public class PlayerHitbox : UdonSharpBehaviour
             var m_Renderer = GetComponent<Renderer>();
             if (m_Renderer != null && playerAttributes.gameController.team_colors != null && playerAttributes.ply_team >= 0)
             {
+                byte alpha = 255;
+                if (material_id == 1) { alpha = 90; }
+                else if (material_id == 2) { alpha = 0; }
                 if (playerAttributes.gameController.option_teamplay)
                 {
                     m_Renderer.material.SetColor("_Color",
@@ -38,20 +47,20 @@ public class PlayerHitbox : UdonSharpBehaviour
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
-                        (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                        alpha));
                     m_Renderer.material.EnableKeyword("_EMISSION");
                     m_Renderer.material.SetColor("_EmissionColor",
                         new Color32(
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
                         (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
-                        (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                        255));
                 }
                 else
                 {
-                    m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 255));
+                    m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, alpha));
                     m_Renderer.material.EnableKeyword("_EMISSION");
-                    m_Renderer.material.SetColor("_EmissionColor", new Color32(255, 255, 255, 255));
+                    m_Renderer.material.SetColor("_EmissionColor", new Color32(180, 180, 180, 255));
                 }
             }
         }
@@ -59,6 +68,7 @@ public class PlayerHitbox : UdonSharpBehaviour
 
     public void Update()
     {
+        //rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by hurtboxes even when standing still
         if (playerAttributes != null) {
             if (owner == Networking.LocalPlayer && material_id != (int)hitbox_mat_name.Invisible) { SetMaterial((int)hitbox_mat_name.Invisible); }
             else if (owner != Networking.LocalPlayer && playerAttributes.ply_state == (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Respawning)

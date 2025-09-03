@@ -29,9 +29,13 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
     [NonSerialized] public PlayerAttributes playerAttributes;
 
-    void Start()
+    private void Start()
     {
-
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
     }
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
@@ -42,17 +46,25 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
     private void Update()
     {
-        if (owner == Networking.LocalPlayer || owner == null) { return; }
+        if (gameController == null)
+        {
+            GameObject gcObj = GameObject.Find("GameController");
+            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
+
+        if (owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
+
+        var ref_uiplytoself = gameController.local_uiplytoself;
 
         // Sort out better without all the debug
-        if (gameController.round_state == (int)round_state_name.Start && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
-        else if (gameController.round_state != (int)round_state_name.Start && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
+        bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
+        if (round_ready && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
+        else if (!round_ready && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
-        PTODamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 255), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
-
+        PTODamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
 
         var InvulText = Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start || playerAttributes.ply_state != (int)player_state_name.Respawning)
@@ -115,22 +127,22 @@ public class UIPlyToOthers : UdonSharpBehaviour
             PTOLivesImage.sprite = PTOPointsSprite;
             if (gameController.option_goal_time) {
                 LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
-                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLives.color = Color.white;
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
             else if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
             {    
                 // If this is boss bash, everyone but the boss should have a death counter
                 LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString();
-                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLives.color = Color.white;
                 PTOLivesImage.sprite = PTODeathsSprite;
-                PTOLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLivesImage.color = Color.white;
             }
             else
             {
-                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(gameController.CheckSpecificTeamPoints(playerAttributes.ply_team)).ToString(); }
+                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(ref_uiplytoself.gamevars_local_team_points[playerAttributes.ply_team]).ToString(); }
                 else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString(); }
-                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLives.color = Color.white;
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
         }
@@ -138,11 +150,15 @@ public class UIPlyToOthers : UdonSharpBehaviour
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTOLivesImage.sprite = PTOLivesSprite;
-            PTOLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-            PTOLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
+            PTOLivesImage.color = Color.white;
+            float livesRatio = (float)((float)playerAttributes.ply_lives / (float)gameController.plysettings_lives);
+            if (livesRatio < 1.0f) { livesRatio -= 0.5f * (float)(1.0f / (float)gameController.plysettings_lives); }
+            livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
+            PTOLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
         }
         PTOLives.text = LivesText;
 
+        /*
         var showText = "Damage: " + playerAttributes.ply_dp
             + "%\nLives: " + playerAttributes.ply_lives
             + "%\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
@@ -162,7 +178,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
             default:
                 break;
         }
-        PTOInfo.text = showText;
+        PTOInfo.text = showText;*/
     }
 
     private void FixedUpdate()

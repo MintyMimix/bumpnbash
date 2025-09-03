@@ -14,9 +14,9 @@ public class Room_Ready : UdonSharpBehaviour
     {
 
         // Have the local player sync their own attribute stating readiness. PlayerAttributes syncs continously.
-        var plyAttr = gameController.FindPlayerAttributes(player);
         if (player == Networking.LocalPlayer)
         {
+            var plyAttr = gameController.local_plyAttr;
             if (plyAttr != null) { 
                 plyAttr.ply_state = (int)player_state_name.Joined; 
 
@@ -43,9 +43,9 @@ public class Room_Ready : UdonSharpBehaviour
     {
 
         // Have the local player sync their own attribute stating readiness. PlayerAttributes syncs continously.
-        var plyAttr = gameController.FindPlayerAttributes(player);
         if (player == Networking.LocalPlayer)
         {
+            var plyAttr = gameController.local_plyAttr;
             if (plyAttr != null && plyAttr.ply_state == (int)player_state_name.Joined)
             {
                 plyAttr.ply_state = (int)player_state_name.Inactive;
