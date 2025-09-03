@@ -13,23 +13,31 @@ public enum item_spawn_state_name
 
 public class ItemSpawner : UdonSharpBehaviour
 {
-
+    [Header("References")]
     [SerializeField] public GameController gameController;
     [SerializeField] public ItemPowerup child_powerup;
     [SerializeField] public ItemWeapon child_weapon;
     [SerializeField] public GameObject child_marker;
+    [Header("Spawner Options")]
     [SerializeField] public bool show_marker_in_game = true;
-    [SerializeField] [UdonSynced] public float item_spawn_linger; // How long should an item linger in the world after being spawned?
-    [SerializeField] [UdonSynced] public float item_spawn_impulse; // How often should an item be attempted to be spawned?
-    [SerializeField] [UdonSynced] public float item_spawn_chance = 1.0f; // What is the chance an item should spawn at all? (If we just want timers, set this to 1.0f)
-    [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f; // For powerups only, how long should they last?
+    [Tooltip("How long an item should linger in the world after being spawned, in seconds")]
+    [SerializeField] [UdonSynced] public float item_spawn_linger;
+    [Tooltip("The number of seconds that need to pass before the chance for an item to be spawned is rolled")]
+    [SerializeField] [UdonSynced] public float item_spawn_impulse;
+    [Tooltip("The odds of an item being spawned every impulse, measured between 0.0 and 1.0")]
+    [SerializeField] [UdonSynced] public float item_spawn_chance = 1.0f; 
+    [Tooltip("How long a powerup should last when picked up from this spawner, in seconds")]
+    [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f; 
 
     [NonSerialized][UdonSynced] public int item_spawn_global_index = -1;
     [NonSerialized][UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
 
     [NonSerialized] public int[] item_spawn_chances; // This will be ints from 0 to 10000 for the purposes of syncing, representing a decimal of precision 2 (0.0 to 100.0)
+    [Header("Spawn Chances")]
     [NonSerialized][UdonSynced] public string item_spawn_chances_str;
+    [Tooltip("The name of the item that has a chance of being spawned. MUST match keys in enumerator powerup_type_name or weapon_type_name.")]
     [SerializeField] public string[] item_spawn_chances_config_keys; // Assign in inspector. Must be equal to strings in the powerup_type_name and weapon_type_name enumerators respectively.
+    [Tooltip("The chance an item has of being spawned. Will automatically normalize if odds add up above 100% for all items. MUST match length of item_spawn_chances_config_keys.")]
     [SerializeField] public float[] item_spawn_chances_config_values;
     [NonSerialized][UdonSynced] public int item_spawn_index = 0;
 
@@ -70,7 +78,7 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             if (Networking.LocalPlayer.isMaster)
             {
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, true);
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true);
             }
         }
     }
@@ -118,7 +126,7 @@ public class ItemSpawner : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void DespawnItem(int reason_code, bool playSFX)
+    public void DespawnItem(int reason_code, int owner_id, bool playSFX)
     {
         var playSFXfiltered = playSFX;
 
@@ -127,7 +135,7 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             child_powerup.item_state = (int)item_state_name.Disabled;
             child_powerup.powerup_type = (int)powerup_type_name.Fallback;
-            if (child_powerup.item_owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
+            if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered) {
                 child_powerup.item_snd_source.transform.position = transform.position;
                 gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
@@ -138,7 +146,7 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_spawn_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_state = (int)item_state_name.Disabled;
-            if (child_weapon.item_owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
+            if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered) {
                 child_powerup.item_snd_source.transform.position = transform.position;
                 gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
@@ -213,7 +221,7 @@ public class ItemSpawner : UdonSharpBehaviour
                 outArr[weapon_type_name_enum_index] = item_spawn_chances_config_values[i];
             }
         }
-        UnityEngine.Debug.Log(gameObject.name + ": Parsed inspector array: " + gameController.DebugPrintFloatArray(outArr));
+        //UnityEngine.Debug.Log(gameObject.name + ": Parsed inspector array: " + gameController.DebugPrintFloatArray(outArr));
         return outArr;
     }
 
@@ -234,7 +242,7 @@ public class ItemSpawner : UdonSharpBehaviour
             else { normalized_chances[j] = (inArr[j] / chance_total) + normalized_chances[j - 1]; }
         }
 
-        UnityEngine.Debug.Log(gameObject.name + ": Normalized array array: " + gameController.DebugPrintFloatArray(normalized_chances) + " with total chances of " + chance_total);
+        //UnityEngine.Debug.Log(gameObject.name + ": Normalized array array: " + gameController.DebugPrintFloatArray(normalized_chances) + " with total chances of " + chance_total);
         return normalized_chances;
     }
 
@@ -245,7 +253,7 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             outArr[i] = (int)Mathf.RoundToInt(inArr[i] * 10000.0f);
         }
-        UnityEngine.Debug.Log(gameObject.name + ": Converted chance array to int " + gameController.DebugPrintIntArray(outArr));
+        //UnityEngine.Debug.Log(gameObject.name + ": Converted chance array to int " + gameController.DebugPrintIntArray(outArr));
         return outArr;
     }
 

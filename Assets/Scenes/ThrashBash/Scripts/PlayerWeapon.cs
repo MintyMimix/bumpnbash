@@ -43,9 +43,18 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         if (weapon_mdl[weapon_type] != null )
         {
-            weapon_mdl[weapon_type].SetActive(true);
+            for (int i = 0; i < weapon_mdl.Length; i++)
+            {
+                if (i == weapon_type) { weapon_mdl[i].SetActive(true); }
+                else { weapon_mdl[i].SetActive(false); }
+            }
         }
         return;
+    }
+
+    public override void OnDeserialization()
+    {
+        UpdateStatsFromWeaponType();
     }
 
     private void Update()
@@ -121,7 +130,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                     , weapon_type
                     , UnityEngine.Random.Range(0.5f, 1.5f)
                     );
-                    keep_parent = false;
+                    keep_parent = true;
                     break;
                 default:
                     break;

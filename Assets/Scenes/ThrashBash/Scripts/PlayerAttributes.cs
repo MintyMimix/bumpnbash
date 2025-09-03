@@ -15,10 +15,11 @@ public enum player_state_name
 public class PlayerAttributes : UdonSharpBehaviour
 {
 
-    [NonSerialized][UdonSynced] public int ply_state;
+    [NonSerialized][UdonSynced] public byte ply_state;
     [NonSerialized][UdonSynced] public float ply_dp;
     [NonSerialized][UdonSynced] public float ply_dp_default;
-    [NonSerialized][UdonSynced] public int ply_lives;
+    [NonSerialized][UdonSynced] public ushort ply_lives;
+    [NonSerialized][UdonSynced] public ushort ply_points = 0;
     // While we aren't syncing the stats below right now, we may want to in the future for UI purposes
     [NonSerialized][UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced because it affects visuals
     [NonSerialized] public float ply_speed = 1.0f;
@@ -44,6 +45,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public GameObject[] powerups_active;
 
     [NonSerialized] public float plyEyeHeight_default, plyEyeHeight_desired;
+    [Tooltip("How long a size-changing animation should play on a player")]
     [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
     [NonSerialized] public bool plyEyeHeight_change = false;
@@ -73,7 +75,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else if (ply_state == (int)player_state_name.Dead && gameController.round_state == (int)round_state_name.Ongoing)
         {
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckAllPlayerLives");
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal");
             ply_respawn_timer = 0.0f;
         }
 
@@ -148,8 +150,10 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void ResetDefaultEyeHeight()
     {
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        ResetPowerups();
         plyEyeHeight_default = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
         plyEyeHeight_desired = plyEyeHeight_default;
+        
     }
 
     [NetworkCallable]
@@ -173,10 +177,10 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
         calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor)); 
 
-        if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, 1.0f, 0.0f); }
+        if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, 0.66f, 0.0f); }
         else { modForceDirection += new Vector3(0.0f, 0.33f, 0.0f); }
         var calcForce = (modForceDirection + new Vector3(0.0f, 0.33f, 0.0f));
-        calcForce *= Mathf.Pow((calcDmg + ply_dp) / 4.25f, 1.05f);
+        calcForce *= Mathf.Pow((calcDmg + ply_dp) / 3.66f, 1.05f);
 
         Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
         // To-Do: make last hit by a function scaled based on damage (i.e. whoever dealt the most damage prior to the player hitting the ground gets kill credit)
@@ -195,7 +199,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_index.Kill]);
-
+        ply_points++;
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
     }
@@ -254,7 +258,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 			
 			for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
             {
-                Debug.Log("PROCESSING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
+                //Debug.Log("PROCESSING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
                 switch (i)
                 {
                     case (int)powerup_stat_name.Scale:
@@ -290,7 +294,9 @@ public class PlayerAttributes : UdonSharpBehaviour
                 }
             }
 
-			powerups_active = gameController.AddToGameObjectArray(powerup_template, powerups_active);
+            gameController.PlaySFXFromArray(powerup.item_snd_source, powerup.powerup_snd_clips, powerup.powerup_type);
+            Debug.Log(gameObject.name + ": Attempting to play sound " + powerup.powerup_snd_clips[powerup.powerup_type].name + " for type " + powerup.powerup_type);
+            powerups_active = gameController.AddToGameObjectArray(powerup_template, powerups_active);
 		}
 
         else
@@ -327,7 +333,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                         break;
                 }
             }
-            Debug.Log("Removing effects of active powerup of type " + powerup.powerup_type);
+            //Debug.Log("Removing effects of active powerup of type " + powerup.powerup_type);
             powerups_active = gameController.RemoveEntryFromGameObjectArray(powerup.gameObject, powerups_active);
         }
 

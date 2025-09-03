@@ -67,23 +67,23 @@ public class ItemPowerup : ItemGeneric
         switch (pType)
         {
             case (int)powerup_type_name.SizeUp:
-                powerup_stat_value[(int)powerup_stat_name.Scale] = 1.5f;
+                powerup_stat_value[(int)powerup_stat_name.Scale] = 2.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Scale] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.SizeDown:
-                powerup_stat_value[(int)powerup_stat_name.Scale] = (1.0f/1.5f);
+                powerup_stat_value[(int)powerup_stat_name.Scale] = (1.0f/2.0f);
                 powerup_stat_behavior[(int)powerup_stat_name.Scale] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.SpeedUp:
-                powerup_stat_value[(int)powerup_stat_name.Speed] = 1.0f;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 1.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkUp:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 2.0f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 1.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.DefUp:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 2.0f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 1.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.AtkDown:
@@ -95,7 +95,7 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.LowGrav:
-                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.5f;
+                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.25f;
                 powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             default:
@@ -192,19 +192,16 @@ public class ItemPowerup : ItemGeneric
             powerup.powerup_duration = powerup_duration;
             powerup.spawner_parent = null;
             powerup.SetPowerupStats(powerup_type);
-            gameController.PlaySFXFromArray(powerup.item_snd_source, powerup.powerup_snd_clips, powerup.powerup_type);
-
             plyAttr.ProcessPowerUp(powerup_obj, true);
             item_is_template = false;
         }
-        gameController.PlaySFXFromArray(item_snd_source, powerup_snd_clips, powerup_type);
 
         // Despawn powerup for everyone else, with reason code of "someone else got it"
         // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
         //item_snd_source.transform.position = spawner_parent.transform.position;
         if (CheckForSpawnerParent())
         {
-            spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, true);
+            spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, true);
         }
     }
 
@@ -220,7 +217,7 @@ public class ItemPowerup : ItemGeneric
 
         if (powerup_snd_clips.Length > (int)item_sfx_index.PowerupFade) { powerup_duration = powerup_snd_clips[(int)item_sfx_index.PowerupFade].length; }
         else { powerup_duration = 0.0f; }
-        gameController.PlaySFXFromArray(item_snd_source, item_snd_clips, (int)item_sfx_index.PowerupFade);
+        //gameController.PlaySFXFromArray(item_snd_source, item_snd_clips, (int)item_sfx_index.PowerupFade);
     }
 
 }

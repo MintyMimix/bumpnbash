@@ -7,7 +7,6 @@ using UnityEngine.ProBuilder;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
-using static VRC.SDKBase.VRCPlayerApi;
 
 public enum projectile_type_name
 {
@@ -28,6 +27,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] private double projectile_timer_network = 0.0f;
     [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameController gameController;
+    [NonSerialized] private GameObject weapon_parent;
 
     //To-do: when updating position, perform a ray trace to see if any objects in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed; if so, make the next position that instead
     void OnEnable()
@@ -35,6 +35,15 @@ public class WeaponProjectile : UdonSharpBehaviour
         //layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox");
         //Debug.Log("TIME LEFT IN PROJECTILE: " + (1 - (float)(projectile_timer_network / projectile_duration)).ToString());
         //Debug.Log("START POS: " + transform.position.ToString() + "; END POS: " + CalcPosAtTime(projectile_duration).ToString() + "; DISTANCE: " + projectile_distance.ToString());
+
+        // This code is not scalable; run only once
+        if (keep_parent)
+        {
+            weapon_parent = gameController.FindPlayerOwnedObject(VRCPlayerApi.GetPlayerById(owner_id), "PlayerWeapon");
+            if (weapon_parent != null) {
+                pos_start = weapon_parent.transform.position;
+            }
+        }
     }
 
     private Vector3 CalcPosAtTime(double time_elapsed)
@@ -44,6 +53,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             case (int)projectile_type_name.Bullet:
                 outPos = pos_start + (transform.right * (projectile_distance * (float)(time_elapsed / projectile_duration)));
+                if (keep_parent && weapon_parent) { outPos = pos_start + (weapon_parent.transform.right * (projectile_distance * (float)(time_elapsed / projectile_duration))); }
                 break;
             default:
                 break;
@@ -64,6 +74,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     private void FixedUpdate()
     {
         var rb = this.GetComponent<Rigidbody>();
+
         var lerpPos = Vector3.Lerp(transform.position, CalcPosAtTime(projectile_timer_network), (float)(projectile_timer_network / projectile_duration));
         //var lerpPos = CalcPosAtTime(projectile_timer_network);
         //Debug.Log(lerpPos.ToString() + "; " + projectile_timer_network.ToString() + " seconds; " + ((float)(projectile_timer_network / projectile_duration)).ToString() + "%" );
