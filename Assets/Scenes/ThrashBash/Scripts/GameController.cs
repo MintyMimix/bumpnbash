@@ -23,7 +23,7 @@ public enum ready_sfx_name
 }
 public enum announcement_sfx_name
 {
-    KOTH_Capture_Team, KOTH_Capture_Other, KOTH_Unlock, KOTH_Contest_Progress, KOTH_Contest_Start_Team, KOTH_Contest_Start_Other, KOTH_Victory_Near, ENUM_LENGTH 
+    KOTH_Capture_Team, KOTH_Capture_Other, KOTH_Unlock, KOTH_Contest_Progress, KOTH_Contest_Start_Team, KOTH_Contest_Start_Other, KOTH_Victory_Near, HurryUp, ENUM_LENGTH 
 }
 public enum infection_music_name
 {
@@ -604,9 +604,35 @@ public class GameController : UdonSharpBehaviour
         else if (round_state == (int)round_state_name.Ongoing)
         {
             ply_in_game_auto_dict = GetPlayersInGame();
-            if (TimeLeft < 10.0f && round_length_enabled && option_gamemode != (int)gamemode_name.KingOfTheHill)
+            float stored_volume = music_volume_stored;
+            if (local_ppp_options != null) { stored_volume *= local_ppp_options.music_volume;  }
+            // Time-based event SFX
+            if (Mathf.RoundToInt(TimeLeft) == 30 && round_length_enabled)
+            {
+                PlaySFXFromArray(snd_game_sfx_sources[(int)game_sfx_name.Announcement], snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.HurryUp);
+                // Defean the music temporarily
+                snd_game_music_source.volume *= 0.05f;
+            }
+            else if ((Mathf.RoundToInt(TimeLeft) <= 28 || Mathf.RoundToInt(TimeLeft) > 30) && round_length_enabled && snd_game_music_source.volume != stored_volume)
+            {
+                // Undefean the music. We'll also check this on RoundEnd() just in case the round ends before this fires
+                
+                snd_game_music_source.volume = stored_volume;
+            }
+
+            if (TimeLeft < 10.0f && round_length_enabled)
             {
                 PlaySFXFromArray(snd_game_sfx_sources[(int)game_sfx_name.Announcement], snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Victory_Near, 0.8f);
+            }
+
+            // Time-based music speed, unless it's Infection, where its custom music cues require regular playback
+            if (TimeLeft < 30.0f & round_length_enabled && option_gamemode != (int)gamemode_name.Infection)
+            {
+                snd_game_music_source.pitch = 1.1f;
+            }
+            else
+            {
+                snd_game_music_source.pitch = 1.0f;
             }
         }
 
@@ -2327,8 +2353,12 @@ public class GameController : UdonSharpBehaviour
         {
             bool local_is_winner = false;
             local_is_winner = (option_gamemode == (int)gamemode_name.Infection && winning_team == 0);
+            local_is_winner = local_is_winner || (option_gamemode == (int)gamemode_name.BossBash && winning_team == local_plyAttr.ply_team);
             local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && option_teamplay && winner_name.Contains(team_names[Mathf.Clamp(local_plyAttr.ply_team, 0, team_names.Length - 1)]));
             local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && !option_teamplay && winner_name.Contains(Networking.LocalPlayer.displayName));
+
+            if (snd_game_music_source.volume < music_volume_stored) { snd_game_music_source.volume = music_volume_stored; }
+            snd_game_music_source.pitch = 1.0f;
             if (winner_name != null && winner_name.Length > 0 && local_is_winner)
             {
                 PlaySFXFromArray(snd_game_music_source, snd_victory_music_clips, option_gamemode, 1, true);
@@ -3063,6 +3093,7 @@ public class GameController : UdonSharpBehaviour
             source.loop = true;
             source.clip = clip_to_play;
             source.volume = music_volume_default * volume_scale;
+            music_volume_stored = source.volume;
             music_clip_playing = clip_to_play;
             source.Play();
         }

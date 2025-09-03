@@ -157,7 +157,7 @@ public class ItemGeneric : UdonSharpBehaviour
                     {
                         m_Renderer.material.SetColor("_Color", new Color32(167, 167, 167, 0));
                         m_Renderer.material.EnableKeyword("_EMISSION");
-                        m_Renderer.material.SetColor("_EmissionColor", new Color32(145, 145, 145, 255));
+                        m_Renderer.material.SetColor("_EmissionColor", new Color32(51, 51, 51, 255)); // originally was 145
                     }
                 }
             }

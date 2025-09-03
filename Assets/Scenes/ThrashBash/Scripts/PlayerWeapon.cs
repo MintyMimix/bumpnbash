@@ -488,7 +488,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (gameController.ply_in_game_auto_dict != null && gameController.ply_in_game_auto_dict.Length > 0 && gameController.ply_in_game_auto_dict[0] != null)
             {
                 // Fire rate increases with number of players
-                use_cooldown = Mathf.Lerp(2.0f, 0.25f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 24.0f)) 
+                use_cooldown = Mathf.Lerp(3.0f, 0.25f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 24.0f)) 
                     * gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
             }
         }

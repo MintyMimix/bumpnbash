@@ -1002,7 +1002,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).position;
                 wrist_rot = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation;
-                offset_rot = Quaternion.Euler(0.0f, 55.0f, 0.0f);
+                offset_rot = Quaternion.Euler(0.0f, 55.0f+90.0f, 0.0f);
             }
 
             transform.SetPositionAndRotation(

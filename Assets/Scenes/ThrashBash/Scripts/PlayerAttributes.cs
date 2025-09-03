@@ -191,9 +191,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else
         {
-            Networking.LocalPlayer.SetWalkSpeed(2.0f);
-            Networking.LocalPlayer.SetRunSpeed(4.0f);
-            Networking.LocalPlayer.SetStrafeSpeed(2.0f);
+            float spec_mod = 1.0f;
+            if (in_spectator_area) { spec_mod = 2.5f; }
+            Networking.LocalPlayer.SetWalkSpeed(2.0f * spec_mod);
+            Networking.LocalPlayer.SetRunSpeed(4.0f * spec_mod);
+            Networking.LocalPlayer.SetStrafeSpeed(2.0f * spec_mod);
             Networking.LocalPlayer.SetGravityStrength(1.0f);
             Networking.LocalPlayer.SetJumpImpulse(4.0f);
         }
@@ -764,10 +766,11 @@ public class PlayerAttributes : UdonSharpBehaviour
 
             Color display_color = Color.cyan;
             if (item_type >= (int)powerup_type_name.ENUM_LENGTH) { display_color = new Color(1.0f, 0.5f, 0.0f, 1.0f); }
+            else if (item_type == (int)powerup_type_name.AtkDown || item_type == (int)powerup_type_name.DefDown || item_type == (int)powerup_type_name.HighGrav) { display_color = Color.red; }
 
-            if (display_str != "") 
-            { 
-                gameController.AddToLocalTextQueue(display_str, display_color, 8.0f); 
+            if (display_str != "")
+            {
+                gameController.AddToLocalTextQueue(display_str, display_color, 8.0f);
             }
             local_tutorial_message_bool[item_type] = true;
         }

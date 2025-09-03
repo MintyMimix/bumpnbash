@@ -76,7 +76,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
     public void SetUIForward()
     {
         var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        var scaleUI = 1.0f;
+        var scaleUI = 1.0f * 0.66f;
         if (gameController != null && gameController.local_ppp_options != null && gameController.local_uiplytoself != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
