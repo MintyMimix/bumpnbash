@@ -26,7 +26,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public float projectile_distance;
     [NonSerialized] public float projectile_duration;
     [NonSerialized] public double projectile_start_ms;
-    [NonSerialized] private double projectile_timer_local = 0.0f;
+    //[NonSerialized] private double projectile_timer_local = 0.0f;
     [NonSerialized] private double projectile_timer_network = 0.0f;
     [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameController gameController;
@@ -40,11 +40,26 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public bool contact_made = false;
     [NonSerialized] public bool has_physics = false;
     [NonSerialized] public byte extra_data = 0;
+    [NonSerialized] public LayerMask layers_to_hit;
+    [NonSerialized] private Vector3 INVALID_HIT_POS;
+    [NonSerialized] private Animator cached_animator;
 
     private void Start()
     {
         rb = this.GetComponent<Rigidbody>();
         previousPosition = rb.position;
+        layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
+        INVALID_HIT_POS = new Vector3(-999999, -999999, -999999);
+    }
+
+    public void ResetProjectile()
+    {
+        projectile_start_ms = 0.0f;
+        projectile_timer_network = 0.0f;
+        projectile_hit_on_this_frame = false;
+        contact_made = false;
+        previousPosition = rb.position;
+        Start();
     }
 
     public void UpdateProjectileModel()
@@ -144,23 +159,29 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     private void Update()
     {
-        projectile_timer_local += Time.deltaTime;
+        //projectile_timer_local += Time.deltaTime;
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
 
         if (projectile_hit_on_this_frame && pos_end != null)
         {
+            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " hit a target on this frame at " + pos_end.ToString());
             rb.MovePosition(pos_end);
             OnProjectileHit(pos_end, contact_made);
         }
 
         if (weapon_type == (int)weapon_type_name.Bomb)
         {
-            projectile_mdl[weapon_type].GetComponent<Animator>().SetFloat("AnimationTimer", (float)(projectile_timer_network / projectile_duration));
+            if (cached_animator == null) { cached_animator = projectile_mdl[weapon_type].GetComponent<Animator>(); }
+            if (cached_animator != null)
+            {
+                cached_animator.SetFloat("AnimationTimer", (float)(projectile_timer_network / projectile_duration));
+            }
         }
     }
 
     private void FixedUpdate()
     {
+        if (projectile_duration <= 0) { return; }
 
         // Before anything else, if we have a parent, make sure we're positioned and rotated with the parent
         if (keep_parent && weapon_parent != null && !projectile_hit_on_this_frame)
@@ -177,8 +198,9 @@ public class WeaponProjectile : UdonSharpBehaviour
         if (!has_physics) {
             Vector3 lerpPos = Vector3.Lerp(rb.position, CalcPosAtTime(projectile_timer_network), Mathf.Min(1.0f, (float)(projectile_timer_network / projectile_duration)));
             Vector3 rayPos = RaycastToNextPos(projectile_timer_network);
-            if (rayPos.x != -999999 && !projectile_hit_on_this_frame)
+            if (Mathf.FloorToInt(rayPos.x) != Mathf.FloorToInt(INVALID_HIT_POS.x) && !projectile_hit_on_this_frame)
             {
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
                 pos_end = rayPos;
                 projectile_hit_on_this_frame = true;
                 contact_made = true;
@@ -190,8 +212,9 @@ public class WeaponProjectile : UdonSharpBehaviour
             else
             {
                 rb.MovePosition(lerpPos);
-                if (!projectile_hit_on_this_frame && (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration))
+                if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
                 {
+                    //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                     pos_end = CalcPosAtTime(projectile_duration);
                     projectile_hit_on_this_frame = true;
                     contact_made = false;
@@ -203,8 +226,9 @@ public class WeaponProjectile : UdonSharpBehaviour
         // If this a physics object, all we care about is lifetime
         else
         {
-            if (!projectile_hit_on_this_frame && (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration))
+            if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
             {
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                 pos_end = rb.position;
                 projectile_hit_on_this_frame = true;
                 contact_made = false;
@@ -325,13 +349,12 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     private Vector3 RaycastToNextPos(double time_elapsed)
     {
-        var layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
-        var ray_cast = Physics.Linecast(previousPosition, CalcPosAtTime(projectile_timer_network), out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
+        bool ray_cast = Physics.Linecast(previousPosition, CalcPosAtTime(projectile_timer_network), out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
         //UnityEngine.Debug.DrawLine(previousPosition, CalcPosAtTime(projectile_timer_network), Color.red, 0.1f);
         previousPosition = rb.position;
         // Since vectors are non-nullable, let's just return something impossible
-        if (!ray_cast || hitInfo.collider == null || !CheckCollider(hitInfo.collider)) { return new Vector3(-999999, -999999, -999999); }
-        UnityEngine.Debug.Log("Raycast found something! " + hitInfo.point.ToString() + ": " + hitInfo.collider.gameObject.name);
+        if (!ray_cast || hitInfo.collider == null || !CheckCollider(hitInfo.collider)) { return INVALID_HIT_POS; }
+        //UnityEngine.Debug.Log("Raycast found something! " + hitInfo.point.ToString() + ": " + hitInfo.collider.gameObject.name);
         return hitInfo.point;
     }
 }

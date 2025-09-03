@@ -22,9 +22,9 @@ public class Scoreboard : UdonSharpBehaviour
     void Start()
     {
         //DebugText.text = "This is placeholder debug text!";
-        scoreboard_obj_list = new GameObject[80];
+        scoreboard_obj_list = new GameObject[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
 
-        for (int i = 0; i < 80; i++)
+        for (int i = 0; i < (int)GLOBAL_CONST.UDON_MAX_PLAYERS; i++)
         {
             scoreboard_obj_list[i] = Instantiate(template_scoreboard_panel);
             scoreboard_obj_list[i].GetComponent<UIScoreboardPanelTemplate>().gameController = gameController;

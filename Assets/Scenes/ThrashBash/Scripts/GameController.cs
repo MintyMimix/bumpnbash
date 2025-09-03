@@ -54,6 +54,11 @@ public enum dict_compare_name
     Equals, GreaterThan, LessThan, GreaterThanOrEqualsTo, LessThanOrEqualsTo, ENUM_LENGTH
 }
 
+public enum GLOBAL_CONST
+{
+    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24
+}
+
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class GameController : UdonSharpBehaviour
 {
@@ -303,6 +308,13 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public PlayerWeapon local_plyweapon;
     [NonSerialized] public PlayerHitbox local_plyhitbox;
 
+    // Preallocated prefab objects used in place of create-destroy events
+    [NonSerialized] public WeaponProjectile[] global_projectile_arr;
+    [NonSerialized] public ushort[] global_projectile_indices;
+    [NonSerialized] public WeaponHurtbox[] global_hurtbox_arr;
+    [NonSerialized] public ushort[] global_hurtbox_indices;
+    [NonSerialized] public ItemPowerup[] global_powerup_arr;
+    [NonSerialized] public ushort[] global_powerup_indices;
 
     // -- Initialization --
     private void Start()
@@ -1648,8 +1660,8 @@ public class GameController : UdonSharpBehaviour
             }
 
             if (!player.isLocal) { continue; }
+            local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
             local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
-            local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
 
             //room_training.SetActive(false);
             room_training_portal.SetActive(false);
@@ -2639,9 +2651,10 @@ public class GameController : UdonSharpBehaviour
         if (player != null)
         {
             GameObject weaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
-            if (!(weaponObj == null || weaponObj.GetComponent<PlayerWeapon>() == null))
+            PlayerWeapon weaponScript = null;
+            if (weaponObj != null) { weaponScript = weaponObj.GetComponent<PlayerWeapon>(); }
+            if (weaponScript != null)
             {
-
                 if (keep_parent)
                 {
                     //UnityEngine.Debug.Log("Found script, parenting");
@@ -2656,6 +2669,7 @@ public class GameController : UdonSharpBehaviour
                     projectile.has_physics = true;
                     projectile.GetComponent<Rigidbody>().useGravity = true;
                     projectile.GetComponent<Collider>().isTrigger = false;
+                    //if (weaponScript.pickup_rb != null) { weaponScript.pickup_rb.isKinematic = true; }
                     weaponObj.GetComponent<Rigidbody>().useGravity = false;
                     weaponObj.GetComponent<Rigidbody>().velocity = Vector3.zero;
                 }
@@ -2741,7 +2755,8 @@ public class GameController : UdonSharpBehaviour
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
         hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
-        hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
+        //hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
+        hurtbox.hurtbox_timer_local = 0.0f;
         hurtbox.damage_type = (int)GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage_Type];
         hurtbox.owner_id = player_id;
         hurtbox.gameController = this;

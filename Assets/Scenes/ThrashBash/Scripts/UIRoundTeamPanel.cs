@@ -233,7 +233,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
     public void GeneratePanels()
     {
         // 80 is the absolute hardcap of players in VRChat
-        for (int i = 0; i < 80; i++)
+        for (int i = 0; i < (int)GLOBAL_CONST.UDON_MAX_PLAYERS; i++)
         {
             var uiobj = Instantiate(template_UIAssignTeamPanel);
             //Debug.Log("Creating instance " + uiobj.GetInstanceID());
