@@ -8,6 +8,8 @@ public class Room_Ready : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
 
+    // Why we use BOTH plyAttr.ply_team and GetGlobalTeam(): one is local, the other is networked. If the network is busy, we do not want to flood them with requests!
+
     public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
 
@@ -18,37 +20,23 @@ public class Room_Ready : UdonSharpBehaviour
             if (plyAttr != null) { 
                 plyAttr.ply_state = (int)player_state_name.Joined; 
 
-                if (gameController.GetGlobalTeam(player.playerId) < 0)
+                if (gameController.GetGlobalTeam(player.playerId) < 0 && plyAttr.ply_team < 0)
                 {
-                    if (gameController.round_state != (int)round_state_name.Start) 
-                    { 
+                    if (gameController.round_state != (int)round_state_name.Start 
+                        && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.WaitingForLobby
+                        && plyAttr.ply_team != (int)player_tracking_name.WaitingForLobby) 
+                    {
+                        plyAttr.ply_team = (int)player_tracking_name.WaitingForLobby;
                         gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.WaitingForLobby, true);
                     }
-                    else 
-                    { 
+                    else if (gameController.round_state == (int)round_state_name.Start)
+                    {
+                        plyAttr.ply_team = 0;
                         gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, 0, true); 
                     }
                 }
             }
         }
-
-
-
-        // below logic will fail if the master just straight up doesn't see anything. Let's make it a networked event instead.
-
-        // Run this only if we are the master, and that what's being collided with is in fact a player
-        /*
-        if (!Networking.LocalPlayer.isMaster) { return; }
-        // to-do: mimic state shown in exit state
-        if (gameController.DictValueFromKey(player.playerId, gameController.ply_tracking_dict_keys_arr, gameController.ply_tracking_dict_values_arr) != (int)player_tracking_name.Spectator)
-        {
-            if (gameController.round_state != (int)round_state_name.Start
-                && ((plyAttr != null && plyAttr.ply_team < 0) || (plyAttr == null))
-                ) { gameController.ChangeTeam(player.playerId, (int)player_tracking_name.WaitingForLobby); }
-            else { gameController.ChangeTeam(player.playerId, 0); }
-        }
-        */
-
     }
 
     public override void OnPlayerTriggerExit(VRCPlayerApi player)
@@ -62,9 +50,15 @@ public class Room_Ready : UdonSharpBehaviour
             {
                 plyAttr.ply_state = (int)player_state_name.Inactive;
 
-                if (gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Spectator && gameController.round_state == (int)round_state_name.Start)
+                if (gameController.round_state == (int)round_state_name.Start 
+                    && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Spectator 
+                    && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Unassigned
+                    && plyAttr.ply_team != (int)player_tracking_name.Unassigned
+                    && plyAttr.ply_team != (int)player_tracking_name.Unassigned
+                    )
                 {
                     //if (gameController.round_state == (int)round_state_name.Start) { 
+                    plyAttr.ply_team = (int)player_tracking_name.Unassigned;
                     gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.Unassigned, false); 
                 }
             }

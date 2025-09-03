@@ -103,10 +103,12 @@ public class ItemPowerup : ItemGeneric
             case (int)powerup_type_name.PartialHeal:
                 powerup_stat_value[(int)powerup_stat_name.Damage] = 0.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_duration = 0.001f; // Heals do not need to be displayed as a buff
                 break;
             case (int)powerup_type_name.FullHeal:
                 powerup_stat_value[(int)powerup_stat_name.Damage] = 0.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_duration = 0.001f; // Heals do not need to be displayed as a buff
                 break;
             default:
                 break;

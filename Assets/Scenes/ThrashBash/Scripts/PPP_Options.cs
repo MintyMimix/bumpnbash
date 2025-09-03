@@ -19,6 +19,7 @@ public class PPP_Options : UdonSharpBehaviour
 
     public override void OnPlayerRestored(VRCPlayerApi player)  
     {
+        if (!player.isLocal) { return; }
         gameController.local_ppp_options = this;
         RefreshComponents();
         UpdateUIScale();

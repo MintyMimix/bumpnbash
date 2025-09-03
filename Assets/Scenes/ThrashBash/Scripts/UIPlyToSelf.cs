@@ -22,6 +22,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public Sprite PTSLivesSprite;
     [SerializeField] public Sprite PTSPointsSprite;
     [SerializeField] public Sprite PTSDeathsSprite;
+    [SerializeField] public Sprite PTSFlagSprite;
     [SerializeField] public TMP_Text PTSDamage;
     [SerializeField] public TMP_Text PTSAttack;
     [SerializeField] public TMP_Text PTSDefense;
@@ -45,10 +46,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public bool ui_show_intro_text = true;
 
     [NonSerialized] public string text_queue_full_str = ""; // Queue system for local HUD messages, separated by the delineation character.
-    [NonSerialized] public char text_queue_separator = '$';
+    [NonSerialized] public char text_queue_separator = '\r';
     [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
-    [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should a message on the text queue be displayed?
+    [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should an active message be displayed?
     [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
+    [SerializeField] public float text_queue_limited_extend = 0.5f; // How much longer should an active message be displayed if it is not the top message?
     [NonSerialized] public float[] text_queue_limited_timers;
 
     void Start()
@@ -107,7 +109,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         while (iteration < iterateAmount)
         {
             if (text_queue_full_str.Length == 0) { break; }
-            if (new_queue_timers[iteration] < text_queue_limited_duration)
+            if (new_queue_timers[iteration] < text_queue_limited_duration + (iteration * text_queue_limited_extend))
             {
                 new_queue_timers[iteration] += Time.deltaTime;
             }
@@ -147,8 +149,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (i < splitStr.Length)
             {
                 PTSTextStack[i].text = splitStr[i].ToUpper();
-                float fade_time = text_queue_limited_duration - (text_queue_limited_fade_time_percent * text_queue_limited_duration);
-                if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (text_queue_limited_duration - fade_time)); }
+                float duration_modified = text_queue_limited_duration + (i * text_queue_limited_extend);
+                float fade_time = duration_modified - (text_queue_limited_fade_time_percent * duration_modified);
+                if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
                 else { PTSTextStack[i].alpha = 1.0f; }
             }
             else { PTSTextStack[i].text = ""; }
@@ -222,6 +225,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTSTeamCBSpriteImage.enabled = true; }
         else { PTSTeamCBSpriteImage.enabled = false;  }
+        PTSTeamFlagImage.sprite = PTSFlagSprite;
         PTSTeamFlagImage.enabled = !PTSTeamCBSpriteImage.enabled;
         PTSTeamPoleImage.enabled = PTSTeamFlagImage.enabled;
 
@@ -238,10 +242,28 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
             PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
+
         var FlagText = "";
         if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0) 
-        { 
-            FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString();
+        {
+            int total_lives = 0;
+            int members_alive = gameController.CheckSpecificTeamLives(playerAttributes.ply_team, ref total_lives);
+            int total_points = gameController.CheckSpecificTeamPoints(playerAttributes.ply_team);
+
+            if (!gameController.option_teamplay || gameController.option_gamemode == (int)round_mode_name.Infection) { FlagText = members_alive.ToString(); }
+            else if (gameController.option_gamemode == (int)round_mode_name.BossBash)
+            {
+                if (playerAttributes.ply_team == 1)
+                { // If we are the boss, override the flag to instead display KOs
+                    FlagText = playerAttributes.ply_points.ToString() + "/" + gameController.option_goal_value_a;
+                    PTSTeamPoleImage.enabled = false;
+                    PTSTeamFlagImage.sprite = PTSPointsSprite;
+                    PTSTeamCBSpriteImage.sprite = PTSPointsSprite;
+                }
+                else { FlagText = total_points.ToString(); }
+            }
+            else if (gameController.option_goal_points_a) { FlagText = total_points.ToString(); }
+            else { FlagText = total_lives.ToString(); }
         }
         PTSTeamText.text = FlagText;
 

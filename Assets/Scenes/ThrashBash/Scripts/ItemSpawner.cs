@@ -30,6 +30,8 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f;
     [Tooltip("Which team # should this be assigned to? (-1: all, -2: FFA-only)")]
     [SerializeField][UdonSynced] public sbyte item_spawn_team = -1;
+    [Tooltip("How many players must be in the game before this spawner is active? (Must be a positive value!)")]
+    [SerializeField][UdonSynced] public byte item_spawn_min_players = 0;
 
     [NonSerialized][UdonSynced] public int item_spawn_global_index = -1;
     [NonSerialized][UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
@@ -61,7 +63,12 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_spawn_state == (int)item_spawn_state_name.Disabled) {
             if (child_powerup.gameObject.activeInHierarchy) { child_powerup.gameObject.SetActive(false); }
             if (child_weapon.gameObject.activeInHierarchy) { child_weapon.gameObject.SetActive(false); }
+            if (child_marker.gameObject.activeInHierarchy) { child_marker.gameObject.SetActive(false); }
             return; 
+        }
+        else
+        {
+            if (!child_marker.gameObject.activeInHierarchy && show_marker_in_game) { child_marker.gameObject.SetActive(true); }
         }
 
         // Events which only run when the timer ticks to zero below
@@ -78,7 +85,6 @@ public class ItemSpawner : UdonSharpBehaviour
                 {
                     item_spawn_index = RollForItem(item_spawn_chances);
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
-
                 }
             }
          }
@@ -134,6 +140,8 @@ public class ItemSpawner : UdonSharpBehaviour
         }
 
         item_spawn_state = (int)item_spawn_state_name.InWorld;
+        if (show_marker_in_game) { child_marker.SetActive(true); }
+        else { child_marker.SetActive(false); }
         StartTimer(item_spawn_linger);
     }
 
@@ -168,6 +176,8 @@ public class ItemSpawner : UdonSharpBehaviour
         }
 
         item_spawn_state = (int)item_spawn_state_name.Spawnable;
+        if (show_marker_in_game) { child_marker.SetActive(true); }
+        else { child_marker.SetActive(false); }
         StartTimer(item_spawn_impulse);
     }
 
