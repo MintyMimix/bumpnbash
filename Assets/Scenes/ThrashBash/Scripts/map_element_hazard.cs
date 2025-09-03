@@ -68,7 +68,7 @@ public class map_element_hazard : BouncePad
         Vector3 hitSpot = GetComponent<Collider>().ClosestPointOnBounds(player.GetPosition());
         // Since we are now only processing these events locally, just call your own plyAttr directly
         //plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, hitSpot, -1, (int)damage_type_name.HazardBurn, false);
-        plyAttr.ReceiveDamage(current_damage, Vector3.zero, hitSpot, -1, (int)damage_type_name.HazardBurn, false);
+        plyAttr.ReceiveDamage(current_damage, Vector3.zero, hitSpot, -1, (int)damage_type_name.HazardBurn, false, 0);
         Bounce(player);
     }
 

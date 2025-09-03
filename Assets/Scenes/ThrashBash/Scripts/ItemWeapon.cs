@@ -10,6 +10,7 @@ public class ItemWeapon : ItemGeneric
     [NonSerialized] public int iweapon_type;
     [NonSerialized] public int iweapon_ammo = -1;
     [NonSerialized] public float iweapon_duration = -1.0f;
+    [NonSerialized] public byte iweapon_extra_data = 0;
 
     [NonSerialized] public bool render_iweapon = true;
 
@@ -90,11 +91,8 @@ public class ItemWeapon : ItemGeneric
         }
     }
 
-    private void OnTriggerEnter(Collider other)
+    public void LocalApplyWeapon()
     {
-        // Check if the player colliding with this is valid
-        if (!CheckValidCollisionEvent(other)) { return; }
-        
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
         bool player_is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1;
@@ -105,11 +103,12 @@ public class ItemWeapon : ItemGeneric
             plyWeapon.weapon_temp_duration = iweapon_duration;
             plyWeapon.weapon_temp_timer = 0.0f;
             plyWeapon.weapon_type = iweapon_type;
+            plyWeapon.weapon_extra_data = iweapon_extra_data;
             plyWeapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
             if (iweapon_snd_clips != null && iweapon_type >= 0 && iweapon_type < iweapon_snd_clips.Length)
             {
-                if (gameController.local_plyAttr != null) 
-                { 
+                if (gameController.local_plyAttr != null)
+                {
                     gameController.local_plyAttr.SendTutorialMessage((int)powerup_type_name.ENUM_LENGTH + iweapon_type);
                     if (gameController.local_plyAttr.ply_training) { gameController.local_plyAttr.ResetTutorialMessage((int)powerup_type_name.ENUM_LENGTH + iweapon_type); }
                 }
@@ -123,14 +122,26 @@ public class ItemWeapon : ItemGeneric
         {
             gameController.PlaySFXFromArray(plyWeapon.snd_source_weaponcharge, item_snd_clips, (int)item_snd_clips_name.Spawn);
         }
+    }
 
-            // Despawn powerup for everyone else, with reason code of "someone else got it"
-            // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
-            //item_snd_source.transform.position = spawner_parent.transform.position;
-            bool has_spawner_parent = CheckForSpawnerParent();
-        if (has_spawner_parent && !allow_multiple_owners)
+    public void OnTriggerEnter(Collider other)
+    {
+        // Check if the player colliding with this is valid
+        if (!CheckValidCollisionEvent(other)) { return; }
+
+        LocalApplyWeapon();
+
+        // Despawn powerup for everyone else, with reason code of "someone else got it"
+        // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
+        //item_snd_source.transform.position = spawner_parent.transform.position;
+        bool has_spawner_parent = CheckForSpawnerParent();
+        if (has_spawner_parent && !spawner_parent.is_template)
         {
             spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, true);
+        }
+        else if (has_spawner_parent && spawner_parent.is_template)
+        {
+            spawner_parent.DespawnItem((int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, false);
         }
         else if (!has_spawner_parent && item_state != (int)item_state_name.Spawning)
         {

@@ -197,15 +197,12 @@ public class ItemPowerup : ItemGeneric
         return false;
     }
 
-    private void OnTriggerEnter(Collider other)
+    public void LocalApplyPowerup()
     {
-        // Check if the player colliding with this is valid
-        if (!CheckValidCollisionEvent(other)) { return; }
-
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerAttributes plyAttr = gameController.local_plyAttr;
-        if (plyAttr != null) 
-        { 
+        if (plyAttr != null)
+        {
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate
             var powerup_obj = Instantiate(this.gameObject);
             ItemPowerup powerup = powerup_obj.GetComponent<ItemPowerup>();
@@ -217,19 +214,32 @@ public class ItemPowerup : ItemGeneric
             powerup.powerup_duration = powerup_duration;
             powerup.spawner_parent = null;
             powerup.SetPowerupStats(powerup_type);
+            powerup_obj.transform.position = Networking.LocalPlayer.GetPosition();
             plyAttr.SendTutorialMessage(powerup_type);
             if (plyAttr.ply_training) { plyAttr.ResetTutorialMessage(powerup_type); }
             plyAttr.ProcessPowerUp(powerup_obj, true);
             item_is_template = false;
         }
+    }
+
+    public void OnTriggerEnter(Collider other)
+    {
+        // Check if the player colliding with this is valid
+        if (!CheckValidCollisionEvent(other)) { return; }
+
+        LocalApplyPowerup();
 
         // Despawn powerup for everyone else, with reason code of "someone else got it"
         // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!
         //item_snd_source.transform.position = spawner_parent.transform.position;
         bool has_spawner_parent = CheckForSpawnerParent();
-        if (has_spawner_parent && !allow_multiple_owners)
+        if (has_spawner_parent && !spawner_parent.is_template)
         {
             spawner_parent.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, true);
+        }
+        else if (has_spawner_parent && spawner_parent.is_template)
+        {
+            spawner_parent.DespawnItem((int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, false);
         }
         else if (!has_spawner_parent && item_state != (int)item_state_name.Spawning)
         {

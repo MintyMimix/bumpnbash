@@ -40,22 +40,29 @@ public class ItemGeneric : UdonSharpBehaviour
     [NonSerialized] public bool item_is_template = false;
     [NonSerialized] public ItemSpawner spawner_parent;
     [NonSerialized] public bool trigger_destroy = false;
-    [NonSerialized] public bool allow_multiple_owners = false;
+    //[NonSerialized] public bool allow_multiple_owners = false;
 
     [SerializeField] public AudioSource item_snd_source;
     [SerializeField] public AudioClip[] item_snd_clips;
 
-    internal bool CheckForSpawnerParent()
+    internal ItemSpawner GetSpawnerParent()
     {
-        if (spawner_parent != null) { return true; }
+        if (spawner_parent != null) { return spawner_parent; }
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
-        if (transform.parent == null) { return false; }
+        if (transform.parent == null) { return null; }
         spawner_parent = transform.GetComponentInParent<ItemSpawner>();
+        return spawner_parent;
+    }
+
+    internal bool CheckForSpawnerParent()
+    {
+        if (spawner_parent != null) { return true; }
+        spawner_parent = GetSpawnerParent();
         return spawner_parent != null;
     }
 
@@ -87,32 +94,46 @@ public class ItemGeneric : UdonSharpBehaviour
 
     }
 
-    internal void SetTeamColor(int team_id)
+    internal void SetTeamColor(int team_id, bool recolor_children = false)
     {
-        var m_Renderer = GetComponent<MeshRenderer>();
-        if (spawner_parent != null)
+        Renderer main_Renderer = GetComponent<MeshRenderer>();
+        Renderer[] child_Renderers = GetComponentsInChildren<MeshRenderer>();
+        Renderer m_Renderer = main_Renderer;
+        for (int i = -1; i < child_Renderers.Length; i++)
         {
-            if (spawner_parent.gameController.option_teamplay && team_id >= 0 && team_id < gameController.team_count)
+            if (i > -1) { m_Renderer = child_Renderers[i]; }
+            else if (!recolor_children) { break; }
+
+            if (spawner_parent != null && m_Renderer != null)
             {
-                m_Renderer.material.SetColor("_Color",
-                    new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].b)),
-                    (byte)92));
-                m_Renderer.material.EnableKeyword("_EMISSION");
-                m_Renderer.material.SetColor("_EmissionColor",
-                    new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].b)),
-                    92));
-            }
-            else
-            {
-                m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
-                m_Renderer.material.EnableKeyword("_EMISSION");
-                m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+                int team_to_render = 0;
+                bool render_for_team = spawner_parent.gameController.option_teamplay;
+                if (render_for_team && team_id >= 0 && team_id < spawner_parent.gameController.team_count) { team_to_render = team_id; }
+                else if (render_for_team && spawner_parent.gameController.local_plyAttr != null && gameController.local_plyAttr.ply_team >= 0) { team_to_render = gameController.local_plyAttr.ply_team; }
+                else { render_for_team = false; }
+
+                if (render_for_team)
+                {
+                    m_Renderer.material.SetColor("_Color",
+                            new Color32(
+                            (byte)Mathf.Max(0, Mathf.Min(255, spawner_parent.gameController.team_colors_bright[team_to_render].r)),
+                            (byte)Mathf.Max(0, Mathf.Min(255, spawner_parent.gameController.team_colors_bright[team_to_render].g)),
+                            (byte)Mathf.Max(0, Mathf.Min(255, spawner_parent.gameController.team_colors_bright[team_to_render].b)),
+                            (byte)92));
+                    m_Renderer.material.EnableKeyword("_EMISSION");
+                    m_Renderer.material.SetColor("_EmissionColor",
+                        new Color32(
+                        (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_to_render].r)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_to_render].g)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_to_render].b)),
+                        (byte)92));
+                }
+                else
+                {
+                    m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
+                    m_Renderer.material.EnableKeyword("_EMISSION");
+                    m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+                }
             }
         }
     }

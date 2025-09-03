@@ -25,6 +25,8 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] public bool show_marker_in_game = true;
     [Tooltip("Will this spawn be used for the training room? (Always active)")]
     [SerializeField] public bool training_spawner = false;
+    [Tooltip("Is this spawner a local-only template?")]
+    [SerializeField] public bool is_template = false;
     [Tooltip("How long an item should linger in the world after being spawned, in seconds")]
     [SerializeField] [UdonSynced] public float item_spawn_linger;
     [Tooltip("The number of seconds that need to pass before the chance for an item to be spawned is rolled")]
@@ -37,6 +39,7 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] [UdonSynced] public sbyte item_spawn_team = -1;
     [Tooltip("How many players must be in the game before this spawner is active? (Must be a positive value!)")]
     [SerializeField] [UdonSynced] public byte item_spawn_min_players = 0;
+
 
     [NonSerialized][UdonSynced] public float item_spawn_frequency_mul = 1.0f; // Setup in the in-game advanced options menu; affects both impulse time and global spawn chance
     [NonSerialized][UdonSynced] public float item_spawn_duration_mul = 1.0f; // Setup in the in-game advanced options menu; affects both powerups and weapons
@@ -85,7 +88,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public void SetSpawnChances(byte gamemode)
     {
-        if (!Networking.IsMaster) { return; }
+        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         float[] parsed_spawn_chances = ParseInspectorSpawnChances();
         for (int i = 0; i < parsed_spawn_chances.Length; i++)
         {
@@ -112,10 +115,10 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (player == Networking.LocalPlayer) { wait_for_join_sync = true; }
-        else if (Networking.IsMaster) { RequestSerialization(); }
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
+        else if (player == Networking.LocalPlayer) { wait_for_join_sync = true; }
     }
-
+    
     public override void OnDeserialization()
     {
         if (wait_for_join_sync)
@@ -136,7 +139,11 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
             DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
-            SpawnItem(item_spawn_index);
+            SpawnItem(item_spawn_index, false);
+        }
+        else 
+        { 
+            DespawnItem((int)item_sfx_index.ItemExpire, -1, false); 
         }
     }
 
@@ -157,7 +164,7 @@ public class ItemSpawner : UdonSharpBehaviour
         if (!ProcessTimer()) { return; }
 
         // -- Master Only Below --
-        if (!Networking.IsMaster) { return; }
+        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         // Only spawn the item if it's in a spawnable state
         if (item_spawn_state == (int)item_spawn_state_name.Spawnable)
         {
@@ -166,12 +173,14 @@ public class ItemSpawner : UdonSharpBehaviour
             else {
                 // Spawn the item
                 item_spawn_index = RollForItem(item_spawn_chances);
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
+                if (is_template) { SpawnItem(item_spawn_index, false); }
+                else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index, false); }
             }
          }
         else if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true);
+            if (is_template) { DespawnItem((int)item_sfx_index.ItemExpire, -1, true); }
+            else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true); }
         }
     }
 
@@ -181,12 +190,14 @@ public class ItemSpawner : UdonSharpBehaviour
         //item_timer_local = 0.0f;
         item_timer_network = 0.0f;
         item_timer_duration = duration;
-        if (Networking.IsMaster) { RequestSerialization(); }
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
     }
 
     [NetworkCallable]
-    public void SpawnItem(int item_index)
+    public void SpawnItem(int item_index, bool apply_after_spawn)
     {
+        //if (apply_after_spawn) { DespawnItem((int)item_sfx_index.ItemExpire, -1, false); }
+
         // Powerup
         if (item_index < (int)powerup_type_name.ENUM_LENGTH)
         {
@@ -203,6 +214,7 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.powerup_start_ms = Networking.GetServerTimeInSeconds();
             child_powerup.powerup_timer_local = 0.0f;
             child_powerup.powerup_timer_network = 0.0f;
+            //child_powerup.allow_multiple_owners = false;
             child_powerup.gameObject.SetActive(true);
             // This must be the last step, in case we try to destroy it on the same frame we are spawning it in
             child_powerup.item_state = (int)item_state_name.InWorld;
@@ -219,14 +231,21 @@ public class ItemSpawner : UdonSharpBehaviour
             child_weapon.item_is_template = false;
             child_weapon.iweapon_type = item_index - (int)powerup_type_name.ENUM_LENGTH;
             child_weapon.SetiWeaponStats();
-            // If the type is -2, that means set the stat to the spawner's powerup duration
+            // If the ammo or duration is -2, that means set the stat to the spawner's powerup duration
             if (child_weapon.iweapon_type >= 0)
             {
                 if (child_weapon.iweapon_type < child_weapon.iweapon_ammo_list.Length && child_weapon.iweapon_ammo_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_ammo = Mathf.RoundToInt(item_spawn_powerup_duration); }
                 if (child_weapon.iweapon_type < child_weapon.iweapon_duration_list.Length && child_weapon.iweapon_duration_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_duration = item_spawn_powerup_duration; }
+                if (child_weapon.iweapon_type == (int)weapon_type_name.ThrowableItem) 
+                { 
+                    child_weapon.iweapon_extra_data = (byte)UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH); 
+                    // If the random powerup rolls the boss glove, set it to be another throwable item for maximum chaos
+                    if (child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove) { child_weapon.iweapon_extra_data = (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem; }
+                }
             }
             child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * item_spawn_duration_mul);
             child_weapon.iweapon_duration *= item_spawn_duration_mul;
+            //child_weapon.allow_multiple_owners = false;
             child_weapon.gameObject.SetActive(true);
             child_weapon.item_state = (int)item_state_name.InWorld;
         }
@@ -235,6 +254,8 @@ public class ItemSpawner : UdonSharpBehaviour
         if (show_marker_in_game) { child_marker.SetActive(true); }
         else { child_marker.SetActive(false); }
         StartTimer(item_spawn_linger);
+
+        if (apply_after_spawn) { ForceApplyItem(); }
     }
 
     [NetworkCallable]
@@ -256,7 +277,7 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.gameObject.SetActive(false);
         }
         // Weapon
-        else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH)
+        else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH && child_weapon != null)
         {
             child_weapon.item_state = (int)item_state_name.Disabled;
             child_weapon.iweapon_type = 0;
@@ -274,6 +295,20 @@ public class ItemSpawner : UdonSharpBehaviour
         if (show_marker_in_game) { child_marker.SetActive(true); }
         else { child_marker.SetActive(false); }
         StartTimer(item_spawn_impulse * (1.0f / item_spawn_frequency_mul));
+    }
+
+    // Forcibly applies a copy of the item to the local player as if they picked it up without triggering a networked event. Only used for the throwable weapon.
+    public void ForceApplyItem()
+    {
+        if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && child_powerup != null)
+        {
+            child_powerup.LocalApplyPowerup();
+        }
+        else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH && child_weapon != null)
+        {
+            child_weapon.LocalApplyWeapon();
+        }
+        DespawnItem((int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, false);
     }
 
     // Process the spawn timer. Return true if an event should fire.

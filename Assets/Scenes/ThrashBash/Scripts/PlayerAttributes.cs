@@ -270,7 +270,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 hitSpot, int attacker_id, int damage_type, bool hit_self)
+    public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 hitSpot, int attacker_id, int damage_type, bool hit_self, byte extra_data)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
         if (ply_state != (int)player_state_name.Alive) { return; }
@@ -311,8 +311,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         
         //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
 
-        // Don't apply additional force if this is a hazard
-        if (damage_type != (int)damage_type_name.HazardBurn)
+        // Don't apply additional force if this is a hazard or a throwable item
+        if (damage_type != (int)damage_type_name.HazardBurn && damage_type != (int)damage_type_name.ItemHit)
         {
             //Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
 
@@ -337,6 +337,18 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController.local_uiplytoself != null)
         {
             gameController.local_uiplytoself.ShowPainIndicator(calcDmg, hitSpot);
+        }
+
+        // If this is a throwable item, apply a powerup to self
+        if (damage_type == (int)damage_type_name.ItemHit)
+        {
+            //gameController.template_ItemSpawner.SetActive(true);
+            ItemSpawner itemSpawnerTemplate = gameController.template_ItemSpawner.GetComponent<ItemSpawner>();
+            itemSpawnerTemplate.SpawnItem(extra_data, true);
+            //if (extra_data < (int)powerup_type_name.ENUM_LENGTH) { itemSpawnerTemplate.child_powerup.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
+            //else { itemSpawnerTemplate.child_weapon.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
+            //itemSpawnerTemplate.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+            //gameController.template_ItemSpawner.SetActive(false);
         }
     }
 
@@ -645,6 +657,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Push your fire key to toss it forward! (Contains: $NAME)";
 
         for (int i = 0; i < (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH; i++)
         {
@@ -662,8 +675,10 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         // VR-specific messages
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = gameController.WeaponTypeToStr((int)weapon_type_name.Bomb).ToUpper() + ": Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = gameController.WeaponTypeToStr((int)weapon_type_name.SuperLaser).ToUpper() + ": Hold down your Trigger to charge it up and fire a huge beam!";
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your Trigger to charge it up and fire a huge beam!";
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Toss it by releasing your Grip! (Contains: $NAME)";
+
     }
 
     public void ResetTutorialMessage(int item_type = -1)
@@ -688,13 +703,22 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Send a tutorial message
         if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
-            if (Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_vr[item_type] != "") 
-            { 
-                gameController.AddToLocalTextQueue(local_tutorial_message_str_vr[item_type], Color.cyan, 8.0f); 
+            string display_str = local_tutorial_message_str_desktop[item_type];
+            if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
+            if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
+            {
+                string item_name = "";
+                if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = gameController.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
+                else { item_name = gameController.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
+                display_str = display_str.Replace("$NAME", item_name);
             }
-            else if (!Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_desktop[item_type] != "") 
+
+            Color display_color = Color.cyan;
+            if (item_type >= (int)powerup_type_name.ENUM_LENGTH) { display_color = new Color(1.0f, 0.5f, 0.0f, 1.0f); }
+
+            if (display_str != "") 
             { 
-                gameController.AddToLocalTextQueue(local_tutorial_message_str_desktop[item_type], Color.cyan, 8.0f); 
+                gameController.AddToLocalTextQueue(display_str, display_color, 8.0f); 
             }
             local_tutorial_message_bool[item_type] = true;
         }

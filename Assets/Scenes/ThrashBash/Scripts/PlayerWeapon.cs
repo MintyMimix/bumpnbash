@@ -8,12 +8,10 @@ using VRC.SDK3.Components;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
-using static UnityEngine.ParticleSystem;
-using static VRC.SDKBase.VRCPlayerApi;
 
 public enum weapon_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToWeaponType()
 {
-    PunchingGlove, Bomb, Rocket, BossGlove, HyperGlove, MegaGlove, SuperLaser, ENUM_LENGTH
+    PunchingGlove, Bomb, Rocket, BossGlove, HyperGlove, MegaGlove, SuperLaser, ThrowableItem, ENUM_LENGTH
 }
 
 public class PlayerWeapon : UdonSharpBehaviour
@@ -21,6 +19,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public int weapon_type;
     [NonSerialized] [UdonSynced] public int weapon_type_default;
     [NonSerialized] public int local_weapon_type;
+    [NonSerialized] [UdonSynced] public byte weapon_extra_data = 0;
     [NonSerialized] public float use_cooldown;
     [NonSerialized] public float use_timer;
     [NonSerialized] public bool use_ready;
@@ -98,21 +97,73 @@ public class PlayerWeapon : UdonSharpBehaviour
             }
         }
 
+        // Recolor child objects
+        Renderer m_Renderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        Material weapon_mat = null; 
+        if (m_Renderer != null)
+        {
+            weapon_mat = m_Renderer.material;
+            if ((weapon_type == (int)weapon_type_name.Rocket || weapon_type == (int)weapon_type_name.Bomb) && m_Renderer.materials.Length > 1) { weapon_mat = m_Renderer.materials[1]; }
+        }
+
         Transform particle = gameController.GetChildTransformByName(weapon_mdl[weapon_type].transform, "Particle");
         if (particle != null && particle.GetComponent<ParticleSystem>() != null)
         {
             var particle_main = particle.GetComponent<ParticleSystem>().main;
-            Renderer m_Renderer = GetComponentInChildren<SkinnedMeshRenderer>();
-            if (m_Renderer != null) {
-                Material weapon_mat = m_Renderer.material; 
-                if ((weapon_type == (int)weapon_type_name.Rocket || weapon_type == (int)weapon_type_name.Bomb) && m_Renderer.materials.Length > 1) { weapon_mat = m_Renderer.materials[1]; } 
+            if (weapon_mat != null) {
                 particle_main.startColor = new Color(weapon_mat.GetColor("_Color").r, weapon_mat.GetColor("_Color").g, weapon_mat.GetColor("_Color").b, 1.0f);
             }
             particle.gameObject.SetActive(true);
             particle.GetComponent<ParticleSystem>().Play();
         }
 
-        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && weapon_type == (int)weapon_type_name.Bomb);
+        // Render the item sprite, if this is a throwable item
+        Transform item_shell = gameController.GetChildTransformByName(weapon_mdl[weapon_type].transform, "ItemShell");
+        if (item_shell != null)
+        {
+            Renderer shell_Renderer = item_shell.GetComponent<Renderer>();
+            if (shell_Renderer != null)
+            {
+                if (gameController.option_teamplay && gameController.local_plyAttr.ply_team >= 0)
+                {
+                    Color32 TeamColor = gameController.team_colors[gameController.local_plyAttr.ply_team]; TeamColor.a = 92; TeamColor.r = (byte)Mathf.Clamp(-80 + TeamColor.r, 0, 255); TeamColor.g = (byte)Mathf.Clamp(-80 + TeamColor.g, 0, 255); TeamColor.b = (byte)Mathf.Clamp(-80 + TeamColor.b, 0, 255);
+                    Color32 TeamColorB = gameController.team_colors_bright[gameController.local_plyAttr.ply_team]; TeamColorB.a = 92;
+                    shell_Renderer.material.SetColor("_Color", TeamColorB);
+                    shell_Renderer.material.EnableKeyword("_EMISSION");
+                    shell_Renderer.material.SetColor("_EmissionColor", TeamColor);
+                }
+                else
+                {
+                    shell_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
+                    shell_Renderer.material.EnableKeyword("_EMISSION");
+                    shell_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+                }
+            }
+
+            foreach (Transform child in item_shell)
+            {
+                if (child.name.Contains("ItemSprite"))
+                {
+                    Renderer sprite_Renderer = child.GetComponent<Renderer>();
+                    int item_index = 0; Sprite sprite_to_render = null;
+                    if (weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) 
+                    { 
+                        item_index = weapon_extra_data;
+                        sprite_to_render = gameController.GetChildTransformByName(gameController.template_ItemSpawner.transform, "ItemPowerup").GetComponent<ItemPowerup>().powerup_sprites[item_index];
+                    }
+                    else
+                    {
+                        item_index = weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH;
+                        sprite_to_render = gameController.GetChildTransformByName(gameController.template_ItemSpawner.transform, "ItemWeapon").GetComponent<ItemWeapon>().iweapon_sprites[item_index];
+
+                    }
+                    if (sprite_to_render != null) { sprite_Renderer.material.SetTexture("_MainTex", sprite_to_render.texture); }
+                }
+            }
+
+        }
+
+        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
         GetComponent<Rigidbody>().useGravity = false;
         GetComponent<Rigidbody>().velocity = Vector3.zero;
         GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
@@ -212,7 +263,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             use_timer += Time.deltaTime;
             use_ready = false;
  
-            if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.Rocket && weapon_type != (int)weapon_type_name.SuperLaser)
+            if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.Rocket && weapon_type != (int)weapon_type_name.SuperLaser && weapon_type != (int)weapon_type_name.ThrowableItem)
             {
                 if (!animate_handled_by_hurtbox) { animate_pct = Mathf.Lerp(animate_stored_pct, 0.0f, (float)((use_timer - animate_stored_use_timer) / (use_cooldown - animate_stored_use_timer))); }
             }
@@ -265,12 +316,12 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 if (Networking.LocalPlayer.IsUserInVR())
                 {
-                    transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward * 0.5f);
+                    transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f);
                 }
                 else if (!Networking.LocalPlayer.IsUserInVR())
                 {
                     //transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward);
-                    transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + new Vector3(1.0f, 0.0f, 0.0f);
+                    transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f, 0.0f, 0.0f);
 
                 }
             }
@@ -407,7 +458,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         //if (transform.GetComponent<VRCPickup>().currentPlayer == Networking.LocalPlayer)
         if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
-            var keep_parent = false;
+            bool keep_parent = false;
             Vector3 pos_start = transform.position;
             // Play the firing sound, if applicable
             float pitch_low = 0.5f; float pitch_high = 1.5f;
@@ -417,10 +468,10 @@ public class PlayerWeapon : UdonSharpBehaviour
             else if (weapon_type == (int)weapon_type_name.MegaGlove) { pitch_low = 0.5f; pitch_high = 0.75f; keep_parent = true; }
             else if (weapon_type == (int)weapon_type_name.Rocket) { pitch_low = 1.0f; pitch_high = 1.0f; keep_parent = false; }
             else if (weapon_type == (int)weapon_type_name.SuperLaser) { pitch_low = 1.0f; pitch_high = 1.0f; keep_parent = false; }
-            else if (weapon_type == (int)weapon_type_name.Bomb) 
+            else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem) 
             { 
                 pitch_low = 1.0f; pitch_high = 1.0f; keep_parent = false; 
-                if (gameController.local_plyAttr != null) { pos_start += Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+                if (gameController.local_plyAttr != null) { pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
             }
 
             gameController.PlaySFXFromArray(
@@ -432,24 +483,27 @@ public class PlayerWeapon : UdonSharpBehaviour
 
             if (weapon_temp_ammo != -1) { weapon_temp_ammo--; }
 
-            var distance = 0.0f;
+            float distance = 0.0f;
             if (keep_parent) { distance = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Distance]; }
             else
             {
                 distance = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Distance];
             }
-
-            var plyAttr = gameController.local_plyAttr;
+            
+            PlayerAttributes plyAttr = gameController.local_plyAttr;
             if (plyAttr == null) { return; }
+            distance *= plyAttr.ply_scale; // scale distance with player size
+
+            if (weapon_type != (int)weapon_type_name.ThrowableItem) { weapon_extra_data = 0; }
+
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateProjectile"
                 , weapon_type
                 , pos_start
                 , transform.rotation //, Networking.LocalPlayer.GetTrackingData(handdt).rotation
-                , distance * plyAttr.ply_scale // scale distance with player size
+                , new Vector3(distance, plyAttr.ply_scale, weapon_extra_data)
                 , velocity_stored
                 , keep_parent
-                , plyAttr.ply_scale
                 , Networking.LocalPlayer.playerId);
         }
     }
@@ -458,7 +512,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     {
         if (gameController == null) { return; }
         if (!use_ready) { return; }
-        if (weapon_type == (int)weapon_type_name.Bomb) 
+        if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem) 
         {
             if (!waiting_for_toss)
             {
@@ -520,7 +574,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public override void OnPickup()
     {
-        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && weapon_type == (int)weapon_type_name.Bomb);
+        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
     }
 
     private void TossWeapon()
@@ -529,12 +583,12 @@ public class PlayerWeapon : UdonSharpBehaviour
         // If it's a throwable and has just been thrown, however, we want to create a flying projectile in its direction
         if (!Networking.GetOwner(gameObject).IsUserInVR())
         {
-            Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward;
+            Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
             float throwForce = 11.0f;
             velocity_stored = GetComponent<Rigidbody>().velocity + (throwDir * throwForce);
         }
         else { velocity_stored = GetComponent<Rigidbody>().velocity; }
-        UnityEngine.Debug.Log("[WEAPON_TEST] THROW A BOMB AT VELOCITY " + velocity_stored.ToString());
+        UnityEngine.Debug.Log("[WEAPON_TEST] THROW WEAPON AT VELOCITY " + velocity_stored.ToString());
 
         FireWeapon();
         waiting_for_toss = false;
@@ -553,7 +607,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         //Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, duration, amplitude, frequency);
         
         // Set the haptic on cooldown after playing it
-        UnityEngine.Debug.Log("PLAY HAPTIC EVENT OF TYPE " + event_type + " WHERE CURRENT COOLDOWN TYPE IS " + haptic_cooldown_type + " WITH CURRENT COOLDOWN " + haptic_countdown + " THAT WILL BECOME " + haptic_cooldowns[Mathf.Max(0,event_type)]);
+        UnityEngine.Debug.Log("[HAPTIC_TEST] PLAY HAPTIC EVENT OF TYPE " + event_type + " WHERE CURRENT COOLDOWN TYPE IS " + haptic_cooldown_type + " WITH CURRENT COOLDOWN " + haptic_countdown + " THAT WILL BECOME " + haptic_cooldowns[Mathf.Max(0,event_type)]);
         haptic_cooldown_type = event_type;
         if (haptic_cooldowns.Length > event_type) { haptic_countdown = haptic_cooldowns[event_type]; }
         else { haptic_countdown = 1.0f; }

@@ -60,7 +60,7 @@ public class GameController : UdonSharpBehaviour
     [Header("References")]
     [SerializeField] public GameObject template_WeaponProjectile;
     [SerializeField] public GameObject template_WeaponHurtbox;
-    [SerializeField] public GameObject template_ItemPowerup;
+    [SerializeField] public GameObject template_ItemSpawner;
     [SerializeField] public Sprite Sprite_None;
     [SerializeField] public Material skybox;
     [SerializeField] public Texture default_skybox_tex;
@@ -412,19 +412,31 @@ public class GameController : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
         }
-        else if (weapon_type == (int)weapon_type_name.Bomb)
+        else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
             weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
             weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
             // To emulate a "projectile speed", we can determine the distance based on projectile time
             weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 100.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
+            if (weapon_type == (int)weapon_type_name.Bomb)
+            {
+                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
+                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
+            }
+            else if (weapon_type == (int)weapon_type_name.ThrowableItem)
+            {
+                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.ItemProjectile;
+                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 0.0f; 
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ItemHit;
+            }
         }
         else if (weapon_type == (int)weapon_type_name.SuperLaser)
         {
@@ -2217,7 +2229,7 @@ public class GameController : UdonSharpBehaviour
         //var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
         // plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
         if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.GetComponent<PlayerWeapon>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType(); }
-        if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true); }
+        if (local_plyhitbox != null && !local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true); }
         ToggleReadyRoomCollisions(false);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_arena_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
@@ -2241,9 +2253,13 @@ public class GameController : UdonSharpBehaviour
 
     // -- Weapon Handling --
     [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, float distance, Vector3 fire_velocity, bool keep_parent, float player_scale, int player_id)
+    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id)
     {
         float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
+
+        float distance = float_in.x;
+        float player_scale = float_in.y;
+        byte extra_data = (byte)float_in.z;
 
         var newProjectileObj = Instantiate(template_WeaponProjectile, transform);
         newProjectileObj.transform.parent = null;
@@ -2261,10 +2277,11 @@ public class GameController : UdonSharpBehaviour
         projectile.owner_scale = player_scale;
         projectile.template_WeaponHurtbox = template_WeaponHurtbox;
         projectile.gameController = this;
+        projectile.extra_data = extra_data;
         /*if (keep_parent_ext <= 0) { projectile.keep_parent = false; }
         else { projectile.keep_parent = true; }*/
         projectile.keep_parent = keep_parent;
-        if (weapon_type != (int)weapon_type_name.Bomb) { projectile.GetComponent<Rigidbody>().velocity = Vector3.zero; }
+        if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem) { projectile.GetComponent<Rigidbody>().velocity = Vector3.zero; }
 
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
         if (player != null)
@@ -2280,7 +2297,7 @@ public class GameController : UdonSharpBehaviour
                     projectile.weapon_parent = weaponObj;
                     projectile.pos_start = weaponObj.transform.position;
                 }
-                else if (weapon_type == (int)weapon_type_name.Bomb)
+                else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
                 {
                     projectile.GetComponent<Rigidbody>().velocity = fire_velocity;
                     //if (!player.IsUserInVR()) { projectile.GetComponent<Rigidbody>().AddForce(Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 15.0f); }
@@ -2312,11 +2329,13 @@ public class GameController : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateHurtBox(Vector3 position, Vector3 origin, Quaternion rotation, Vector3 float_in, bool keep_parent, int player_id, int weapon_type)
+    public void NetworkCreateHurtBox(Vector3 position, Vector3 origin, Quaternion rotation, Vector4 float_in, bool keep_parent, int player_id, int weapon_type)
     {
         float damage = float_in.x;
         float player_scale = float_in.y;
         float dist_scale = float_in.z;
+        byte extra_data = (byte)float_in.w;
+
         var newHurtboxObj = Instantiate(template_WeaponHurtbox, transform);
 
         newHurtboxObj.transform.parent = null;
@@ -2376,6 +2395,7 @@ public class GameController : UdonSharpBehaviour
         hurtbox.gameController = this;
         hurtbox.weapon_type = weapon_type;
         hurtbox.origin = origin;
+        hurtbox.extra_data = extra_data;
         hurtbox.SetMesh();
         //hurtbox.local_offset = actual_distance;
         newHurtboxObj.SetActive(true);
@@ -2971,6 +2991,7 @@ public class GameController : UdonSharpBehaviour
         else if (cleanStr == "hyperglove") { output = (int)weapon_type_name.HyperGlove; }
         else if (cleanStr == "megaglove") { output = (int)weapon_type_name.MegaGlove; }
         else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
+        else if (cleanStr == "throwableitem") { output = (int)weapon_type_name.ThrowableItem; }
         return output;
     }
 
@@ -3003,6 +3024,8 @@ public class GameController : UdonSharpBehaviour
         else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = "Hyper Glove"; }
         else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = "Mega Glove"; }
         else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = "Superlaser"; }
+        else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = "Item Explosion"; }
+
         else { output = "(PLACEHOLDER)"; }
         return output;
     }
