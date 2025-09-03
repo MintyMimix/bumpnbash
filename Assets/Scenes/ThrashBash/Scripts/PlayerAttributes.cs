@@ -240,7 +240,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void HitOtherPlayer(int attacker_id, int damage_type)
+    public void HitOtherPlayer(int attacker_id, int damage_type, Vector3 forceOrigin)
     {
         // Only the attacker should have a registered hit
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
@@ -248,10 +248,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         combo_send++;
 
         TryHapticEvent((int)game_sfx_name.HitSend);
+        // To-do: show damage number at forceOrigin
     }
 
     [NetworkCallable]
-    public void ReceiveDamage(float damage, Vector3 forceDirection, int attacker_id, int damage_type, bool hit_self)
+    public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 forceOrigin, int attacker_id, int damage_type, bool hit_self)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
         if (ply_state != (int)player_state_name.Alive) { return; }
@@ -305,10 +306,16 @@ public class PlayerAttributes : UdonSharpBehaviour
                 last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
                 last_hit_by_timer = 0.0f;
                 var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
-                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type);
+                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type, forceOrigin);
             }
 
             TryHapticEvent((int)game_sfx_name.HitReceive);
+        }
+
+        // Damage indicator
+        if (gameController.local_uiplytoself != null)
+        {
+            gameController.local_uiplytoself.ShowPainIndicator(calcDmg, forceOrigin);
         }
     }
 

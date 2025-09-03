@@ -101,7 +101,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
 
         // VR-specific messages
-        local_tutorial_message_str_vr[(int)weapon_type_name.Bomb] = gameController.WeaponTypeToStr((int)weapon_type_name.Bomb).ToUpper() + ": Push Trigger to activate, then toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
+        local_tutorial_message_str_vr[(int)weapon_type_name.Bomb] = gameController.WeaponTypeToStr((int)weapon_type_name.Bomb).ToUpper() + ": Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
         local_tutorial_message_str_vr[(int)weapon_type_name.SuperLaser] = gameController.WeaponTypeToStr((int)weapon_type_name.SuperLaser).ToUpper() + ": Hold down your Trigger to charge it up and fire a huge beam!";
 
     }
@@ -146,21 +146,14 @@ public class PlayerWeapon : UdonSharpBehaviour
                 if ((weapon_type == (int)weapon_type_name.Rocket || weapon_type == (int)weapon_type_name.Bomb) && m_Renderer.materials.Length > 1) { weapon_mat = m_Renderer.materials[1]; } 
                 particle_main.startColor = new Color(weapon_mat.GetColor("_Color").r, weapon_mat.GetColor("_Color").g, weapon_mat.GetColor("_Color").b, 1.0f);
             }
-            if (Networking.GetOwner(gameObject).IsUserInVR())
-            {
-                particle.GetComponent<ParticleSystem>().Stop();
-                particle.gameObject.SetActive(false);
-            }
-            else
-            {
-                particle.gameObject.SetActive(true);
-                particle.GetComponent<ParticleSystem>().Play();
-            }
+            particle.gameObject.SetActive(true);
+            particle.GetComponent<ParticleSystem>().Play();
         }
 
-        waiting_for_toss = false;
+        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR());
         GetComponent<Rigidbody>().useGravity = false;
         GetComponent<Rigidbody>().velocity = Vector3.zero;
+        local_weapon_type = weapon_type;
         return;
     }
 
@@ -172,6 +165,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         weapon_temp_timer = 0.0f;
         weapon_charge_timer = 0.0f;
         weapon_charge_duration = 0.0f;
+
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
         if (play_sfx)
         {
@@ -486,7 +480,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                 , pos_start
                 , transform.rotation //, Networking.LocalPlayer.GetTrackingData(handdt).rotation
                 , distance * plyAttr.ply_scale // scale distance with player size
-                , Networking.GetServerTimeInSeconds()
+                , velocity_stored
                 , keep_parent
                 , plyAttr.ply_scale
                 , Networking.LocalPlayer.playerId);
@@ -544,7 +538,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         { 
             weapon_is_charging = false;
             weapon_charge_timer = 0.0f;
-            if (snd_source_weaponcharge != null) { snd_source_weaponcharge.Stop(); }
+            if (use_ready && snd_source_weaponcharge != null) { snd_source_weaponcharge.Stop(); }
             if (weapon_type == (int)weapon_type_name.SuperLaser && animate_state != 2) { animate_state = 0; }
         }
     }

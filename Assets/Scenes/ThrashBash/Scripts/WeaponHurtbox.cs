@@ -27,12 +27,14 @@ public class WeaponHurtbox : UdonSharpBehaviour
 	[NonSerialized] public GameObject active_mesh;
 	[NonSerialized] public Collider active_collider;
 
-	[NonSerialized] public int hurtbox_state;
+    [NonSerialized] public Vector3 origin;
+    [NonSerialized] public int hurtbox_state;
     [NonSerialized] public float hurtbox_duration;
     [NonSerialized] public double hurtbox_start_ms;
     [NonSerialized] private double hurtbox_timer_local = 0.0f;
     [NonSerialized] private double hurtbox_timer_network = 0.0f;
     [NonSerialized] public float hurtbox_damage;
+    [NonSerialized] public float weapon_type; // Applies REGARDLESS OF weapon_parent
     [NonSerialized] public int[] players_struck;
     [NonSerialized] public Vector3 start_scale;
     //public bool struck_local = false;
@@ -57,6 +59,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
             m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
         }
+        if (origin == null) { origin = transform.position; }
     }
 
     public void SetMesh()
@@ -137,13 +140,14 @@ public class WeaponHurtbox : UdonSharpBehaviour
         if (weapon_parent != null) {
             LayerMask layers_to_hit = LayerMask.GetMask("PlayerHitbox", "Environment");
             Transform point_end_tf = null;
+            origin = weapon_rb.position;
             if (weapon_script != null && weapon_script.weapon_mdl != null && weapon_script.weapon_mdl.Length > weapon_script.weapon_type && weapon_script.weapon_mdl[weapon_script.weapon_type] != null)
             {
                 point_end_tf = weapon_script.weapon_mdl[weapon_script.weapon_type].transform.GetChild(0);
             }
             if (point_end_tf != null)
             {
-                bool ray_cast = Physics.Linecast(weapon_rb.position, point_end_tf.position, out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
+                bool ray_cast = Physics.Linecast(origin, point_end_tf.position, out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
                 Vector3 end_pos;
                 if (CheckCollider(hitInfo.collider)) { end_pos = hitInfo.point; }
                 else { end_pos = point_end_tf.position; }
@@ -155,12 +159,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
                     //float animThreshold = (50.0f / 60.0f); When it was originally one second long, we mapped to animation, but it makes no sense for the retract to have a hitbox, so let's just make it 100%
                     float animThreshold = 1.0f;
                     if (calcAnimPct >= animThreshold) { calcScale = 1.0f - (float)((hurtbox_timer_local - animThreshold) / (hurtbox_duration - animThreshold)); }
-                    rb.position = Vector3.Lerp(weapon_rb.position, weapon_rb.position + (weapon_rb.transform.right * (Vector3.Distance(weapon_rb.position, end_pos) / 2.0f)), calcScale);
+                    rb.position = Vector3.Lerp(origin, origin + (weapon_rb.transform.right * (Vector3.Distance(origin, end_pos) / 2.0f)), calcScale);
                     transform.rotation = weapon_parent.transform.rotation; // We don't use rb or MoveRotation() for this because the result is physics calculations that we don't need
                     rb.velocity = Vector3.zero;
                     SetGlobalScale(this.transform,
                         new Vector3(
-                        Mathf.Lerp(start_scale.x, start_scale.x + Vector3.Distance(weapon_rb.position, end_pos), calcScale),
+                        Mathf.Lerp(start_scale.x, start_scale.x + Vector3.Distance(origin, end_pos), calcScale),
                         start_scale.y,
                         start_scale.z
                         )
@@ -169,8 +173,8 @@ public class WeaponHurtbox : UdonSharpBehaviour
                     if (Networking.GetOwner(weapon_parent) == Networking.LocalPlayer)
                     {
                         //UnityEngine.Debug.Log("Distance comparison: " + Vector3.Distance(weapon_rb.position, end_pos) + " vs " + (Vector3.Distance(weapon_rb.position, point_end_tf.position)));
-                        float distanceCompare = Vector3.Distance(weapon_rb.position, end_pos) / Vector3.Distance(weapon_rb.position, point_end_tf.position);
-                        if (distanceCompare < 1.0f) { weapon_script.animate_pct = 0.5f * (Vector3.Distance(weapon_rb.position, end_pos) / Vector3.Distance(weapon_rb.position, point_end_tf.position)); }
+                        float distanceCompare = Vector3.Distance(origin, end_pos) / Vector3.Distance(origin, point_end_tf.position);
+                        if (distanceCompare < 1.0f) { weapon_script.animate_pct = 0.5f * (Vector3.Distance(origin, end_pos) / Vector3.Distance(origin, point_end_tf.position)); }
                         else { weapon_script.animate_pct = 0.999f; } // For some reason, 1.0f resets the animation
                         weapon_script.animate_stored_pct = weapon_script.animate_pct;
                         weapon_script.animate_handled_by_hurtbox = true;
@@ -179,9 +183,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
                 }
                 else
                 {
-                    transform.localScale = Vector3.Lerp(start_scale, start_scale * Vector3.Distance(weapon_rb.position, end_pos), 1.0f - (float)(hurtbox_timer_local / hurtbox_duration));
+                    transform.localScale = Vector3.Lerp(start_scale, start_scale * Vector3.Distance(origin, end_pos), 1.0f - (float)(hurtbox_timer_local / hurtbox_duration));
                 }
             }
+            
         }
     }
 
@@ -299,14 +304,26 @@ public class WeaponHurtbox : UdonSharpBehaviour
 		// Finally, calculate the force direction and tell the player they've been hit
 		//Vector3 force_dir = Vector3.Normalize(colliderOwner.GetPosition() - rb.position);
 		//force_dir = new Vector3(force_dir.x, 0, force_dir.z);
-		Vector3 force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPoint(colliderOwner.GetPosition())).normalized;
-		force_dir = new Vector3(force_dir.x, force_dir.y, force_dir.z);
+		Vector3 force_dir = Vector3.zero; Vector3 force_origin = Vector3.zero;
+        if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.Rocket) 
+        {
+            force_origin = active_collider.ClosestPointOnBounds(colliderOwner.GetPosition());
+            force_dir = (colliderOwner.GetPosition() - force_origin).normalized; 
+        }
+        else 
+        {
+            force_origin = active_collider.ClosestPointOnBounds(origin);
+            force_dir = (colliderOwner.GetPosition() - force_origin).normalized; 
+        }
+
+        
+        // force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPoint(colliderOwner.GetPosition())).normalized;
         //UnityEngine.Debug.Log("Force direction: " + force_dir.ToString() + " (old: " + Vector3.Normalize(colliderOwner.GetPosition() - rb.position) + ") ");
 
-		if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, owner_id, damage_type, false); }
+        if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, force_origin, owner_id, damage_type, false); }
         else
         {
-            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, owner_id, damage_type, true);
+            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, force_origin, owner_id, damage_type, true);
             var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
             gameController.PlaySFXFromArray(
                 plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type

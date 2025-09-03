@@ -1,27 +1,14 @@
 ﻿
-using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.IO;
-using Newtonsoft.Json.Linq;
 using Superbstingray;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Net.Sockets;
 using TMPro;
 using UdonSharp;
-using Unity.Burst.Intrinsics;
 using UnityEngine;
-using UnityEngine.Playables;
-using UnityEngine.ProBuilder;
-using UnityEngine.Rendering.PostProcessing;
-using UnityEngine.Windows;
 using VRC.SDK3.Components;
-using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Common;
-using VRC.Udon.Common.Interfaces;
 
 // A note on ENUM_LENGTH: this must ALWAYS BE LAST since we are using it as a shorthand for the length of an enumerator! (The typical method of typeof() is not supported in U#)
 public enum game_sfx_name
@@ -95,6 +82,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public TMP_InputField ui_round_option_goal_input_b;
 
     [SerializeField] public TMP_InputField ui_ply_option_dp;
+    [SerializeField] public TMP_InputField ui_ply_option_scale;
     [SerializeField] public TMP_InputField ui_ply_option_atk;
     [SerializeField] public TMP_InputField ui_ply_option_def;
     [SerializeField] public TMP_InputField ui_ply_option_speed;
@@ -685,6 +673,7 @@ public class GameController : UdonSharpBehaviour
             ui_round_teamplay_count_input.interactable = option_teamplay && !option_enforce_team_limits;
 
             ui_ply_option_dp.interactable = true;
+            ui_ply_option_scale.interactable = true;
             ui_ply_option_atk.interactable = true;
             ui_ply_option_def.interactable = true;
             ui_ply_option_speed.interactable = true;
@@ -714,6 +703,7 @@ public class GameController : UdonSharpBehaviour
             ui_round_teamplay_count_input.interactable = false;
 
             ui_ply_option_dp.interactable = false;
+            ui_ply_option_scale.interactable = false;
             ui_ply_option_atk.interactable = false;
             ui_ply_option_def.interactable = false;
             ui_ply_option_speed.interactable = false;
@@ -793,6 +783,7 @@ public class GameController : UdonSharpBehaviour
 
         // Starting & Advanced Options Parsing
         ui_ply_option_dp.text = Mathf.RoundToInt(plysettings_dp * 100.0f).ToString();
+        ui_ply_option_scale.text = Mathf.RoundToInt(plysettings_scale * 100.0f).ToString();
         ui_ply_option_atk.text = Mathf.RoundToInt(plysettings_atk * 100.0f).ToString();
         ui_ply_option_def.text = Mathf.RoundToInt(plysettings_def * 100.0f).ToString();
         ui_ply_option_speed.text = Mathf.RoundToInt(plysettings_speed * 100.0f).ToString();
@@ -878,6 +869,7 @@ public class GameController : UdonSharpBehaviour
         ui_updating = true;
 
         ui_ply_option_dp.text = "0";
+        ui_ply_option_scale.text = "100";
         ui_ply_option_atk.text = "100";
         ui_ply_option_def.text = "100";
         ui_ply_option_speed.text = "100";
@@ -983,13 +975,15 @@ public class GameController : UdonSharpBehaviour
         // Starting & Advanced Options Parsing
         int try_option_parse_dp = 0; Int32.TryParse(ui_ply_option_dp.text, out try_option_parse_dp); try_option_parse_dp = Mathf.Min(Mathf.Max(try_option_parse_dp, 0), 99999);
         plysettings_dp = 0.01f * (ushort)try_option_parse_dp;
-        int try_option_parse_atk = 1; Int32.TryParse(ui_ply_option_atk.text, out try_option_parse_atk); try_option_parse_atk = Mathf.Min(Mathf.Max(try_option_parse_atk, 1), 999);
+        int try_option_parse_scale = 1; Int32.TryParse(ui_ply_option_scale.text, out try_option_parse_scale); try_option_parse_scale = Mathf.Min(Mathf.Max(try_option_parse_scale, 1), 1000);
+        plysettings_scale = 0.01f * (ushort)try_option_parse_scale;
+        int try_option_parse_atk = 1; Int32.TryParse(ui_ply_option_atk.text, out try_option_parse_atk); try_option_parse_atk = Mathf.Min(Mathf.Max(try_option_parse_atk, 1), 1000);
         plysettings_atk = 0.01f * (ushort)try_option_parse_atk;
-        int try_option_parse_def = 1; Int32.TryParse(ui_ply_option_def.text, out try_option_parse_def); try_option_parse_def = Mathf.Min(Mathf.Max(try_option_parse_def, 0), 999);
+        int try_option_parse_def = 1; Int32.TryParse(ui_ply_option_def.text, out try_option_parse_def); try_option_parse_def = Mathf.Min(Mathf.Max(try_option_parse_def, 0), 1000);
         plysettings_def = 0.01f * (ushort)try_option_parse_def;
-        int try_option_parse_speed = 1; Int32.TryParse(ui_ply_option_speed.text, out try_option_parse_speed); try_option_parse_speed = Mathf.Min(Mathf.Max(try_option_parse_speed, 1), 999);
+        int try_option_parse_speed = 1; Int32.TryParse(ui_ply_option_speed.text, out try_option_parse_speed); try_option_parse_speed = Mathf.Min(Mathf.Max(try_option_parse_speed, 1), 1000);
         plysettings_speed = 0.01f * (ushort)try_option_parse_speed;
-        int try_option_parse_grav = 1; Int32.TryParse(ui_ply_option_grav.text, out try_option_parse_grav); try_option_parse_grav = Mathf.Min(Mathf.Max(try_option_parse_grav, -999), 999);
+        int try_option_parse_grav = 1; Int32.TryParse(ui_ply_option_grav.text, out try_option_parse_grav); try_option_parse_grav = Mathf.Min(Mathf.Max(try_option_parse_grav, -1000), 1000);
         plysettings_grav = 0.01f * (ushort)try_option_parse_grav;
 
         plysettings_weapon = ui_ply_option_weapon_dropdown.value;
@@ -998,17 +992,17 @@ public class GameController : UdonSharpBehaviour
 
         int try_option_parse_respawn_duration = 3; Int32.TryParse(ui_adv_option_respawn_duration.text, out try_option_parse_respawn_duration); try_option_parse_respawn_duration = Mathf.Min(Mathf.Max(try_option_parse_respawn_duration, 0), Mathf.RoundToInt(round_length - 1.0f));
         plysettings_respawn_duration = 1.0f * (ushort)try_option_parse_respawn_duration;
-        int try_option_parse_boss_scale_mod = 100; Int32.TryParse(ui_adv_option_boss_scale_mod.text, out try_option_parse_boss_scale_mod); try_option_parse_boss_scale_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_scale_mod, 0), 999);
+        int try_option_parse_boss_scale_mod = 100; Int32.TryParse(ui_adv_option_boss_scale_mod.text, out try_option_parse_boss_scale_mod); try_option_parse_boss_scale_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_scale_mod, 0), 1000);
         plysettings_boss_scale_mod = 0.01f * (ushort)try_option_parse_boss_scale_mod;
-        int try_option_parse_boss_atk_mod = 0; Int32.TryParse(ui_adv_option_boss_atk_mod.text, out try_option_parse_boss_atk_mod); try_option_parse_boss_atk_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_atk_mod, 0), 999);
+        int try_option_parse_boss_atk_mod = 0; Int32.TryParse(ui_adv_option_boss_atk_mod.text, out try_option_parse_boss_atk_mod); try_option_parse_boss_atk_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_atk_mod, 0), 1000);
         plysettings_boss_atk_mod = 0.01f * (ushort)try_option_parse_boss_atk_mod;
-        int try_option_parse_boss_def_mod = 0; Int32.TryParse(ui_adv_option_boss_def_mod.text, out try_option_parse_boss_def_mod); try_option_parse_boss_def_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_def_mod, 0), 999);
+        int try_option_parse_boss_def_mod = 0; Int32.TryParse(ui_adv_option_boss_def_mod.text, out try_option_parse_boss_def_mod); try_option_parse_boss_def_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_def_mod, 0), 1000);
         plysettings_boss_def_mod = 0.01f * (ushort)try_option_parse_boss_def_mod;
-        int try_option_parse_boss_speed_mod = 150; Int32.TryParse(ui_adv_option_boss_speed_mod.text, out try_option_parse_boss_speed_mod); try_option_parse_boss_speed_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_speed_mod, 0), 999);
+        int try_option_parse_boss_speed_mod = 150; Int32.TryParse(ui_adv_option_boss_speed_mod.text, out try_option_parse_boss_speed_mod); try_option_parse_boss_speed_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_speed_mod, 0), 1000);
         plysettings_boss_speed_mod = 0.01f * (ushort)try_option_parse_boss_speed_mod;
-        int ui_ply_option_item_frequency = 0; Int32.TryParse(ui_adv_option_item_frequency.text, out ui_ply_option_item_frequency); ui_ply_option_item_frequency = Mathf.Min(Mathf.Max(ui_ply_option_item_frequency, 1), 999);
+        int ui_ply_option_item_frequency = 0; Int32.TryParse(ui_adv_option_item_frequency.text, out ui_ply_option_item_frequency); ui_ply_option_item_frequency = Mathf.Min(Mathf.Max(ui_ply_option_item_frequency, 1), 1000);
         plysettings_item_frequency = 0.01f * (ushort)ui_ply_option_item_frequency;
-        int ui_ply_option_item_duration = 0; Int32.TryParse(ui_adv_option_item_duration.text, out ui_ply_option_item_duration); ui_ply_option_item_duration = Mathf.Min(Mathf.Max(ui_ply_option_item_duration, 1), 999);
+        int ui_ply_option_item_duration = 0; Int32.TryParse(ui_adv_option_item_duration.text, out ui_ply_option_item_duration); ui_ply_option_item_duration = Mathf.Min(Mathf.Max(ui_ply_option_item_duration, 1), 1000);
         plysettings_item_duration = 0.01f * (ushort)ui_ply_option_item_duration;
 
         RequestSerialization();
@@ -1133,10 +1127,14 @@ public class GameController : UdonSharpBehaviour
             local_plyAttr.plyEyeHeight_change = true;
         }
 
-        if (local_plyAttr != null) { local_plyAttr.ply_team = -2; }
+        if (local_plyAttr != null) { 
+            local_plyAttr.ply_team = (int)player_tracking_name.Unassigned;
+            local_plyAttr.ply_state = (int)player_state_name.Inactive;
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, true); 
+        }
         if (local_plyweapon != null) { local_plyweapon.GetComponent<VRCPickup>().Drop(); local_plyweapon.gameObject.SetActive(false); }
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, -2, false);
-
+        
+        room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
         ToggleReadyRoomCollisions(true);
     }
 
@@ -1151,6 +1149,7 @@ public class GameController : UdonSharpBehaviour
                 component.enabled = toggle;
             }
         }
+        room_ready_script.gameObject.GetComponent<Collider>().enabled = toggle;
     }
 
     // -- Round Management --
@@ -1162,6 +1161,7 @@ public class GameController : UdonSharpBehaviour
             if (i == map_selected) { mapscript_list[i].gameObject.SetActive(true); }
             else { mapscript_list[i].gameObject.SetActive(false); }
         }
+
         if (map_selected >= 0) { skybox.mainTexture = mapscript_list[map_selected].skybox_tex; }
         else { skybox.mainTexture = default_skybox_tex; }
         Vector3 plyPosRelativeToReadyRoom = Networking.LocalPlayer.GetPosition() - room_ready_script.gameObject.transform.position;
@@ -1210,6 +1210,10 @@ public class GameController : UdonSharpBehaviour
         int[][] ply_parent_arr = GetPlayersInGame();
         UnityEngine.Debug.Log("[DICT_TEST]: ROUND START - " + ConvertIntArrayToString(ply_parent_arr[0]) + " | " + ConvertIntArrayToString(ply_parent_arr[1]));
 
+        // We need to remove the extended map BEFORE we teleport the player
+        if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
+        else { mapscript_list[map_selected].room_game_extended.SetActive(false); }
+
         var gamemode_description = ModifyModeDescription(round_option_descriptions[option_gamemode]);
         var personal_description = "";
         var player_description = "";
@@ -1241,7 +1245,8 @@ public class GameController : UdonSharpBehaviour
             // To-do: IsNetworkSettled / IsClogged check for this player data
             PlayerAttributes playerData = FindPlayerAttributes(player);
             //UnityEngine.Debug.Log("You are in the game! After all, you, " + player.playerId + ", have the key " + ply_parent_arr[0][i] + " and value of " + ply_parent_arr[1][i] + "!");
-            TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length);
+            //TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length);
+            TeleportLocalPlayerToGameSpawnZone();
             ToggleReadyRoomCollisions(false);
             playerData.ply_deaths = 0;
             playerData.ply_dp = plysettings_dp;
@@ -1260,12 +1265,9 @@ public class GameController : UdonSharpBehaviour
             {
                 //playerData.ply_lives = option_goal_value_b;
                 playerData.ply_scale = plysettings_scale * plysettings_boss_scale_mod;
-                playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * plysettings_boss_scale_mod;
                 playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
                 playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
                 playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
-                playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
-                playerData.plyEyeHeight_change = true;
                 personal_description = "You are THE BIG BOSS! Crush everyone who stands in your way!";
             }
             else
@@ -1288,6 +1290,9 @@ public class GameController : UdonSharpBehaviour
                 }
             }
             plyWeaponObj.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType();
+            playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
+            playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+            playerData.plyEyeHeight_change = true;
         }
 
         if (option_gamemode == (int)gamemode_name.BossBash)
@@ -1332,9 +1337,6 @@ public class GameController : UdonSharpBehaviour
         if (VRCPlayerApi.GetPlayerById(gamemode_boss_id) != null) { personal_description = personal_description.Replace("$BOSS", VRCPlayerApi.GetPlayerById(gamemode_boss_id).displayName); }
         if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal); }
         if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team); }
-
-        if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
-        else { mapscript_list[map_selected].room_game_extended.SetActive(false); }
 
         if (!Networking.IsMaster) { return; }
         round_state = (int)round_state_name.Ready;
@@ -1679,8 +1681,10 @@ public class GameController : UdonSharpBehaviour
             {
                 int lowest_team = -3; int lowest_deaths = -1; int lowest_ply_id = -1;
                 int[] pointsPerTeam = CheckAllTeamPoints(ref lowest_team, ref lowest_deaths, ref lowest_ply_id, true);
+                UnityEngine.Debug.Log("[VICTORY_TEST] FITTING IN DEATHS PER TEAM: " + ConvertIntArrayToString(pointsPerTeam) + "; LOWEST TEAM: " + lowest_team + " LOWEST DEATHS: " + lowest_deaths + " LOWEST PLY ID: " + lowest_ply_id);
                 progress_arr = pointsPerTeam;
                 DictSort(ref leaderboard_arr, ref progress_arr, true);
+                UnityEngine.Debug.Log("[VICTORY_TEST] FITTING IN DEATHS PER TEAM SORTED: " + ConvertIntArrayToString(progress_arr) + "; LEADERBOARD: " + ConvertIntArrayToString(leaderboard_arr));
                 leader_name = team_names[leaderboard_arr[0]];
             }
             else
@@ -1688,7 +1692,9 @@ public class GameController : UdonSharpBehaviour
                 int total_deaths = 0;
                 int[] pointsPerPlayer = CheckSingleTeamPoints(0, ref total_deaths, true);
                 progress_arr = pointsPerPlayer;
+                UnityEngine.Debug.Log("[VICTORY_TEST] FITTING IN DEATHS PER PLAYER: " + ConvertIntArrayToString(pointsPerPlayer) + "; TOTAL DEATHS: " + total_deaths);
                 DictSort(ref leaderboard_arr, ref progress_arr, true);
+                UnityEngine.Debug.Log("[VICTORY_TEST] FITTING IN DEATHS PER TEAM SORTED: " + ConvertIntArrayToString(progress_arr) + "; LEADERBOARD: " + ConvertIntArrayToString(leaderboard_arr));
                 leader_name = VRCPlayerApi.GetPlayerById(leaderboard_arr[0]).displayName;
             }
         }
@@ -1746,6 +1752,12 @@ public class GameController : UdonSharpBehaviour
             }
         }
 
+        // Handle those who aren't in the game just in case
+        if (local_plyAttr != null && local_plyAttr.ply_team < 0 && local_plyAttr.ply_state != (int)player_state_name.Spectator) {
+            local_plyAttr.ply_state = (int)player_state_name.Inactive;
+            if (local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { TeleportLocalPlayerToReadyRoom(); }
+        }
+        
         for (int j = 0; j < mapscript_list[map_selected].map_item_spawns.Length; j++)
         {
             mapscript_list[map_selected].map_item_spawns[j].DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
@@ -1797,15 +1809,16 @@ public class GameController : UdonSharpBehaviour
             if (spawnzone == null
                 || (option_teamplay && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0)
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
+                || !spawnzone.gameObject.activeInHierarchy || !spawnzone.gameObject.activeSelf
                 ) { spawnZoneIndex = -1; }
         }
         // If no spawn is specified, try gettting the farthest away from all other players
         else
         {
             int[] eligible_spawns = GetEligibleSpawnsForPlayer(Networking.LocalPlayer.playerId);
-            UnityEngine.Debug.Log("Eligible spawns: " + eligible_spawns.Length);
             if (eligible_spawns != null && eligible_spawns.Length > 0) { spawnZoneIndex = GetSpawnFarthestFromPlayers(Networking.LocalPlayer.playerId, eligible_spawns); }
             if (spawnZoneIndex >= 0 && spawnZoneIndex < mapscript_list[map_selected].map_spawnzones.Length) { spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex]; }
+
         }
 
         // If we can't find the farthest spawn, pick one at random
@@ -1826,8 +1839,11 @@ public class GameController : UdonSharpBehaviour
         var rz = UnityEngine.Random.Range(min_z, max_z);
 
         platformHook.custom_force_unhook = true;
-        Quaternion rotateTo = Networking.LocalPlayer.GetRotation();
-        if (spawnzone.orient_towards != null) { rotateTo.SetFromToRotation(Networking.LocalPlayer.GetPosition(), spawnzone.orient_towards.position); }
+        Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
+        if (spawnzone.orient_towards != null)
+        {
+            rotateTo = RotateTowards(Networking.LocalPlayer.GetPosition(), spawnzone.orient_towards.position);
+        }
         Networking.LocalPlayer.TeleportTo(new Vector3(rx, spawnZoneBounds.center.y, rz), rotateTo);
         UnityEngine.Debug.Log("Teleporting player to spawn zone " + spawnZoneIndex);
         platformHook.custom_force_unhook = false;
@@ -1837,13 +1853,15 @@ public class GameController : UdonSharpBehaviour
     {
         Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
 
+        var plyWeapon = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        //plyWeapon.SetActive(false);
+        
+        if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
+        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+
         if (local_plyAttr != null)
         {
-            var plyWeapon = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
-            var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
-            plyWeapon.SetActive(false);
-            plyHitboxObj.SetActive(false);
-            if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
             if (local_plyAttr.ply_state != (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
@@ -1852,16 +1870,19 @@ public class GameController : UdonSharpBehaviour
             local_plyAttr.plyEyeHeight_change = true;
         }
         ToggleReadyRoomCollisions(true);
-        Quaternion faceScoreboard = new Quaternion();
-        faceScoreboard.SetFromToRotation(room_ready_spawn.transform.position, ui_round_scoreboard_canvas.transform.position);
+        Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
+        if (ui_round_scoreboard_canvas != null)
+        {
+            rotateTo = RotateTowards(Networking.LocalPlayer.GetPosition(), ui_round_scoreboard_canvas.transform.position);
+        }
         platformHook.custom_force_unhook = true;
-        Networking.LocalPlayer.TeleportTo(room_ready_spawn.transform.position, faceScoreboard); //faceScoreboard * Networking.LocalPlayer.GetRotation()
+        Networking.LocalPlayer.TeleportTo(room_ready_spawn.transform.position, rotateTo); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
     }
 
     // -- Weapon Handling --
     [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, float distance, double fire_start_ms, bool keep_parent, float player_scale, int player_id)
+    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, float distance, Vector3 fire_velocity, bool keep_parent, float player_scale, int player_id)
     {
         float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
 
@@ -1874,7 +1895,7 @@ public class GameController : UdonSharpBehaviour
         projectile.weapon_type = weapon_type;
         projectile.projectile_type = (int)stats_from_weapon[(int)weapon_stats_name.Projectile_Type];
         projectile.projectile_duration = stats_from_weapon[(int)weapon_stats_name.Projectile_Duration];
-        projectile.projectile_start_ms = fire_start_ms;
+        projectile.projectile_start_ms = Networking.GetServerTimeInSeconds();
         projectile.pos_start = fire_start_pos;
         projectile.projectile_distance = distance;
         projectile.owner_id = player_id;
@@ -1902,7 +1923,7 @@ public class GameController : UdonSharpBehaviour
                 }
                 else if (weapon_type == (int)weapon_type_name.Bomb)
                 {
-                    projectile.GetComponent<Rigidbody>().velocity = weaponObj.GetComponent<PlayerWeapon>().velocity_stored;
+                    projectile.GetComponent<Rigidbody>().velocity = fire_velocity;
                     //if (!player.IsUserInVR()) { projectile.GetComponent<Rigidbody>().AddForce(Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 15.0f); }
                     projectile.has_physics = true;
                     projectile.GetComponent<Rigidbody>().useGravity = true;
@@ -1932,8 +1953,11 @@ public class GameController : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateHurtBox(Vector3 position, Quaternion rotation, float damage, bool keep_parent, float player_scale, int player_id, int weapon_type, float dist_scale)
+    public void NetworkCreateHurtBox(Vector3 position, Vector3 origin, Quaternion rotation, Vector3 float_in, bool keep_parent, int player_id, int weapon_type)
     {
+        float damage = float_in.x;
+        float player_scale = float_in.y;
+        float dist_scale = float_in.z;
         var newHurtboxObj = Instantiate(template_WeaponHurtbox, transform);
 
         newHurtboxObj.transform.parent = null;
@@ -1950,7 +1974,7 @@ public class GameController : UdonSharpBehaviour
             scaleBias = 0.75f;
         }
 
-        newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * Mathf.Lerp(plysettings_scale, player_scale, scaleBias) * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
+        newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * Mathf.Lerp(1.0f, player_scale, scaleBias) * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
         newHurtboxObj.transform.position = position;
         newHurtboxObj.transform.rotation = rotation;
 
@@ -1991,6 +2015,8 @@ public class GameController : UdonSharpBehaviour
         hurtbox.damage_type = (int)GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage_Type];
         hurtbox.owner_id = player_id;
         hurtbox.gameController = this;
+        hurtbox.weapon_type = weapon_type;
+        hurtbox.origin = origin;
         hurtbox.SetMesh();
         //hurtbox.local_offset = actual_distance;
         newHurtboxObj.SetActive(true);
@@ -2220,9 +2246,9 @@ public class GameController : UdonSharpBehaviour
         {
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
             if (spawnzone == null
-                || (option_teamplay && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0)
+                || (option_teamplay && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
-                || (spawnzone.is_enabled == false)
+                || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
                 ) { continue; }
             spawnzones_from_full[spawnzone_count] = i;
             spawnzone_count++;
@@ -2240,14 +2266,15 @@ public class GameController : UdonSharpBehaviour
     public int GetSpawnFarthestFromPlayers(int player_id, int[] spawnzones)
     {
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
-        int[][] plyInGame = GetPlayersInGame();
-        if (player == null || spawnzones == null || plyInGame == null || plyInGame.Length < 2 || plyInGame[0].Length == 0 || spawnzones.Length == 0 || map_selected > mapscript_list.Length || mapscript_list[map_selected] == null || mapscript_list[map_selected].map_spawnzones == null) { return -1; }
+        int[][] plyInGame = GetPlayersInGame(); //|| plyInGame.Length < 2 
+        if (player == null || spawnzones == null || plyInGame == null || plyInGame[0].Length == 0 || spawnzones.Length == 0 || map_selected > mapscript_list.Length || mapscript_list[map_selected] == null || mapscript_list[map_selected].map_spawnzones == null) { return -1; }
+
         int team_id = GetGlobalTeam(player_id);
         float plyDistanceMax = 0.0f; int spawnzoneIndex = -1;
         LayerMask layers_to_hit = LayerMask.GetMask("PlayerHitbox");
         for (int i = 0; i < spawnzones.Length; i++)
         {
-            map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
+            map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[spawnzones[i]];
             if (spawnzone == null) { continue; }
             for (int j = 0; j < plyInGame[0].Length; j++)
             {
@@ -2257,6 +2284,9 @@ public class GameController : UdonSharpBehaviour
                 if (plyDistanceMax < testDistance) { testDistance = plyDistanceMax; spawnzoneIndex = i; }
             }
         }
+
+        // If we couldn't find anything, then just return a random eligible spawn
+        if (spawnzoneIndex == -1) { return UnityEngine.Random.Range(0, spawnzones.Length); }
 
         return spawnzoneIndex;
     }
@@ -2311,7 +2341,7 @@ public class GameController : UdonSharpBehaviour
         if (option_gm_goal == 1) { gamemode_description = gamemode_description.Replace("POINTS", "POINT").Replace("KOS", "KO").Replace("KNOCKOUTS", "KNOCKOUT"); }
         gamemode_description = gamemode_description.Replace("$LIVES", plysettings_lives.ToString());
         if (plysettings_lives == 1) { gamemode_description = gamemode_description.Replace("LIVES", "LIFE"); }
-        gamemode_description = gamemode_description.Replace("TIMES", "TIME");
+        if (option_gamemode == (int)gamemode_name.BossBash && option_gm_config_a == 1) { gamemode_description = gamemode_description.Replace("TIMES", "TIME"); }
         return gamemode_description;
     }
 
@@ -2648,53 +2678,28 @@ public class GameController : UdonSharpBehaviour
     public void DictSort(ref int[] keys, ref int[] values, bool ascending_sort = true, bool keys_only = false)
     {
         if (keys == null || values == null || keys.Length != values.Length) { return; }
-        if (ascending_sort) {
-            for (int i = keys.Length - 1; i >= 0; i--)
+
+        for (int i = 0; i < keys.Length; i++)
+        {
+            int selectedIndex = i;
+            for (int j = i + 1; j < keys.Length; j++)
             {
-                int minIndex = i;
-                for (int j = i - 1; j >= 0; j--)
+                // ASCENDING: use `<`, DESCENDING: use `>`
+                bool shouldSwap = ascending_sort ? values[j] < values[selectedIndex] : values[j] > values[selectedIndex];
+                if (shouldSwap)
                 {
-                    // Compare the values rather than keys
-                    if (values[j] < values[minIndex])
-                    {
-                        minIndex = j;
-                    }
-                }
-                // Swap the keys and the values
-                int temp = keys[i];
-                keys[i] = keys[minIndex];
-                keys[minIndex] = temp;
-                if (!keys_only)
-                {
-                    temp = values[i];
-                    values[i] = values[minIndex];
-                    values[minIndex] = temp;
+                    selectedIndex = j;
                 }
             }
-        }
-        else
-        {
-            for (int i = 0; i < keys.Length; i++)
+
+            int temp = keys[i];
+            keys[i] = keys[selectedIndex];
+            keys[selectedIndex] = temp;
+            if (!keys_only)
             {
-                int maxIndex = i;
-                for (int j = i + 1; j < keys.Length; j++)
-                {
-                    // Compare the values rather than keys
-                    if (values[j] > values[maxIndex])
-                    {
-                        maxIndex = j;
-                    }
-                }
-                // Swap the keys and the values
-                int temp = keys[i];
-                keys[i] = keys[maxIndex];
-                keys[maxIndex] = temp;
-                if (!keys_only)
-                {
-                    temp = values[i];
-                    values[i] = values[maxIndex];
-                    values[maxIndex] = temp;
-                }
+                temp = values[i];
+                values[i] = values[selectedIndex];
+                values[selectedIndex] = temp;
             }
         }
     }
@@ -2723,5 +2728,19 @@ public class GameController : UdonSharpBehaviour
         strOut += "}";
         return strOut;
     }
+
+    public Quaternion RotateTowards(Vector3 source_position, Vector3 target_position)
+    {
+        //Quaternion rotateTo = source_rotation;
+        Vector3 targetDir = (source_position - target_position).normalized;
+        //Vector3 headForward = rotateTo * Vector3.forward;
+        //if (noVertical) { headForward.y = 0; }
+        //headForward = headForward.normalized;
+        //float angleOffset = Vector3.SignedAngle(headForward, targetDir, Vector3.up);
+        //Quaternion.AngleAxis(-angleOffset, Vector3.up) * 
+        Quaternion rotateTo = Quaternion.LookRotation(targetDir, Vector3.up);
+        return rotateTo;
+    }
+
 }
 

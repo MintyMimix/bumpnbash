@@ -53,6 +53,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureOverlays;
     [NonSerialized] public TMP_Text[] PTSCaptureTexts;
 
+    [SerializeField] public GameObject PTSPainDirTemplate;
+
     [NonSerialized] public PlayerAttributes playerAttributes;
 
     // Fields used for demonstrating UI scale when modifying local options
@@ -390,7 +392,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             ui_demo_enabled = false;
             if (ui_show_intro_text) {
                 AddToTextQueue("This game is in development; there may be major bugs or issues!", Color.red);
-                AddToTextQueue(" -- ALPHA BUILD VERSION 0.17.1 --", Color.white);
+                AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.0 --", Color.white);
                 AddToTextQueue("Step in the square to join the game!", Color.white);
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
                 if (gameController != null && Networking.IsMaster) { gameController.ResetGameOptionsToDefault(false); }
@@ -752,6 +754,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
             PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
+            PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f); 
             //ppp_options.ui_separation * (5.0f / 3.0f)
             //ppp_options.ui_scale
         }
@@ -773,6 +776,16 @@ public class UIPlyToSelf : UdonSharpBehaviour
             Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI) + velAdd
             , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
             );
+    }
+
+    public void ShowPainIndicator(float damage, Vector3 point_towards)
+    {
+        GameObject indicator_obj = Instantiate(PTSPainDirTemplate);
+        UIPainIndicator indicator_script = indicator_obj.GetComponent<UIPainIndicator>();
+        indicator_script.pointTowards = point_towards;
+        indicator_script.duration = Mathf.Clamp(damage / 25.0f, indicator_script.min_duration, indicator_script.max_duration);
+        indicator_obj.SetActive(true);
+        indicator_script.StartTimer();
     }
 
 }

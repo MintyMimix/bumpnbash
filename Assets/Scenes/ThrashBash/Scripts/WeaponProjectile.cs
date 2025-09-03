@@ -229,19 +229,19 @@ public class WeaponProjectile : UdonSharpBehaviour
                     dist_scale = Vector3.Distance(pos_start, position) / owner_scale;
                     position = Vector3.Lerp(pos_start, position, 0.5f); 
                 }
+
             }
 
             gameController.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
                 , position
+                , pos_start
                 , rb.rotation
-                , damage
+                , new Vector3(damage, owner_scale, dist_scale)
                 , keep_parent
-                , owner_scale
                 , owner_id
                 , weapon_type
-                , dist_scale
                 );
         
             // Play the striking sound, if applicable

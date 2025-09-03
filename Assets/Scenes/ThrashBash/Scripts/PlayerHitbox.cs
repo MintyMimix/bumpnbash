@@ -81,12 +81,13 @@ public class PlayerHitbox : UdonSharpBehaviour
             {
                 SetMaterial((int)hitbox_mat_name.Default); 
             }
-            
-            if (gameObject.activeInHierarchy && (playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator))
-            {
-                gameObject.SetActive(false);
-            }
         }
+    }
+
+    [NetworkCallable] 
+    public void ToggleHitbox(bool toggle)
+    {
+        gameObject.SetActive(toggle);
     }
 
     public void SetMaterial(int index)

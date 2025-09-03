@@ -28,6 +28,11 @@ public class CaptureZone : UdonSharpBehaviour
     [NonSerialized] public int[] players_on_point;
     [NonSerialized] public int global_index;
 
+
+// To redo this, we'll have a global tracking array of POINTS, that will then be evaluated by a unique function in GameController for each team/player, evaluated against ALL PLAYERS / TEAMS, regardless of in-game or not (to prevent array fuckery with sorting from joining/leaving players).
+// Then, every interval, grant points to the array. Reset this interval timer every grant or capture.
+// Finally, don't grant the last point if it is contested (display "OVERTIME" instead).
+
     private void Start()
     {
         if (gameController == null)

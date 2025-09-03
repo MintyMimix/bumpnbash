@@ -88,6 +88,7 @@ public class ItemSpawner : UdonSharpBehaviour
     {
         if (player != Networking.LocalPlayer) { return; }
         wait_for_join_sync = true;
+        RequestSerialization();
     }
 
     public override void OnDeserialization()

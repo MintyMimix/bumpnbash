@@ -91,7 +91,7 @@ public class ItemGeneric : UdonSharpBehaviour
         var m_Renderer = GetComponent<MeshRenderer>();
         if (spawner_parent != null)
         {
-            if (spawner_parent.gameController.option_teamplay && team_id >= 0)
+            if (spawner_parent.gameController.option_teamplay && team_id >= 0 && team_id < gameController.team_count)
             {
                 m_Renderer.material.SetColor("_Color",
                     new Color32(
