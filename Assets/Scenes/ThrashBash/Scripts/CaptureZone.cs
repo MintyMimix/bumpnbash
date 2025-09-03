@@ -465,12 +465,12 @@ public class CaptureZone : UdonSharpBehaviour
         }
         else if (!is_locked)
         {
-            activeImage.color = Color.gray;
+            activeImage.color = Color.white;
             UITeamCBImage.sprite = gameController.team_sprites[0];
             displayText += "(OPEN)\n";
-            UITeamText.color = Color.gray;
-            UITimerText.color = Color.gray;
-            RecolorDisplayArea(Color.gray);
+            UITeamText.color = Color.white;
+            UITimerText.color = Color.white;
+            RecolorDisplayArea(Color.white);
         }
 
         if (contest_id >= 0)
@@ -569,6 +569,11 @@ public class CaptureZone : UdonSharpBehaviour
             { 
                 t.GetComponent<Renderer>().material.color = color;
             }
+            else if (t.GetComponent<ParticleSystem>() != null)
+            {
+                var particle_main = t.GetComponent<ParticleSystem>().main;
+                particle_main.startColor = color;
+            }
         }
     }
 
@@ -656,7 +661,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
         if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning)
         {
-            gameController.AddToLocalTextQueue("Cannot capture point while invulnerable!", Color.gray);
+            gameController.AddToLocalTextQueue("Cannot interact with point while invulnerable!", Color.gray);
         }
         
         // If we are not the master, signal to them that we entered the trigger

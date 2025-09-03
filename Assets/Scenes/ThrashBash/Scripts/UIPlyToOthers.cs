@@ -58,6 +58,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         // Sort out better without all the debug
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
+        round_ready = round_ready && !playerAttributes.ply_training;
         if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
         else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
 
@@ -96,13 +97,14 @@ public class UIPlyToOthers : UdonSharpBehaviour
         else { PTODefense.color = new Color32(255, 255, 255, 255); }
         PTODefense.text = DefenseText;
 
-        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
-        { 
+        if (playerAttributes.ply_team < gameController.team_colors.Length) 
+        {
+            int team = Mathf.Max(0, playerAttributes.ply_team);
             if (gameController.option_teamplay)
             {
-                PTOTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
+                PTOTeamFlagImage.color = gameController.team_colors[team];
                 PTOTeamCBSpriteImage.color = PTOTeamFlagImage.color;
-                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
+                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[team];
                 if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTOTeamCBSpriteImage.enabled = true; }
                 else { PTOTeamCBSpriteImage.enabled = false; }
                 PTOTeamFlagImage.enabled = !PTOTeamCBSpriteImage.enabled;
@@ -112,7 +114,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
             {
                 PTOTeamFlagImage.color = new Color32(255, 255, 255, 255);
                 PTOTeamCBSpriteImage.color = PTOTeamFlagImage.color;
-                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
+                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[0];
                 if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTOTeamCBSpriteImage.enabled = true; }
                 else { PTOTeamCBSpriteImage.enabled = false; }
                 PTOTeamFlagImage.enabled = !PTOTeamCBSpriteImage.enabled;

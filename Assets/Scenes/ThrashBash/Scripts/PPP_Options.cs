@@ -62,6 +62,10 @@ public class PPP_Options : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
+        else
+        {
+            ui_spectatortoggle.interactable = !(gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready);
+        }
     }
 
     public override void OnPlayerRestored(VRCPlayerApi player)  

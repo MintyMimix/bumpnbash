@@ -38,7 +38,8 @@ public class map_element_hazard : BouncePad
     public void DamagePlayer(VRCPlayerApi player)
     {
         if (gameController == null) { return; }
-        var plyAttr = gameController.FindPlayerAttributes(player);
+        //var plyAttr = gameController.FindPlayerAttributes(player);
+        PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr == null) { return; }
         if (plyAttr.hazard_timer < plyAttr.hazard_cooldown) { return; }
 
@@ -64,18 +65,22 @@ public class map_element_hazard : BouncePad
                 break;
         }
 
-        Vector3 hitSpot = GetComponent<Collider>().ClosestPointOnBounds(player.GetPosition()); 
-        plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, hitSpot, - 1, (int)damage_type_name.HazardBurn, false);
+        Vector3 hitSpot = GetComponent<Collider>().ClosestPointOnBounds(player.GetPosition());
+        // Since we are now only processing these events locally, just call your own plyAttr directly
+        //plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, hitSpot, -1, (int)damage_type_name.HazardBurn, false);
+        plyAttr.ReceiveDamage(current_damage, Vector3.zero, hitSpot, -1, (int)damage_type_name.HazardBurn, false);
         Bounce(player);
     }
 
     public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
+        if (player != Networking.LocalPlayer) { return; }
         DamagePlayer(player);
     }
 
     public override void OnPlayerCollisionStay(VRCPlayerApi player)
     {
+        if (player != Networking.LocalPlayer) { return; }
         DamagePlayer(player);
     }
 

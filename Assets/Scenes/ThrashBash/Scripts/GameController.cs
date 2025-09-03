@@ -116,6 +116,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public GameObject room_training_portal;
     [SerializeField] public GameObject room_training_hallway_spawn;
     [SerializeField] public GameObject room_training_arena_spawn;
+    [SerializeField] public GameObject room_spectator_portal;
 
     [SerializeField] public Mapscript[] mapscript_list;
     [NonSerialized][UdonSynced] public sbyte map_selected = -1;
@@ -286,6 +287,7 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public UIPlyToSelf local_uiplytoself;
     [NonSerialized] public PlayerAttributes local_plyAttr;
     [NonSerialized] public PlayerWeapon local_plyweapon;
+    [NonSerialized] public PlayerHitbox local_plyhitbox;
 
 
     // -- Initialization --
@@ -354,6 +356,8 @@ public class GameController : UdonSharpBehaviour
         snd_game_sfx_clips[(int)game_sfx_name.HitSend] = snd_game_sfx_clips_hitsend;
         snd_game_sfx_clips[(int)game_sfx_name.HitReceive] = snd_game_sfx_clips_hitreceive;
         snd_game_sfx_clips[(int)game_sfx_name.Announcement] = snd_game_sfx_clips_announcement;
+
+        room_spectator_portal.SetActive(false);
 
         RefreshSetupUI();
         ui_initialized = true;
@@ -535,11 +539,14 @@ public class GameController : UdonSharpBehaviour
             for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
             {
                 if (ply_tracking_dict_values_arr == null) { break; }
-                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby) { ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false); }
+                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby) 
+                { 
+                    ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false);
+                }
             }
-            TeleportLocalPlayerToReadyRoom(); // Failsafe in case the master gets left behind in the arena. Sometimes occurs if they are the last Infected.
-            RefreshSetupUI();
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkTeleportToReadyRoom"); // Failsafe in case the master gets left behind in the arena or someone gets stuck in the Training Room. Sometimes occurs if they are the last Infected.
             RequestSerialization();
+            RefreshSetupUI();
         }
         else if (round_state == (int)round_state_name.Queued && local_timer_a >= queue_length)
         {
@@ -583,8 +590,12 @@ public class GameController : UdonSharpBehaviour
         if (local_plyAttr != null)
         {
             local_plyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
-            if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
-            else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+            if (local_plyAttr.ply_state == (int)player_state_name.Spectator) {
+                if (local_plyAttr.ply_team >= 0 || local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { local_plyAttr.ply_state = (int)player_state_name.Joined; }
+                else if (local_plyAttr.ply_team != (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+                else { } // If state & team are already spectator, leave as-is
+            }
+            else if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator && !local_plyAttr.ply_training) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
         }
 
         if (ui_round_mapselect != null)
@@ -605,10 +616,32 @@ public class GameController : UdonSharpBehaviour
             wait_for_sync_for_round_start = false;
         }
 
-        // Once a new player has received data, setup the correct map and teleport them
+        // Once a new player has received data, setup the correct map and teleport them as well as sync any hitbox or weapon active states
         if (wait_for_sync_for_player_join)
         {
             SetupMap();
+
+            for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
+            {
+                if (ply_tracking_dict_keys_arr == null || ply_tracking_dict_keys_arr.Length == 0) { break; }
+                if (ply_tracking_dict_keys_arr[i] < 0) { continue; }
+                VRCPlayerApi player = VRCPlayerApi.GetPlayerById(ply_tracking_dict_keys_arr[i]);
+                if (player == null) { continue; }
+                var plyAttributesObj = FindPlayerOwnedObject(player, "PlayerAttributes");
+                var plyAttributesComponent = plyAttributesObj.GetComponent<PlayerAttributes>();
+
+                if (plyAttributesComponent.ply_team >= 0 && plyAttributesComponent.ply_state != (int)player_state_name.Dead && plyAttributesComponent.ply_state != (int)player_state_name.Inactive)
+                {
+                    var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
+                    var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
+                    plyWeaponObj.SetActive(true);
+                    plyHitboxObj.SetActive(true);
+                }
+            }
+
+            if (round_state == (int)round_state_name.Ongoing || round_state == (int)round_state_name.Ready) { room_spectator_portal.SetActive(true); }
+            else { room_spectator_portal.SetActive(false); }
+
             wait_for_sync_for_player_join = false;
         }
 
@@ -1124,6 +1157,7 @@ public class GameController : UdonSharpBehaviour
             local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
             local_plyAttr = plyAttributesComponent;
             local_plyweapon = plyWeaponObj.GetComponent<PlayerWeapon>();
+            local_plyhitbox = plyHitboxObj.GetComponent<PlayerHitbox>();
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
             local_ppp_options.RefreshAllOptions();
 
@@ -1204,14 +1238,27 @@ public class GameController : UdonSharpBehaviour
             local_plyAttr.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
             local_plyAttr.plyEyeHeight_desired = local_plyAttr.plyEyeHeight_default;
             local_plyAttr.plyEyeHeight_change = true;
+            local_plyAttr.ply_training = false;
+            local_plyAttr.in_spectator_area = false;
+            local_plyAttr.ResetPowerups();
+            if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
         }
 
-        if (local_plyAttr != null) { 
-            local_plyAttr.ply_team = (int)player_tracking_name.Unassigned;
-            local_plyAttr.ply_state = (int)player_state_name.Inactive;
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, true); 
+        if (local_plyAttr != null) {
+            if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            else if (local_plyAttr.ply_state != (int)player_state_name.Spectator) {
+                local_plyAttr.ply_team = (int)player_tracking_name.Unassigned;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, false);
+                local_plyAttr.ply_state = (int)player_state_name.Inactive; 
+            }
+            else 
+            {
+                local_plyAttr.ply_team = (int)player_tracking_name.Spectator;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false);
+            }
         }
         if (local_plyweapon != null) { local_plyweapon.GetComponent<VRCPickup>().Drop(); local_plyweapon.gameObject.SetActive(false); }
+        if (!(mapscript_list == null || map_selected >= mapscript_list.Length || map_selected < 0)) { mapscript_list[map_selected].room_spectator_area.SetActive(false); }
         
         room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
         ToggleReadyRoomCollisions(true);
@@ -1241,10 +1288,21 @@ public class GameController : UdonSharpBehaviour
             Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
             AddToLocalTextQueue("You're Going To:", Color.white, load_length); 
             AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length);
-            if (local_plyAttr != null && local_plyAttr.ply_training && local_plyAttr.ply_team >= 0)
+            if (local_plyAttr != null)
             {
-                TeleportLocalPlayerToReadyRoom();
-                room_training_portal.SetActive(false);
+                if (local_plyAttr.ply_team >= 0 || local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby)
+                {
+                    room_training_portal.SetActive(false);
+                    if (local_plyAttr.ply_training)
+                    {
+                        local_plyAttr.ply_training = false;
+                        TeleportLocalPlayerToReadyRoom();
+                    }
+                }
+                else if (local_plyAttr.in_spectator_area)
+                {
+                    TeleportLocalPlayerToReadyRoom();
+                }
             }
         }
 
@@ -1256,12 +1314,14 @@ public class GameController : UdonSharpBehaviour
 
         if (map_selected >= 0) { skybox.mainTexture = mapscript_list[map_selected].skybox_tex; }
         else { skybox.mainTexture = default_skybox_tex; }
-        Vector3 plyPosRelativeToReadyRoom = Networking.LocalPlayer.GetPosition() - room_ready_script.gameObject.transform.position;
-        room_ready_script.gameObject.transform.position = mapscript_list[map_selected].map_readyroom_center.position; // To-do: comment this out and enable portals to spectator regions instead
-        platformHook.custom_force_unhook = true;
-        Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].map_readyroom_center.position + plyPosRelativeToReadyRoom, Networking.LocalPlayer.GetRotation());
-        platformHook.custom_force_unhook = false;
-        //mapscript_list[map_selected].transform.position = room_ready_spawn.transform.position + (Vector3.up * 80.0f);
+
+        // Old code for when the ready room itself was teleporting around
+        //Vector3 plyPosRelativeToReadyRoom = Networking.LocalPlayer.GetPosition() - room_ready_script.gameObject.transform.position;
+        //room_ready_script.gameObject.transform.position = mapscript_list[map_selected].map_readyroom_center.position; 
+        //platformHook.custom_force_unhook = true;
+        //Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].map_readyroom_center.position + plyPosRelativeToReadyRoom, Networking.LocalPlayer.GetRotation());
+        //platformHook.custom_force_unhook = false;
+        
         snd_game_music_source.transform.position = mapscript_list[map_selected].transform.position;
         snd_game_music_source.maxDistance = mapscript_list[map_selected].map_snd_radius;
         snd_game_music_source.minDistance = snd_game_music_source.maxDistance;
@@ -1298,6 +1358,8 @@ public class GameController : UdonSharpBehaviour
             voice_distance_far = voice_distance_near * 25;
             AdjustVoiceRange();
         }
+
+        mapscript_list[map_selected].room_spectator_area.SetActive(false);
 
         RefreshSetupUI();
     }
@@ -1340,7 +1402,7 @@ public class GameController : UdonSharpBehaviour
 
             if (!player.isLocal) { continue; }
 
-            room_training.SetActive(false);
+            //room_training.SetActive(false);
             room_training_portal.SetActive(false);
             // To-do: IsNetworkSettled / IsClogged check for this player data
             PlayerAttributes playerData = FindPlayerAttributes(player);
@@ -1396,6 +1458,8 @@ public class GameController : UdonSharpBehaviour
             playerData.plyEyeHeight_change = true;
         }
 
+        if (local_plyAttr.ply_team < 0) { room_training_portal.SetActive(true); }
+
         if (option_gamemode == (int)gamemode_name.BossBash)
         {
             PlaySFXFromArray(snd_game_music_source, mapscript_list[map_selected].snd_boss_music_clips, -1, 1, true);
@@ -1435,6 +1499,8 @@ public class GameController : UdonSharpBehaviour
         if (VRCPlayerApi.GetPlayerById(gamemode_boss_id) != null) { personal_description = personal_description.Replace("$BOSS", VRCPlayerApi.GetPlayerById(gamemode_boss_id).displayName); }
         if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal, ready_length); }
         if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team, ready_length); }
+
+        room_spectator_portal.SetActive(true);
 
         // -- Master Handling Below --
         if (!Networking.IsMaster) { return; }
@@ -1726,7 +1792,7 @@ public class GameController : UdonSharpBehaviour
                     (players_in_game_dict[0].Length == 0);
             }
         }
-        // For Clash &, we just need to check points
+        // For Clash, we just need to check points
         else if (option_gamemode == (int)gamemode_name.Clash)
         {
             if (option_teamplay)
@@ -1868,9 +1934,9 @@ public class GameController : UdonSharpBehaviour
 
         if (declare_victor)
         {
-            //UnityEngine.Debug.Log("[VICTORY_TEST] LEADERBOARD ARR: " + ConvertIntArrayToString(leaderboard_arr));
-            //UnityEngine.Debug.Log("[VICTORY_TEST] PROGRESS ARR: " + ConvertIntArrayToString(progress_arr));
-            //UnityEngine.Debug.Log("[VICTORY_TEST] LEADER NAME: " + leader_name);
+            UnityEngine.Debug.Log("[VICTORY_TEST] LEADERBOARD ARR: " + ConvertIntArrayToString(leaderboard_arr));
+            UnityEngine.Debug.Log("[VICTORY_TEST] PROGRESS ARR: " + ConvertIntArrayToString(progress_arr));
+            UnityEngine.Debug.Log("[VICTORY_TEST] LEADER NAME: " + leader_name);
             //if (option_teamplay) { UnityEngine.Debug.Log("[VICTORY TEST] LEADER NAME CAME FROM TEAM #" + leaderboard_arr[0] + " (" + team_names[leaderboard_arr[0]] + ") WITH PROGRESS: " + progress_arr[0]); }
         }
 
@@ -1913,18 +1979,12 @@ public class GameController : UdonSharpBehaviour
             if (player == Networking.LocalPlayer)
             {
                 if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
-                if (plyAttributes.ply_state != (int)player_state_name.Spectator) { plyAttributes.ply_state = (int)player_state_name.Inactive; }
+                if (plyAttributes.ply_state != (int)player_state_name.Spectator) { plyAttributes.ply_state = (int)player_state_name.Inactive; plyAttributes.ply_training = false; }
                 ToggleReadyRoomCollisions(true);
-                if (plyAttributes.ply_team >= 0 || plyAttributes.ply_team == (int)player_state_name.Spectator) { TeleportLocalPlayerToReadyRoom(); }
+                if (plyAttributes.ply_team >= 0 || plyAttributes.ply_team == (int)player_tracking_name.WaitingForLobby) { TeleportLocalPlayerToReadyRoom(); }
             }
         }
-
-        // Handle those who aren't in the game just in case
-        if (local_plyAttr != null && local_plyAttr.ply_team < 0 && local_plyAttr.ply_state != (int)player_state_name.Spectator) {
-            local_plyAttr.ply_state = (int)player_state_name.Inactive;
-            if (local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { TeleportLocalPlayerToReadyRoom(); }
-        }
-        
+                
         for (int j = 0; j < mapscript_list[map_selected].map_item_spawns.Length; j++)
         {
             mapscript_list[map_selected].map_item_spawns[j].DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
@@ -1988,8 +2048,8 @@ public class GameController : UdonSharpBehaviour
             }
         }
 
-        
-        
+        room_training_portal.SetActive(true);
+        room_spectator_portal.SetActive(false);
 
         restrict_map_change = false;
         RefreshSetupUI();
@@ -2017,9 +2077,17 @@ public class GameController : UdonSharpBehaviour
         else
         {
             int[] eligible_spawns = GetEligibleSpawnsForPlayer(Networking.LocalPlayer.playerId);
-            if (eligible_spawns != null && eligible_spawns.Length > 0) { spawnZoneIndex = GetSpawnFarthestFromPlayers(Networking.LocalPlayer.playerId, eligible_spawns); }
-            if (spawnZoneIndex >= 0 && spawnZoneIndex < mapscript_list[map_selected].map_spawnzones.Length) { spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex]; }
-
+            int index_within_eligible_spawns = -1;
+            if (eligible_spawns != null && eligible_spawns.Length > 0) 
+            { 
+                index_within_eligible_spawns = GetSpawnFarthestFromPlayers(Networking.LocalPlayer.playerId, eligible_spawns);
+                if (index_within_eligible_spawns < eligible_spawns.Length) { spawnZoneIndex = eligible_spawns[index_within_eligible_spawns]; }
+            }
+            if (spawnZoneIndex >= 0 && spawnZoneIndex < mapscript_list[map_selected].map_spawnzones.Length) 
+            {
+                spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex]; 
+            }
+            UnityEngine.Debug.Log("Eligible spawns: " + ConvertIntArrayToString(eligible_spawns) + "; farthest from players: " + spawnZoneIndex);
         }
 
         // If we can't find the farthest spawn, pick one at random
@@ -2051,27 +2119,50 @@ public class GameController : UdonSharpBehaviour
         platformHook.custom_force_unhook = false;
     }
 
+    [NetworkCallable]
+    public void NetworkTeleportToReadyRoom()
+    {
+        bool should_teleport = false;
+        if (local_plyAttr != null)
+        {
+            int global_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            should_teleport = (local_plyAttr.ply_training || Networking.IsMaster) && (local_plyAttr.ply_team >= 0 || global_team >= 0);
+            should_teleport = should_teleport || (local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby || global_team == (int)player_tracking_name.WaitingForLobby);
+            should_teleport = should_teleport || local_plyAttr.in_spectator_area;
+            if (should_teleport) { TeleportLocalPlayerToReadyRoom(); }
+        }
+    }
+
     public void TeleportLocalPlayerToReadyRoom()
     {
+        if (!room_ready_script.warning_acknowledged) { return; }
+
         Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
-        room_training.SetActive(false);
-        room_training_portal.SetActive(true);
-        var plyWeapon = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
-        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        //room_training.SetActive(false);
+        //var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        //var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
         //plyWeapon.SetActive(false);
-        
-        if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
-        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+
+        if (local_plyweapon != null && local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.GetComponent<VRCPickup>().Drop(); local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
+        if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
 
         if (local_plyAttr != null)
         {
             local_plyAttr.ply_training = false;
-            if (local_plyAttr.ply_state != (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+            local_plyAttr.in_spectator_area = false;
+            if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
+            {
+                local_plyAttr.ply_team = (int)player_tracking_name.Spectator;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false); 
+            }
+            else if (local_plyAttr.ply_state != (int)player_state_name.Dead) { local_plyAttr.ply_state = (int)player_state_name.Joined; }
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
             local_plyAttr.ply_scale = 1.0f;
             local_plyAttr.plyEyeHeight_desired = local_plyAttr.plyEyeHeight_default;
             local_plyAttr.plyEyeHeight_change = true;
+            UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Ready Room with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
         }
         ToggleReadyRoomCollisions(true);
         Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
@@ -2082,17 +2173,31 @@ public class GameController : UdonSharpBehaviour
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_ready_spawn.transform.position, rotateTo); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
+
+        if (!(mapscript_list == null || map_selected >= mapscript_list.Length || map_selected < 0)) { mapscript_list[map_selected].room_spectator_area.SetActive(false); }
     }
 
     public void TeleportLocalPlayerToTrainingHall()
     {
         Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
-        room_training.SetActive(true);
-        if (local_plyAttr != null) { local_plyAttr.ply_training = true; }
-        var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
-        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
-        plyWeaponObj.SetActive(true);
-        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+        //room_training.SetActive(true);
+        if (local_plyAttr != null) 
+        { 
+            local_plyAttr.ply_training = true; 
+            if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
+            {
+                local_plyAttr.ply_team = (int)player_tracking_name.Spectator;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false); 
+            }
+            else if (local_plyAttr.ply_team >= 0 || local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { local_plyAttr.ply_state = (int)player_state_name.Joined; }
+            else { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+            UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Training Hall with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
+        }
+        //var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        //var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType(); }
+        if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
         ToggleReadyRoomCollisions(false);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
@@ -2102,15 +2207,35 @@ public class GameController : UdonSharpBehaviour
     public void TeleportLocalPlayerToTrainingArena()
     {
         Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
-        room_training.SetActive(true);
-        if (local_plyAttr != null) { local_plyAttr.ply_training = true; local_plyAttr.ply_state = (int)player_state_name.Alive; }
-        var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
-        var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
-        plyWeaponObj.SetActive(true);
-        if (plyHitboxObj.GetComponent<PlayerHitbox>() != null) { plyHitboxObj.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true); }
+        //room_training.SetActive(true);
+        if (local_plyAttr != null) 
+        { 
+            local_plyAttr.ply_training = true; 
+            local_plyAttr.ply_state = (int)player_state_name.Alive;
+            UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Training Arena with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
+        }
+        //var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        // plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+        if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.GetComponent<PlayerWeapon>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType(); }
+        if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true); }
         ToggleReadyRoomCollisions(false);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_arena_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
+        platformHook.custom_force_unhook = false;
+    }
+
+    public void TeleportLocalPlayerToSpectatorArea()
+    {
+        if (mapscript_list == null || map_selected >= mapscript_list.Length || map_selected < 0) { return; }
+        mapscript_list[map_selected].room_spectator_area.SetActive(true);
+
+        if (local_plyAttr != null) { local_plyAttr.in_spectator_area = true; }
+        if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.GetComponent<PlayerWeapon>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
+        if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+
+        ToggleReadyRoomCollisions(false);
+        platformHook.custom_force_unhook = true;
+        Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].room_spectator_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
     }
 
@@ -2262,10 +2387,12 @@ public class GameController : UdonSharpBehaviour
         // Handle spectator intent
         if (spectator_desired && GetGlobalTeam(Networking.LocalPlayer.playerId) != (int)player_tracking_name.Spectator)
         {
+            local_plyAttr.ply_team = (int)player_tracking_name.Spectator;
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false);
         }
         else if (!spectator_desired && GetGlobalTeam(Networking.LocalPlayer.playerId) == (int)player_tracking_name.Spectator)
         {
+            local_plyAttr.ply_team = (int)player_tracking_name.Unassigned;
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, false);
         }
     }

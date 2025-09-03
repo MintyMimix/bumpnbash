@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
@@ -23,6 +24,9 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public ushort ply_points = 0;
     [NonSerialized] [UdonSynced] public ushort ply_deaths = 0;
     [NonSerialized] [UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
+    [NonSerialized] [UdonSynced] public bool ply_training = false;
+    [NonSerialized] [UdonSynced] public bool in_spectator_area = false;
+
     [NonSerialized] public ushort ply_lives_local; // We create local versions of these variables for other clients to compare to. If there is a mismatch, we can have events fire off OnDeserialization().
     [NonSerialized] public ushort ply_points_local = 0;
     [NonSerialized] public ushort ply_deaths_local = 0;
@@ -65,6 +69,9 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
     [NonSerialized] public bool plyEyeHeight_change = false;
 
+    [NonSerialized] public bool[] local_tutorial_message_bool;
+    [NonSerialized] public string[] local_tutorial_message_str_desktop;
+    [NonSerialized] public string[] local_tutorial_message_str_vr;
 
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
@@ -77,7 +84,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         powerups_active = new GameObject[0];
-
+        SetupTutorialMessages();
         SetDefaultEyeHeight();
     }
 
@@ -218,6 +225,13 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         if (prevHeight == 0) { SetDefaultEyeHeight(); }
+        // We should also allow users to change their default height in the ready roomw
+        else if (gameController != null && 
+            !(ply_state == (int)player_state_name.Alive || ply_state == (int)player_state_name.Respawning)
+            && !ply_training
+            && !plyEyeHeight_change // This is the key; if this is true, then we know it's the game saying to change the eye height, not the user
+            )
+        { SetDefaultEyeHeight(); }
         //else if (ply_scale == 1.0f && player.GetAvatarEyeHeightAsMeters() != prevHeight && plyEyeHeight_default != player.GetAvatarEyeHeightAsMeters()) { ResetDefaultEyeHeight(); }
     }
 
@@ -271,6 +285,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
 
         float baseLift = 0.66f; // 0.33f
+        if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
 
         /*if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
         else { modForceDirection += new Vector3(0.0f, baseLift / 2.0f, 0.0f); }
@@ -280,7 +295,10 @@ public class PlayerAttributes : UdonSharpBehaviour
         UnityEngine.Debug.Log("Resulting force direction: " + modForceDirection + " (input: " + forceDirection + ")");
         if (modForceDirection.magnitude < baseLift) { modForceDirection *= baseLift/modForceDirection.magnitude; }
         UnityEngine.Debug.Log("Resulting force direction after magnitude modification: " + modForceDirection);
-        float xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
+
+        // Old formula: float xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
+        // We swapped to the new one because Defense was both strong and unintuitive; having it meant you could be at 100% and not be knocked out easily while also receiving nerfed damage.
+        float xDmg = calcDmg + ply_dp;
         float calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
         // (100.0f + (xDmg / 3.0f))
         // / (1 + Mathf.Exp(-0.02f * (xDmg - 100.0f)));
@@ -312,9 +330,8 @@ public class PlayerAttributes : UdonSharpBehaviour
                 var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
                 plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, Networking.LocalPlayer.playerId, calcDmg, damage_type, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position);
             }
-
-            TryHapticEvent((int)game_sfx_name.HitReceive);
         }
+        TryHapticEvent((int)game_sfx_name.HitReceive);
 
         // Damage indicator
         if (gameController.local_uiplytoself != null)
@@ -323,16 +340,15 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
     }
 
-    // This is failing BECAUSE IT'S BEING RAN ON THE OTHER PLAYER'S ATTRIBUTE
     [NetworkCallable]
-    public void KillOtherPlayer(int attackerPlyId, int defenderPlyId)
+    public void KillOtherPlayer(int attackerPlyId, int defenderPlyId, bool defenderIsTraining)
     {
         //Debug.Log("Is owner? " + Networking.IsOwner(gameObject));
         //Debug.Log("LocalPlayer.playerId: " + Networking.LocalPlayer.playerId);
         //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
-        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
+        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill && !defenderIsTraining && !ply_training) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
@@ -347,7 +363,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Death], gameController.snd_game_sfx_clips[(int)game_sfx_name.Death]);
         TryHapticEvent((int)game_sfx_name.Death);
         ply_respawn_timer = 0;
-        if (ply_state == (int)player_state_name.Alive && gameController.round_state == (int)round_state_name.Ongoing)
+        if (ply_training)
+        {
+            // If we're in training mode, do nothing
+        }
+        else if (ply_state == (int)player_state_name.Alive && gameController.round_state == (int)round_state_name.Ongoing)
         {
             ply_state = (int)player_state_name.Respawning;
 
@@ -376,14 +396,14 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
 
         // Manage behavior based on gamemode
-        if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team != 1)
+        if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team != 1)
         {
             UnityEngine.Debug.Log("Requesting game master to change team to Infected...");
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, 1, false);
             ply_team = 1;
             ply_points = 0;
         }
-        else if (gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)
+        else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)
         {
             ply_scale += (float)((float)gameController.option_gm_config_a / 100.0f);
             plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
@@ -396,7 +416,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
         }
 
-        if (ply_lives > 0)
+        if (!ply_training && ply_lives > 0)
         {
             // Reset the player's damage value to default, unless this is Boss Bash or Fitting In and they fell off without being struck (anti-exploit measure)
             if (!(last_hit_by_ply == null && (gameController.option_gamemode == (int)gamemode_name.BossBash || gameController.option_gamemode == (int)gamemode_name.FittingIn)))
@@ -409,17 +429,23 @@ public class PlayerAttributes : UdonSharpBehaviour
                 && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
             else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
         }
-        else
+        else if (!ply_training)
         {
             gameController.TeleportLocalPlayerToReadyRoom();
             ply_state = (int)player_state_name.Dead;
-
+            gameController.room_training_portal.SetActive(true);
+        }
+        else
+        {
+            ply_dp = ply_dp_default;
+            gameController.TeleportLocalPlayerToTrainingHall();
         }
 
-        if (last_hit_by_ply != null) {
+        if (last_hit_by_ply != null)
+        {
             gameController.AddToLocalTextQueue("Knocked out by " + last_hit_by_ply.displayName + "!");
             var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
-            if (plyAttr != null) { plyAttr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId); }
+            if (plyAttr != null) { plyAttr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId, ply_training); }
             last_hit_by_ply = null;
         }
         else
@@ -510,6 +536,9 @@ public class PlayerAttributes : UdonSharpBehaviour
                     case (int)powerup_stat_name.Scale:
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale -= powerup.powerup_stat_value[i]; }
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale /= powerup.powerup_stat_value[i]; }
+
+                        if (ply_training) { ply_scale = Mathf.Clamp(ply_scale, 0.25f, 4.0f); }
+
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;
@@ -588,6 +617,87 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_jump_pressed = true;
         }
         else if (!value && ply_jump_pressed) { ply_jump_pressed = false; }
+    }
+
+    public void SetupTutorialMessages()
+    {
+        local_tutorial_message_bool = new bool[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
+        local_tutorial_message_str_desktop = new string[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
+        local_tutorial_message_str_vr = new string[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
+
+        // Tutorial messages for all      
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeUp] = "Increases size, range, and attack/defense! Be a massive threat!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeDown] = "Decreases size, range, and attack/defense, but increases movement speed! Be a hard to hit menace!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SpeedUp] = "Dramatically increases movement speed! Nyoom!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkUp] = "Multiplies damage dealt by a large factor!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkDown] = "Divides damage dealt by a large factor!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.DefUp] = "Divides damage received by a large factor!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.DefDown] = "Multiplies damage received by a large factor!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.LowGrav] = "Increases time spent in mid-air!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.PartialHeal] = "Removes 50% of damage dealt to the user!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.FullHeal] = "Removes 100% of damage dealt to the user!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.Multijump] = "Grants an additional jump while in mid-air!";
+
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = "Fire off projectiles that will explode in a radius! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox and is super fast! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+
+        for (int i = 0; i < (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH; i++)
+        {
+            local_tutorial_message_bool[i] = false;
+            if (local_tutorial_message_str_desktop[i] != "" && i < (int)powerup_type_name.ENUM_LENGTH)
+            {
+                local_tutorial_message_str_desktop[i] = gameController.PowerupTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i];
+            }
+            else if (local_tutorial_message_str_desktop[i] != "" && i >= (int)powerup_type_name.ENUM_LENGTH) 
+            { 
+                local_tutorial_message_str_desktop[i] = gameController.WeaponTypeToStr(i - (int)powerup_type_name.ENUM_LENGTH).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; 
+            }
+
+            local_tutorial_message_str_vr[i] = local_tutorial_message_str_desktop[i].Replace("fire key", "Trigger");
+        }
+
+        // VR-specific messages
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = gameController.WeaponTypeToStr((int)weapon_type_name.Bomb).ToUpper() + ": Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = gameController.WeaponTypeToStr((int)weapon_type_name.SuperLaser).ToUpper() + ": Hold down your Trigger to charge it up and fire a huge beam!";
+    }
+
+    public void ResetTutorialMessage(int item_type = -1)
+    {
+        if (local_tutorial_message_bool == null) { return; }
+        if (item_type < 0)
+        {
+            for (int i = 0; i < (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH; i++)
+            {
+                local_tutorial_message_bool[i] = false;
+            }
+        }
+        else
+        {
+            if (item_type >= local_tutorial_message_bool.Length) { return; }
+            local_tutorial_message_bool[item_type] = false;
+        }
+    }
+
+    public void SendTutorialMessage(int item_type)
+    {
+        // Send a tutorial message
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        {
+            if (Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_vr[item_type] != "") 
+            { 
+                gameController.AddToLocalTextQueue(local_tutorial_message_str_vr[item_type], Color.cyan, 8.0f); 
+            }
+            else if (!Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_desktop[item_type] != "") 
+            { 
+                gameController.AddToLocalTextQueue(local_tutorial_message_str_desktop[item_type], Color.cyan, 8.0f); 
+            }
+            local_tutorial_message_bool[item_type] = true;
+        }
     }
 
 }

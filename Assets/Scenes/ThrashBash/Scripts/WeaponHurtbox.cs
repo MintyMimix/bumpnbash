@@ -204,23 +204,24 @@ public class WeaponHurtbox : UdonSharpBehaviour
         rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by the player hitbox trigger 
 
         Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
-        if (owner_plyAttr != null && m_Renderer != null && owner_plyAttr.gameController.team_colors != null && owner_plyAttr.ply_team >= 0)
+        if (owner_plyAttr != null && m_Renderer != null && owner_plyAttr.gameController.team_colors != null)
         {
+            int team = Mathf.Max(0, owner_plyAttr.ply_team);
             if (owner_plyAttr.gameController.option_teamplay)
             {
                 m_Renderer.material.SetColor("_Color",
                     new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].b)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + owner_plyAttr.gameController.team_colors[team].b)),
                     (byte)0));
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor",
                     new Color32(
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].r)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].g)),
-                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].b)),
-                    (byte)owner_plyAttr.gameController.team_colors[owner_plyAttr.ply_team].a));
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + owner_plyAttr.gameController.team_colors[team].b)),
+                    (byte)owner_plyAttr.gameController.team_colors[team].a));
             }
             else
             {
@@ -263,17 +264,17 @@ public class WeaponHurtbox : UdonSharpBehaviour
         // Run this only if we are the owner of the hurtbox
         if (owner_id != Networking.LocalPlayer.playerId) { return; }
         // Check that we are colliding with an actual hitbox
-        var plyHitbox = other.gameObject.GetComponent<PlayerHitbox>();
+        PlayerHitbox plyHitbox = other.gameObject.GetComponent<PlayerHitbox>();
         if (plyHitbox == null) { return; }
         //processing_collider = true;
 
         // And check we're not colliding with our own hurtbox
-        var colliderOwner = Networking.GetOwner(plyHitbox.gameObject);
+        VRCPlayerApi colliderOwner = Networking.GetOwner(plyHitbox.gameObject);
         // Add the player struck to the exclusion list, regardless of if it is our own
         int[] players_ext = new int[players_struck.Length + 1];
         for (int i = 0; i < players_struck.Length; i++)
         {
-            if (players_struck[i] == colliderOwner.playerId) { return; }
+            if (players_struck[i] == colliderOwner.playerId) { return; } 
             players_ext[i] = players_struck[i];
         }
         players_ext[players_struck.Length] = colliderOwner.playerId;
@@ -282,11 +283,19 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
         // What if we had rocket jumping punches? (change hit_self = true to return if this breaks something)
         // Make sure that weapon_parent is null for this, otherwise it will always hit outselves
-        var hit_self = false;
-        if (colliderOwner.playerId == Networking.LocalPlayer.playerId) { 
-            if (other.gameObject.layer == LayerMask.NameToLayer("Environment")
-                && !(gameController.option_gamemode == (int)gamemode_name.BossBash && owner_plyAttr != null && owner_plyAttr.ply_team == 1)
-                && weapon_parent == null)
+        bool hit_self = false;
+        // To-do: check if hit_self will behave now that we have many other checks in place
+        if (colliderOwner.playerId == Networking.LocalPlayer.playerId) {
+
+            // Allow hit self only if...
+            bool allow_hit_self = false;
+            // The hurtbox is from an explosive weapon
+            allow_hit_self = (allow_hit_self) || (weapon_parent == null && damage_type == (int)damage_type_name.ForceExplosion);
+            // The hurtbox is a non-laser hitting the ground
+            allow_hit_self = (allow_hit_self) || (weapon_parent != null && other.gameObject.layer == LayerMask.NameToLayer("Environment") && damage_type != (int)damage_type_name.Laser);
+            // And we are not The Big Boss
+            allow_hit_self = (allow_hit_self) && !(gameController.option_gamemode == (int)gamemode_name.BossBash && owner_plyAttr != null && owner_plyAttr.ply_team == 1);
+            if (allow_hit_self)
             {
                 hit_self = true;
             }
@@ -322,7 +331,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
         else
         {
             gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, hitSpot, owner_id, damage_type, true);
-            var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
+            var plyWeapon = gameController.local_plyweapon;
             gameController.PlaySFXFromArray(
                 plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type
             );

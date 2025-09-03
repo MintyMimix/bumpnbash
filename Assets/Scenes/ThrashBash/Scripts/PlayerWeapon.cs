@@ -58,14 +58,10 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public int haptic_cooldown_type = -1;
 
     [NonSerialized] public bool waiting_for_toss = false;
-    [NonSerialized] public bool[] local_tutorial_message_bool;
-    [NonSerialized] public string[] local_tutorial_message_str_desktop;
-    [NonSerialized] public string[] local_tutorial_message_str_vr;
 
     void Start()
     {
         scale_inital = transform.localScale.x;
-        SetupTutorialMessages();
         /*if (is_secondary) 
         { 
             gameObject.SetActive(false);
@@ -75,34 +71,6 @@ public class PlayerWeapon : UdonSharpBehaviour
         ResetWeaponToDefault();
 
         if (pickup_component == null) { pickup_component = gameObject.GetComponent<VRCPickup>(); }
-
-    }
-
-    public void SetupTutorialMessages()
-    {
-        local_tutorial_message_bool = new bool[(int)weapon_type_name.ENUM_LENGTH];
-        local_tutorial_message_str_desktop = new string[(int)weapon_type_name.ENUM_LENGTH];
-        local_tutorial_message_str_vr = new string[(int)weapon_type_name.ENUM_LENGTH];
-
-        // Tutorial messages for all
-        local_tutorial_message_str_desktop[(int)weapon_type_name.PunchingGlove] = "";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.Rocket] = "Fire off projectiles that will explode!";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.BossGlove] = "";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage!";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire!";
-        local_tutorial_message_str_desktop[(int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam!";
-
-        for (int i = 0; i < (int)weapon_type_name.ENUM_LENGTH; i++)
-        {
-            local_tutorial_message_bool[i] = false;
-            local_tutorial_message_str_vr[i] = local_tutorial_message_str_desktop[i];
-            if (local_tutorial_message_str_desktop[i] != "") { local_tutorial_message_str_desktop[i] = gameController.WeaponTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; }
-        }
-
-        // VR-specific messages
-        local_tutorial_message_str_vr[(int)weapon_type_name.Bomb] = gameController.WeaponTypeToStr((int)weapon_type_name.Bomb).ToUpper() + ": Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
-        local_tutorial_message_str_vr[(int)weapon_type_name.SuperLaser] = gameController.WeaponTypeToStr((int)weapon_type_name.SuperLaser).ToUpper() + ": Hold down your Trigger to charge it up and fire a huge beam!";
 
     }
 
@@ -128,14 +96,6 @@ public class PlayerWeapon : UdonSharpBehaviour
                 if (i == weapon_type) { weapon_mdl[i].SetActive(true); }
                 else if (weapon_mdl[i] != null) { weapon_mdl[i].SetActive(false); }
             }
-        }
-
-        // Send a tutorial message
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[weapon_type])
-        {
-            if (Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_vr[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_vr[weapon_type], Color.cyan, 12.0f); }
-            else if (!Networking.LocalPlayer.IsUserInVR() && local_tutorial_message_str_desktop[weapon_type] != "") { gameController.AddToLocalTextQueue(local_tutorial_message_str_desktop[weapon_type], Color.cyan, 12.0f); }
-            local_tutorial_message_bool[weapon_type] = true;
         }
 
         Transform particle = gameController.GetChildTransformByName(weapon_mdl[weapon_type].transform, "Particle");
@@ -206,7 +166,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     public void ForceActive()
     {
         if (gameController == null || owner_attributes == null) { return; }
-        if (gameController.round_state == (int)round_state_name.Ongoing && owner_attributes.ply_team >= 0 && !gameObject.activeInHierarchy && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !gameObject.activeInHierarchy && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             gameObject.SetActive(true);
         }
@@ -272,12 +232,12 @@ public class PlayerWeapon : UdonSharpBehaviour
                 }
             }
         }
-        else if (gameController.round_state == (int)round_state_name.Ongoing && !use_ready)
+        else if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !use_ready)
         {
             use_ready = true;
             if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.SuperLaser) { animate_pct = 0.0f; animate_stored_pct = 1.0f; animate_stored_use_timer = 0.0f; animate_handled_by_hurtbox = false; }
         }
-        else if (gameController.round_state != (int)round_state_name.Ongoing && use_ready)
+        else if (!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && use_ready)
         {
             use_ready = false;
             if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.SuperLaser) { animate_pct = 0.0f; animate_stored_pct = 1.0f; animate_stored_use_timer = 0.0f; animate_handled_by_hurtbox = false; }
@@ -297,11 +257,11 @@ public class PlayerWeapon : UdonSharpBehaviour
             haptic_cooldown_type = -1;
         }
 
-        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
 
             // Reposition the object if we're not holding it
-            if (!pickup_component.IsHeld && owner_attributes != null && (owner_attributes.ply_state == (int)player_state_name.Alive || owner_attributes.ply_state == (int)player_state_name.Respawning || owner_attributes.ply_state == (int)player_state_name.Dead))
+            if (!pickup_component.IsHeld && owner_attributes != null && (owner_attributes.ply_state == (int)player_state_name.Alive || owner_attributes.ply_state == (int)player_state_name.Respawning || owner_attributes.ply_state == (int)player_state_name.Dead || owner_attributes.ply_training))
             {
                 if (Networking.LocalPlayer.IsUserInVR())
                 {
@@ -309,7 +269,9 @@ public class PlayerWeapon : UdonSharpBehaviour
                 }
                 else if (!Networking.LocalPlayer.IsUserInVR())
                 {
-                    transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward);
+                    //transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward);
+                    transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + new Vector3(1.0f, 0.0f, 0.0f);
+
                 }
             }
         }
@@ -369,9 +331,10 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
 
             Renderer m_Renderer = GetComponentInChildren<SkinnedMeshRenderer>();
-            if (m_Renderer != null && owner_attributes != null && gameController.team_colors != null && owner_attributes.ply_team >= 0)
+            if (m_Renderer != null && owner_attributes != null && gameController.team_colors != null)
             {
                 Material weapon_mat = m_Renderer.material; byte emissionOffset = 0;
+                int team = Mathf.Max(0, owner_attributes.ply_team);
                 if ((weapon_type == (int)weapon_type_name.Rocket || weapon_type == (int)weapon_type_name.Bomb) && m_Renderer.materials.Length > 1) { weapon_mat = m_Renderer.materials[1]; emissionOffset = 80; } // 127
                 else if (weapon_type == (int)weapon_type_name.SuperLaser) { emissionOffset = 0; } //67
                 if (gameController.option_teamplay)
@@ -379,17 +342,17 @@ public class PlayerWeapon : UdonSharpBehaviour
 
                     weapon_mat.SetColor("_Color",
                         new Color32(
-                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_attributes.ply_team].r)),
-                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_attributes.ply_team].g)),
-                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_attributes.ply_team].b)),
-                        (byte)gameController.team_colors[owner_attributes.ply_team].a));
+                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[team].r)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[team].g)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[team].b)),
+                        (byte)gameController.team_colors[team].a));
                     weapon_mat.EnableKeyword("_EMISSION"); 
                     weapon_mat.SetColor("_EmissionColor",
                         new Color32(
-                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[owner_attributes.ply_team].r)),
-                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[owner_attributes.ply_team].g)),
-                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[owner_attributes.ply_team].b)),
-                        (byte)gameController.team_colors[owner_attributes.ply_team].a));
+                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[team].r)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[team].g)),
+                        (byte)Mathf.Max(0, Mathf.Min(255, -emissionOffset + gameController.team_colors[team].b)),
+                        (byte)gameController.team_colors[team].a));
                 }
                 else
                 {
@@ -586,15 +549,22 @@ public class PlayerWeapon : UdonSharpBehaviour
         else if (event_type == (int)game_sfx_name.HitReceive && (haptic_cooldown_type == -1 || haptic_cooldown_type == (int)game_sfx_name.HitSend)) { duration = 2.0f; amplitude = 0.3f; frequency = 0.3f; }
         else if(event_type == (int)game_sfx_name.Kill && !(haptic_cooldown_type == (int)game_sfx_name.Kill || haptic_cooldown_type == (int)game_sfx_name.Death)) { duration = 2.0f; amplitude = 0.6f; frequency = 0.6f; }
         else if(event_type == (int)game_sfx_name.Death && haptic_cooldown_type != (int)game_sfx_name.Death) { duration = 2.0f; amplitude = 2.0f; frequency = 1.0f; }
-        //Networking.LocalPlayer.PlayHapticEventInHand(gameObject.GetComponent<VRCPickup>().currentHand, duration, amplitude, frequency);
+        //Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, duration, amplitude, frequency);
+        //Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, duration, amplitude, frequency);
+        
         // Set the haptic on cooldown after playing it
-        //UnityEngine.Debug.Log("PLAY HAPTIC EVENT OF TYPE " + event_type + " WHERE CURRENT COOLDOWN TYPE IS " + haptic_cooldown_type + " WITH COOLDOWN " + haptic_countdown " AND WILL BECOME " );
-
+        UnityEngine.Debug.Log("PLAY HAPTIC EVENT OF TYPE " + event_type + " WHERE CURRENT COOLDOWN TYPE IS " + haptic_cooldown_type + " WITH CURRENT COOLDOWN " + haptic_countdown + " THAT WILL BECOME " + haptic_cooldowns[Mathf.Max(0,event_type)]);
         haptic_cooldown_type = event_type;
         if (haptic_cooldowns.Length > event_type) { haptic_countdown = haptic_cooldowns[event_type]; }
         else { haptic_countdown = 1.0f; }
 
     }
 
+
+    [NetworkCallable]
+    public void ToggleActive(bool toggle)
+    {
+        gameObject.SetActive(toggle);
+    }
 
 }

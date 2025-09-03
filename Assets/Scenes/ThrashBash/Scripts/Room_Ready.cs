@@ -48,11 +48,12 @@ public class Room_Ready : UdonSharpBehaviour
         // Have the local player sync their own attribute stating readiness. PlayerAttributes syncs continously.
         if (player == Networking.LocalPlayer)
         {
+            if (!warning_acknowledged) { return; }
             PlayerAttributes plyAttr = gameController.local_plyAttr;
-            if (plyAttr != null && plyAttr.ply_state == (int)player_state_name.Inactive) { 
+            if (plyAttr != null && plyAttr.ply_state == (int)player_state_name.Inactive && !plyAttr.ply_training) { 
                 plyAttr.ply_state = (int)player_state_name.Joined; 
 
-                if (gameController.GetGlobalTeam(player.playerId) < 0 && plyAttr.ply_team < 0 && !plyAttr.ply_training)
+                if (gameController.GetGlobalTeam(player.playerId) < 0 && plyAttr.ply_team < 0)
                 {
                     if (gameController.round_state != (int)round_state_name.Start 
                         && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.WaitingForLobby
@@ -75,7 +76,7 @@ public class Room_Ready : UdonSharpBehaviour
 
     public override void OnPlayerTriggerExit(VRCPlayerApi player)
     {
-
+        if (!warning_acknowledged) { return; }
         // Have the local player sync their own attribute stating readiness. PlayerAttributes syncs continously.
         if (player == Networking.LocalPlayer)
         {

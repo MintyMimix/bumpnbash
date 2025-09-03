@@ -156,6 +156,8 @@ public class ItemSpawner : UdonSharpBehaviour
         // Events which only run when the timer ticks to zero below
         if (!ProcessTimer()) { return; }
 
+        // -- Master Only Below --
+        if (!Networking.IsMaster) { return; }
         // Only spawn the item if it's in a spawnable state
         if (item_spawn_state == (int)item_spawn_state_name.Spawnable)
         {
@@ -163,33 +165,13 @@ public class ItemSpawner : UdonSharpBehaviour
             if (!RollForSpawn()) { StartTimer(item_spawn_impulse * (1.0f / item_spawn_frequency_mul)); }
             else {
                 // Spawn the item
-                if (Networking.IsMaster)
-                {
-                    item_spawn_index = RollForItem(item_spawn_chances);
-                    /*if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && !item_spawn_powerups_enabled)
-                    {
-                        // If we rolled a powerup and powerups are disabled, restart the timer with quarter duration (we do not want this 0 in case the spawner ONLY spawns powerups)
-                        StartTimer(item_spawn_impulse * item_spawn_frequency_mul * 0.25f);
-                    }
-                    // Weapon
-                    else if (item_spawn_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH && !item_spawn_weapons_enabled)
-                    {
-                        // If we rolled a weapon and weapons are disabled, restart the timer with quarter duration (we do not want this 0 in case the spawner ONLY spawns weapons)
-                        StartTimer(item_spawn_impulse * item_spawn_frequency_mul * 0.25f);
-                    }*/
-                    //else
-                    //{
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
-                    //}
-                }
+                item_spawn_index = RollForItem(item_spawn_chances);
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
             }
          }
         else if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
-            if (Networking.IsMaster)
-            {
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true);
-            }
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true);
         }
     }
 

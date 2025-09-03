@@ -33,6 +33,8 @@ public class Mapscript : UdonSharpBehaviour
     [NonSerialized] public CaptureZone[] map_capturezones;
     [NonSerialized] public Transform[] map_campoints;
     [SerializeField] public GameObject room_game_extended;
+    [SerializeField] public GameObject room_spectator_area;
+    [SerializeField] public Transform room_spectator_spawn;
 
     // Unused, but store just to be safe
     [SerializeField] public byte max_players;

@@ -59,7 +59,8 @@ public class WeaponProjectile : UdonSharpBehaviour
                     if (owner_id >= 0)
                     {
                         int owner_team = gameController.GetGlobalTeam(owner_id);
-                        if (owner_team < 0) { continue; }
+                        owner_team = Mathf.Max(0, owner_team);
+                        //if (owner_team < 0) { continue; }
                         Renderer m_Renderer = projectile_mdl[i].GetComponent<Renderer>();
                         if (m_Renderer != null && gameController.team_colors != null && owner_team >= 0)
                         {

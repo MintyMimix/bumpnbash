@@ -463,13 +463,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
         if (ui_demo_enabled && !ui_show_intro_text) { PTSTopPanel.SetActive(true); }
+        else if (playerAttributes.ply_training) { PTSTopPanel.SetActive(true); }
         else if ((round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
         else if (!(round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
         float TimerValue = gameController.round_length - gameController.round_timer + 1.0f;
         string TimerText = Mathf.FloorToInt(TimerValue).ToString();
         PTSTimerTransform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
-        if (gameController.round_state == (int)round_state_name.Start) { TimerText = ""; }
+        if (gameController.round_state == (int)round_state_name.Start || (gameController.round_state == (int)round_state_name.Ongoing && !gameController.round_length_enabled)) { TimerText = "--"; }
         else if (gameController.round_state == (int)round_state_name.Ready) { TimerText = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString(); }
         else
         {
@@ -482,12 +483,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
             else { PTSTimer.color = Color.white; }
         }
-        if (gameController.round_state == (int)round_state_name.Ongoing && !gameController.round_length_enabled) { TimerText = "--"; }
         PTSTimer.text = TimerText;
         
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
-        if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
+        if (gameController.round_state == (int)round_state_name.Start && !playerAttributes.ply_training) { DamageText = ""; }
         PTSDamage.text = DamageText;
         PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp/100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
 
@@ -507,7 +507,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var AttackText = AttackVal + "x";
-        if (gameController.round_state == (int)round_state_name.Start) { AttackText = ""; }
+        if (gameController.round_state == (int)round_state_name.Start && !playerAttributes.ply_training) { AttackText = ""; }
         if (AttackVal > gameController.plysettings_atk) { PTSAttack.color = new Color32(60, 255, 60, 255); }
         else if (AttackVal < gameController.plysettings_atk) { PTSAttack.color = new Color32(255, 60, 60, 255); }
         else { PTSAttack.color = new Color32(255, 255, 255, 255); }
@@ -515,7 +515,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var DefenseText = DefenseVal + "x";
-        if (gameController.round_state == (int)round_state_name.Start) { DefenseText = ""; }
+        if (gameController.round_state == (int)round_state_name.Start && !playerAttributes.ply_training) { DefenseText = ""; }
         if (DefenseVal > gameController.plysettings_def) { PTSDefense.color = new Color32(60, 255, 60, 255); }
         else if (DefenseVal < gameController.plysettings_def) { PTSDefense.color = new Color32(255, 60, 60, 255); }
         else { PTSDefense.color = new Color32(255, 255, 255, 255); }
@@ -527,19 +527,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
         PTSTeamFlagImage.enabled = !PTSTeamCBSpriteImage.enabled;
         PTSTeamPoleImage.enabled = PTSTeamFlagImage.enabled;
 
-        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
+
+        if (gameController.option_teamplay && playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
         { 
-            if (gameController.option_teamplay) 
-            { 
-                PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
-            }
-            else 
-            { 
-                PTSTeamFlagImage.color = new Color32(255,255,255,255);
-            }
+            PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
             PTSTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
-            PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
+        else 
+        { 
+            PTSTeamFlagImage.color = new Color32(255,255,255,255);
+            PTSTeamCBSpriteImage.sprite = gameController.team_sprites[0];
+        }
+        PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
+ 
 
         string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
