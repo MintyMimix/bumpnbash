@@ -8,23 +8,22 @@ using VRC.SDKBase;
 using VRC.Udon;
 using static VRC.SDKBase.VRCPlayerApi;
 
-public enum projectile_state_name
+public enum projectile_type_name
 {
-    Inactive, Active, Waiting
+    Bullet, PunchingGlove, Rocket
 }
 
 public class WeaponProjectile : UdonSharpBehaviour
 {
+    
     public Vector3 pos_start;
     public float projectile_speed;
     public float projectile_lifetime;
     private float projectile_timer;
-    public int projectile_state;
+    public int projectile_type;
     public int owner_id;
-    private LayerMask layers_to_hit;
     public GameObject template_WeaponHurtbox;
-    public TMP_Text DebugTxt;
-    public int testNetwork = 0;
+    public GameController gameController;
 
     //To-do: when updating position, perform a ray trace to see if any objects in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed; if so, make the next position that instead
     void Start()
@@ -32,6 +31,62 @@ public class WeaponProjectile : UdonSharpBehaviour
         //layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox");
     }
 
+    private void Update()
+    {
+        if (projectile_timer < projectile_lifetime)
+        {
+            projectile_timer += Time.deltaTime;
+        }
+        else if (projectile_timer >= projectile_lifetime)
+        {
+            if (owner_id == Networking.LocalPlayer.playerId)
+            {
+                //gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkTest", projectile_id);
+                OnProjectileHit(transform.position);
+            }
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        // To-Do: change behavior based on projectile_type
+        var rb = this.GetComponent<Rigidbody>();
+        switch (projectile_type)
+        {
+            default:
+                rb.MovePosition(rb.position + transform.forward * projectile_speed);
+                break;
+        }
+    }
+
+
+    public void OnProjectileHit(Vector3 position)
+    {
+        if (owner_id != Networking.LocalPlayer.playerId) { return; }
+        gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkCreateHurtBox", position, 10.0f, 2.0f, owner_id, gameObject.GetInstanceID());
+        //if (owner_id != Networking.LocalPlayer.playerId) { return; }
+        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "CreateHurtBox", position, 10.0f, 2.0f, owner_id);
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        // Did we hit a hitbox?
+        if (other.gameObject.GetComponent<PlayerHitbox>() != null)
+        {
+            if (owner_id != Networking.GetOwner(other.gameObject).playerId)
+            {
+                OnProjectileHit(transform.position);
+            }
+        }
+        // Did we hit the environment?
+        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment"))
+        {
+            OnProjectileHit(transform.position);
+        }
+
+    }
+
+    /*
     [NetworkCallable]
     public void CreateHurtBox(Vector3 position, float damage, float lifetime, int player_id)
     {
@@ -60,14 +115,6 @@ public class WeaponProjectile : UdonSharpBehaviour
         testNetwork = 1;
     }
 
-    public void OnProjectileHit(Vector3 position)
-    {
-        projectile_state = (int)projectile_state_name.Waiting;
-        if (owner_id != Networking.LocalPlayer.playerId) { return; }
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "TestNetwork");
-        //if (owner_id != Networking.LocalPlayer.playerId) { return; }
-        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "CreateHurtBox", position, 10.0f, 2.0f, owner_id);
-    }
 
     private void Update()
     {
@@ -78,16 +125,6 @@ public class WeaponProjectile : UdonSharpBehaviour
             if (owner_id == Networking.LocalPlayer.playerId) { DebugTxt.text += "\nI will trigger events"; }
         }
 
-        // While active, count down lifetime timer, and set to remove when at max
-        /*if (projectile_state == 1 && projectile_timer < projectile_lifetime)
-        {
-            projectile_timer++;
-        }
-        else if (projectile_state == 1 && projectile_timer >= projectile_lifetime)
-        {
-            projectile_state = 2;
-        }*/
-
         // Update position based on:
         // (1) The lerp between startPos & endPos using projectile_speed, maxing at endPos
         // (2) If any objects are in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed
@@ -97,14 +134,6 @@ public class WeaponProjectile : UdonSharpBehaviour
             //var ray_cast = Physics.Raycast(transform.position, transform.forward, out RaycastHit hitInfo, projectile_speed, layers_to_hit, QueryTriggerInteraction.Collide);
             var rb = this.GetComponent<Rigidbody>();
             rb.MovePosition(rb.position + transform.forward * projectile_speed);
-            /*if (hitInfo.collider == null) { transform.position = transform.position + transform.forward * projectile_speed; }
-            else {
-                transform.position = hitInfo.point; 
-                //Debug.Log("WE HIT EM BOYS @ " + hitInfo.point.ToString() + " AND WE WILL HIT " + Networking.GetOwner(hitInfo.collider.gameObject).displayName);
-                OnProjectileHit(hitInfo.point);
-                // To-do: create hurtbox on collider; have collider be on environment too
-                // To-do: (on hurtbox) send networked event of having hit this guy, but only if you are the owner; otherwise, just delete self
-            } */
         }
-    }
+    }*/
 }
