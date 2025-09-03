@@ -32,7 +32,7 @@ public class PlayerHitbox : UdonSharpBehaviour
         gameObject.SetActive(network_active);
     }
 
-    public override void PostLateUpdate()
+    public override void PostLateUpdate() //ffo
     {
         if (playerAttributes != null && owner != null)
         {

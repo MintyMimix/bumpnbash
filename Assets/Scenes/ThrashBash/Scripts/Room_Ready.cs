@@ -8,6 +8,7 @@ using VRC.Udon;
 public class Room_Ready : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
+    [SerializeField] public Collider trigger_player;
     [SerializeField] public GameObject WarningCanvas;
     [SerializeField] public GameObject WarningPanel;
     [SerializeField] public GameObject monitor_obj;

@@ -759,6 +759,7 @@ MonoBehaviour:
   button_increment: {fileID: 3406523499913675547}
   button_decrement: {fileID: 1376480698498027129}
   caption: {fileID: 9026742652519246951}
+  caption_transform: {fileID: 5605747701759220179}
   wrap_value: 1
   min_value: 0
   max_value: 5

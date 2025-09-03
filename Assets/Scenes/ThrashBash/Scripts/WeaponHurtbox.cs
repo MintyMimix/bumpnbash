@@ -26,7 +26,8 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [SerializeField] public Collider[] hurtbox_colliders; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
 	[NonSerialized] public GameObject active_mesh;
 	[NonSerialized] public Collider active_collider;
-
+    [NonSerialized] public int global_index = -1;
+    [NonSerialized] public int ref_index = -1;
     [NonSerialized] public Vector3 origin;
     [NonSerialized] public float hurtbox_duration;
     //[NonSerialized] public double hurtbox_start_ms;
@@ -48,7 +49,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     [NonSerialized] public float local_offset;
     [NonSerialized] public PlayerAttributes owner_plyAttr;
-    [NonSerialized] private Rigidbody rb;
+    [SerializeField] public Rigidbody rb;
     [NonSerialized] private Rigidbody weapon_rb;
     [NonSerialized] private Transform particle;
     [NonSerialized] private LayerMask layers_to_hit;
@@ -59,11 +60,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
         //players_struck_list = new List<int>();
         rb = gameObject.GetComponent<Rigidbody>();
 
-        if (gameController != null && gameController.local_ppp_options != null)
-        {
-            Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
-            m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
-        }
         if (origin == null) { origin = transform.position; }
         layers_to_hit = LayerMask.GetMask("PlayerHitbox", "Environment");
 
@@ -74,6 +70,16 @@ public class WeaponHurtbox : UdonSharpBehaviour
     public void ResetHurtbox()
     {
         hurtbox_timer_local = 0.0f;
+        weapon_parent = null;
+        weapon_script = null;
+        transform.parent = null;
+        transform.SetPositionAndRotation(gameController.template_WeaponHurtbox.transform.position, gameController.template_WeaponHurtbox.transform.rotation);
+        if (rb == null) { rb = gameObject.GetComponent<Rigidbody>(); }
+        else
+        {
+            rb.position = transform.position;
+            rb.rotation = transform.rotation;
+        }
         Start();
     }
 
@@ -201,7 +207,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
         }
         owner_plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(owner_id));
 
-        if (gameController != null && gameController.local_ppp_options != null)
+        if (gameController != null && gameController.local_ppp_options != null && active_mesh != null)
         {
             Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
             m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
@@ -254,7 +260,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
                         if (distanceCompare < 1.0f) { weapon_script.animate_pct = 0.5f * (Vector3.Distance(origin, end_pos) / Vector3.Distance(origin, point_end_tf.position)); }
                         else { weapon_script.animate_pct = 0.999f; } // For some reason, 1.0f resets the animation
                         weapon_script.animate_stored_pct = weapon_script.animate_pct;
-                        weapon_script.animate_handled_by_hurtbox = true;
                         weapon_script.animate_stored_use_timer = weapon_script.use_timer;
                     }
                 }
@@ -269,12 +274,27 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void Update()
     {
+
         hurtbox_timer_local += Time.deltaTime;
         if (hurtbox_timer_local >= hurtbox_duration && hurtbox_duration > 0)
         {
             //Debug.Log("HURTBOX DESTROYED BECAUSE ITS DURATION OF " + hurtbox_duration.ToString() + " WAS EXCEEDED BY LOCAL TIME " + hurtbox_timer_local.ToString() + " OR NETWORK TIME " + hurtbox_timer_network.ToString());
-            Destroy(gameObject);
-            if (weapon_script != null) { weapon_script.animate_handled_by_hurtbox = false; }
+            //Destroy(gameObject);
+            if (weapon_script != null) 
+            { 
+                weapon_script.animate_handled_by_hurtbox = false;
+            }
+
+            if (global_index > -1 && ref_index > -1 && gameController.global_hurtbox_refs != null)
+            {
+                gameController.PreallocClearSlot((int)prealloc_obj_name.WeaponHurtbox, global_index, ref ref_index);
+            }
+
+            gameObject.SetActive(false);
+        }
+        else if (weapon_script != null && Networking.GetOwner(weapon_parent) == Networking.LocalPlayer && (weapon_script.weapon_type == (int)weapon_type_name.PunchingGlove || weapon_script.weapon_type == (int)weapon_type_name.BossGlove || weapon_script.weapon_type == (int)weapon_type_name.HyperGlove || weapon_script.weapon_type == (int)weapon_type_name.MegaGlove))
+        {
+            weapon_script.animate_handled_by_hurtbox = true;
         }
 
         rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by the player hitbox trigger 
@@ -302,10 +322,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void OnTriggerStay(Collider other)
     {
-        if (other == null) { return; }
+        if (other == null || players_struck_prealloc == null) { return; }
         // Run this only if we are the owner of the hurtbox
         if (owner_id != Networking.LocalPlayer.playerId) { return; }
-        // And check we're not colliding with our own hitbox
+        // Check we're not colliding a hitbox we've already processed
         VRCPlayerApi colliderOwner = Networking.GetOwner(other.gameObject);
         if (colliderOwner == null) { return; }
         for (int i = 0; i < players_struck_cnt; i++)

@@ -20,6 +20,8 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public int projectile_type, weapon_type;
     [NonSerialized] public int owner_id;
     [NonSerialized] public float owner_scale;
+    [NonSerialized] public int global_index = -1;
+    [NonSerialized] public int ref_index = -1;
     [NonSerialized] public bool keep_parent;
     //[NonSerialized] public int keep_parent_ext;
     [NonSerialized] public Vector3 pos_start;
@@ -34,7 +36,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public GameObject weapon_parent;
     [NonSerialized] public float actual_distance;
     [NonSerialized] public Vector3 previousPosition;
-    [NonSerialized] private Rigidbody rb;
+    [SerializeField] public Rigidbody rb;
     [NonSerialized] private bool projectile_hit_on_this_frame = false;
     [NonSerialized] public Vector3 pos_end;
     [NonSerialized] public bool contact_made = false;
@@ -46,7 +48,7 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     private void Start()
     {
-        rb = this.GetComponent<Rigidbody>();
+        rb = gameObject.GetComponent<Rigidbody>();
         previousPosition = rb.position;
         layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
         INVALID_HIT_POS = new Vector3(-999999, -999999, -999999);
@@ -54,11 +56,30 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     public void ResetProjectile()
     {
+        projectile_duration = 0.0f;
+        projectile_distance = 0.0f;
+        projectile_hit_on_this_frame = false;
         projectile_start_ms = 0.0f;
         projectile_timer_network = 0.0f;
-        projectile_hit_on_this_frame = false;
         contact_made = false;
-        previousPosition = rb.position;
+        keep_parent = false;
+        has_physics = false;
+        transform.parent = null;
+        transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
+        transform.SetPositionAndRotation(gameController.template_WeaponProjectile.transform.position, gameController.template_WeaponProjectile.transform.rotation);
+        if (rb != null)
+        {
+            rb.position = gameController.template_WeaponProjectile.transform.position;
+            rb.rotation = gameController.template_WeaponProjectile.transform.rotation;
+            previousPosition = rb.position;
+            rb.useGravity = false;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            GetComponent<Collider>().isTrigger = true;
+        }
+        else { previousPosition = transform.position; }
+        //if (rb == null) { rb = gameObject.GetComponent<Rigidbody>(); }
+        //if (rb != null) { previousPosition = rb.position; }
         Start();
     }
 
@@ -80,7 +101,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                         Renderer m_Renderer = projectile_mdl[i].GetComponent<Renderer>();
                         if (m_Renderer != null && gameController.team_colors != null && owner_team >= 0)
                         {
-                            Material mat = m_Renderer.material;
+                            Material mat = m_Renderer.materials[0];
                             if (weapon_type == (int)weapon_type_name.Bomb && m_Renderer.materials.Length > 1) { mat = m_Renderer.materials[1]; }
                             if (gameController.option_teamplay)
                             {
@@ -113,6 +134,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                             Transform particle = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Particle");
                             if (particle != null && particle.GetComponent<ParticleSystem>() != null)
                             {
+                                particle.gameObject.SetActive(false);
                                 var particle_main = particle.GetComponent<ParticleSystem>().main;
                                 particle_main.startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
                                 particle_main.duration = projectile_duration;
@@ -159,12 +181,14 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     private void Update()
     {
+        if (projectile_duration <= 0) { return; }
+
         //projectile_timer_local += Time.deltaTime;
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
 
         if (projectile_hit_on_this_frame && pos_end != null)
         {
-            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " hit a target on this frame at " + pos_end.ToString());
+            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " hit a target on this frame at " + pos_end.ToString());
             rb.MovePosition(pos_end);
             OnProjectileHit(pos_end, contact_made);
         }
@@ -200,7 +224,7 @@ public class WeaponProjectile : UdonSharpBehaviour
             Vector3 rayPos = RaycastToNextPos(projectile_timer_network);
             if (Mathf.FloorToInt(rayPos.x) != Mathf.FloorToInt(INVALID_HIT_POS.x) && !projectile_hit_on_this_frame)
             {
-                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
+                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
                 pos_end = rayPos;
                 projectile_hit_on_this_frame = true;
                 contact_made = true;
@@ -214,7 +238,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                 rb.MovePosition(lerpPos);
                 if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
                 {
-                    //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                    UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                     pos_end = CalcPosAtTime(projectile_duration);
                     projectile_hit_on_this_frame = true;
                     contact_made = false;
@@ -228,7 +252,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
             {
-                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                 pos_end = rb.position;
                 projectile_hit_on_this_frame = true;
                 contact_made = false;
@@ -303,12 +327,19 @@ public class WeaponProjectile : UdonSharpBehaviour
             }
         }
 
-        Destroy(gameObject);
+        //Destroy(gameObject);
+        if (global_index > -1 && ref_index > -1 && gameController.global_projectile_refs != null)
+        {
+            gameController.PreallocClearSlot((int)prealloc_obj_name.WeaponProjectile, global_index, ref ref_index);
+        }
+        //ResetProjectile();
+        gameObject.SetActive(false);
+        
     }
 
     private bool CheckCollider(Collider other)
     {
-        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy || projectile_hit_on_this_frame) { return false; }
+        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy || projectile_hit_on_this_frame || projectile_duration <= 0) { return false; }
         // Did we hit a hitbox?
         if (other.gameObject.GetComponent<PlayerHitbox>() != null)
         {

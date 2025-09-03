@@ -122,7 +122,12 @@ public class ItemSpawner : UdonSharpBehaviour
             if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.Infection)
             {
                 if (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown) { parsed_spawn_chances[i] = 0.0f; }
-                else if (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp) { parsed_spawn_chances[i] *= 0.5f; }
+                else if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
+            }
+            // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups
+            if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.BossBash)
+            {
+                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown || i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
             }
         }
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(parsed_spawn_chances));
@@ -245,7 +250,7 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.powerup_duration = item_spawn_powerup_duration * item_spawn_duration_mul;
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.powerup_duration *= 0.5f; } // All pickups are halved duration during Infection 
             child_powerup.powerup_start_ms = Networking.GetServerTimeInSeconds();
-            child_powerup.powerup_timer_local = 0.0f;
+            //child_powerup.powerup_timer_local = 0.0f;
             child_powerup.powerup_timer_network = 0.0f;
             //child_powerup.allow_multiple_owners = false;
             child_powerup.apply_after_spawn = apply_after_spawn;
@@ -258,13 +263,20 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             child_weapon.item_owner_id = -1;
             child_weapon.allow_effects_to_apply = apply_after_spawn;
-            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_weapon.item_team_id = 0; } // On Infected, only Survivors may get weapons
-            else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
-            else { child_weapon.item_team_id = -1; }
-            //child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
             child_weapon.iweapon_type = item_index - (int)powerup_type_name.ENUM_LENGTH;
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_weapon.item_team_id = 0; } // On Infected, only Survivors may get weapons
+            else if (gameController.option_gamemode == (int)gamemode_name.BossBash && !training_spawner && !apply_after_spawn) 
+            {
+                // On Boss Bash, only Tiny Troopers may get punching glove weapons (powerups & projectiles are fine)
+                if (child_weapon.iweapon_type == (int)weapon_type_name.PunchingGlove || child_weapon.iweapon_type == (int)weapon_type_name.HyperGlove || child_weapon.iweapon_type == (int)weapon_type_name.MegaGlove)
+                { child_weapon.item_team_id = 0; }
+                else { child_weapon.item_team_id = item_spawn_team; }
+            } 
+            else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
+            else { child_weapon.item_team_id = -1; }
+            //child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.SetiWeaponStats();
             // If the ammo or duration is -2, that means set the stat to the spawner's powerup duration
             if (child_weapon.iweapon_type >= 0)
@@ -288,8 +300,8 @@ public class ItemSpawner : UdonSharpBehaviour
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
             {
                 if ((child_weapon.iweapon_ammo * 0.5f) > 0.0f && (child_weapon.iweapon_ammo * 0.5f) < 1.0f) { child_weapon.iweapon_ammo = 1; }
-                else { child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * 0.5f); }
-                child_weapon.iweapon_duration *= 0.5f;
+                else if (child_weapon.iweapon_ammo > 0) { child_weapon.iweapon_ammo = Mathf.RoundToInt(child_weapon.iweapon_ammo * 0.5f); }
+                if ((child_weapon.iweapon_duration * 0.5f) > 0.0f) { child_weapon.iweapon_duration *= 0.5f; }
             } 
             //child_weapon.allow_multiple_owners = false;
             child_weapon.apply_after_spawn = apply_after_spawn;

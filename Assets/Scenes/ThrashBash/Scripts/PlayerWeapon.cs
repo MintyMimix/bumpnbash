@@ -305,7 +305,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
     }
 
-    private void FixedUpdate()
+    private void FixedUpdate() //ffo
     {
         if (pickup_component == null) { pickup_component = gameObject.GetComponent<VRCPickup>(); }
         if (pickup_rb == null) { pickup_rb = gameObject.GetComponent<Rigidbody>(); }
@@ -367,7 +367,8 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.SuperLaser) { animate_pct = 0.0f; animate_stored_pct = 1.0f; animate_stored_use_timer = 0.0f; animate_handled_by_hurtbox = false; }
 
             // For bombs, we use the charge sound as the "ready to be thrown again" SFX, but only if we are the owner
-            if (Networking.GetOwner(gameObject).playerId == Networking.LocalPlayer.playerId && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)) { gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f); }
+            if (Networking.GetOwner(gameObject).playerId == Networking.LocalPlayer.playerId && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)) 
+            { gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f); }
         }
         else if (!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && use_ready)
         {
@@ -411,13 +412,15 @@ public class PlayerWeapon : UdonSharpBehaviour
             }
         }
 
-        if (!pickup_component.pickupable && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        /*if (!pickup_component.pickupable && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             pickup_component.pickupable = true;
         }
-        else if (pickup_component.pickupable && Networking.GetOwner(gameObject) != Networking.LocalPlayer)
+        else */
+        if (pickup_component.pickupable && Networking.GetOwner(gameObject) != Networking.LocalPlayer)
         {
             pickup_component.pickupable = false;
+            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
         }
 
         // Handle animations
@@ -502,7 +505,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (gameController.ply_in_game_auto_dict != null && gameController.ply_in_game_auto_dict.Length > 0 && gameController.ply_in_game_auto_dict[0] != null)
             {
                 // Fire rate increases with number of players
-                use_cooldown = Mathf.Lerp(3.0f, 0.25f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 24.0f)) 
+                use_cooldown = Mathf.Lerp(2.0f, 0.5f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 18.0f)) 
                     * gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
             }
         }
@@ -641,15 +644,25 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public override void OnDrop()
     {
-        if (waiting_for_toss && use_ready)
+        if (waiting_for_toss && use_ready && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
         {
             TossWeapon();
+        }
+        if (pickup_component != null && Networking.GetOwner(gameObject) == Networking.LocalPlayer) 
+        { 
+            pickup_component.pickupable = true;
+            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
         }
     }
 
     public override void OnPickup()
     {
         waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
+        if (pickup_component != null && Networking.GetOwner(gameObject) == Networking.LocalPlayer) 
+        { 
+            pickup_component.pickupable = false;
+            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
+        }
     }
 
     private void TossWeapon()
@@ -673,7 +686,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public void PlayHapticEvent(int event_type)
     {
-        if (!Networking.LocalPlayer.IsUserInVR()) { return; }
+        if (!Networking.LocalPlayer.IsUserInVR() || pickup_component == null) { return; }
         if (gameController != null && gameController.local_ppp_options != null && !gameController.local_ppp_options.haptics_on) { return; }
 
         // Haptic events will go in the following priority order: Death > Kill > Hit Receive > Hit Send > Fire Weapon
@@ -685,10 +698,10 @@ public class PlayerWeapon : UdonSharpBehaviour
         else if (event_type == (int)game_sfx_name.Kill && !(haptic_cooldown_type == (int)game_sfx_name.Kill || haptic_cooldown_type == (int)game_sfx_name.Death)) { duration = 0.15f; amplitude = 0.15f; }
         else if (event_type == (int)game_sfx_name.Death && haptic_cooldown_type != (int)game_sfx_name.Death) { duration = 0.3f; amplitude = 0.3f; }
 
-        if (GetComponent<VRCPickup>().currentHand != VRCPickup.PickupHand.None &&
+        if (pickup_component.currentHand != VRCPickup.PickupHand.None &&
             (event_type == (int)game_sfx_name.ENUM_LENGTH || event_type == (int)game_sfx_name.HitSend || event_type == (int)game_sfx_name.Kill))
         { 
-            Networking.LocalPlayer.PlayHapticEventInHand(GetComponent<VRCPickup>().currentHand, duration, amplitude, frequency); 
+            Networking.LocalPlayer.PlayHapticEventInHand(pickup_component.currentHand, duration, amplitude, frequency); 
         }
         else
         {
@@ -714,7 +727,17 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public byte RollForPowerupBombExtraData()
     {
-        byte extra_data = (byte)UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH);
+        byte extra_data = 0;
+        if (gameController != null && gameController.plysettings_item_debuff)
+        {
+            byte[] powerup_debuffs = { (int)powerup_type_name.AtkDown, (int)powerup_type_name.DefDown, (int)powerup_type_name.HighGrav, (int)powerup_type_name.SizeDown };
+            extra_data = (byte)UnityEngine.Random.Range(0, powerup_debuffs.Length);
+            extra_data = powerup_debuffs[extra_data];
+        }
+        else
+        {
+            extra_data = (byte)UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH);
+        }
         // If the random powerup rolls the boss glove, set it to be another throwable item for maximum chaos
         if (extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove
             || extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove

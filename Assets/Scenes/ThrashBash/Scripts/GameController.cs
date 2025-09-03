@@ -4,6 +4,7 @@ using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using UnityEngine.Windows;
 using VRC.SDK3.Components;
@@ -59,7 +60,7 @@ public enum prealloc_obj_name
 }
 public enum GLOBAL_CONST
 {
-    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128
+    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128, TICK_RATE_MS=25
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -76,6 +77,14 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public UdonPlatformHook platformHook;
     [SerializeField] public GameObject flag_for_mobile_vr;
     //[SerializeField] public PlayerWeapon boss_weapon; // the boss's secondary weapon
+
+    [SerializeField] public Camera[] highlightCameras;
+    [SerializeField] public GameObject ui_spectatorcanvas;
+    [SerializeField] public GameObject ui_highlightcanvas;
+    //[NonSerialized] public sbyte highlight_camera_active = -1; // If -1, none; otherwise, camera at that index
+    [NonSerialized] public bool[] highlight_cameras_active;
+    [NonSerialized] public bool[] highlight_cameras_snapped;
+    [NonSerialized] public double[] highlight_cameras_ms;
 
     [SerializeField] public UnityEngine.UI.Button ui_round_start_button;
     [SerializeField] public UnityEngine.UI.Button ui_round_reset_button;
@@ -94,6 +103,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Button ui_round_option_default_button;
     [SerializeField] public TMP_Text ui_round_option_description;
     [SerializeField] public TMP_Dropdown ui_round_option_dropdown;
+    [SerializeField] public UnityEngine.UI.Image ui_round_option_image;
     //[SerializeField] public TMP_Text ui_round_map_description;
     //[SerializeField] public TMP_Dropdown ui_round_map_dropdown;
     [SerializeField] public TextMeshProUGUI ui_round_option_goal_text_a;
@@ -118,6 +128,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public TMP_InputField ui_adv_option_boss_def_mod;
     [SerializeField] public TMP_InputField ui_adv_option_boss_speed_mod;
     [SerializeField] public TMP_InputField ui_adv_option_boss_scale_mod;
+    [SerializeField] public UnityEngine.UI.Toggle ui_adv_option_item_debuff_toggle;
 
     [SerializeField] public Room_Ready room_ready_script;
     [SerializeField] public GameObject room_ready_spawn;
@@ -127,7 +138,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public GameObject room_training_arena_spawn;
     [SerializeField] public GameObject room_spectator_portal;
 
-    [SerializeField] public TMP_Text ui_tutorial_gamemodes_txt;
+    [SerializeField] public TMP_Text[] ui_tutorial_gamemodes_txt;
 
     [SerializeField] public Mapscript[] mapscript_list;
     [NonSerialized][UdonSynced] public sbyte map_selected = -1;
@@ -159,6 +170,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public AudioClip[] snd_infection_music_clips;
 
     [NonSerialized] public AudioClip music_clip_playing;
+    [NonSerialized] public float music_clip_ts = 0.0f;
 
     //[SerializeField] public Transform item_spawns_parent;
     //[NonSerialized] public ItemSpawner[] item_spawns;
@@ -212,12 +224,14 @@ public class GameController : UdonSharpBehaviour
     [UdonSynced] public float plysettings_item_frequency = 1.0f;
     [Tooltip("Item Spawn Duration, as a multiplier (default: 1.0x)")]
     [UdonSynced] public float plysettings_item_duration = 1.0f;
+    [Tooltip("Should the throwable item only spawn debuffs?")]
+    [UdonSynced] public bool plysettings_item_debuff = true;
 
     [Tooltip("Starting Scale damage factor, which determines how much player size affects abilities, as a multiplier (default: 1.0x)")]
     [UdonSynced] public float scale_damage_factor = 2.0f;
 
     [Tooltip("(Boss Bash) How big should The Big Boss be?")]
-    [UdonSynced] public float plysettings_boss_scale_mod = 3.0f;
+    [UdonSynced] public float plysettings_boss_scale_mod = 3.5f;
     [Tooltip("(Boss Bash) How much should The Big Boss's attack be modified, after scale factor is applied?")]
     [UdonSynced] public float plysettings_boss_atk_mod = 0.0f;
     [Tooltip("(Boss Bash) How much should The Big Boss's defense be modified, after scale factor is applied?")]
@@ -227,14 +241,15 @@ public class GameController : UdonSharpBehaviour
 
     [Header("Voice Settings")]
     [Tooltip("Range 0 - 1,000,000. The near radius, in meters, where volume begins to fall off. (VRC Default: 0; Game Default: 25)")]
-    [SerializeField] public int voice_distance_near = 500; // default "near 0" 
+    [SerializeField] public int voice_distance_near = 500; // default "near 0", previously 25
     [Tooltip("Range 0 - 1,000,000. This sets the end of the range for hearing the user's voice, in meters. Default is 25 meters. You can lower this to make another player's voice not travel as far, all the way to 0 to effectively 'mute' the player. (VRC Default: 25; Game Default: 250)")]
-    [SerializeField] public int voice_distance_far = 12500; // default 25 
+    [SerializeField] public int voice_distance_far = 12500; // default 25, previously 250
     [Tooltip("Range 0-24. Add boost to the Player's voice in decibels. (VRC Default: 15; Game Default: 18)")]
     [SerializeField] public int voice_gain = 20; //default 15 //20
 
     [NonSerialized] public float round_timer = 0.0f;
     [NonSerialized] public float local_every_second_timer = 0.0f;
+    [NonSerialized] public float local_tick_timer = 0.0f;
     [NonSerialized] public float local_queue_timer = 0.0f;
 
     [NonSerialized][UdonSynced] public float largest_ply_scale = 1.0f;
@@ -268,6 +283,7 @@ public class GameController : UdonSharpBehaviour
 
     [SerializeField] public string[] round_option_names; // NOTE: Corresponds to gamemode_name
     [SerializeField] public string[] round_option_descriptions; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images; // NOTE: Corresponds to gamemode_name
     [NonSerialized][UdonSynced] public byte option_gamemode = 0;
     [NonSerialized] public byte local_gamemode_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
     [NonSerialized] public byte local_weapon_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
@@ -345,6 +361,9 @@ public class GameController : UdonSharpBehaviour
         ply_tracking_dict_keys_arr = new int[0];
         ply_tracking_dict_values_arr = new int[0];
         koth_progress_dict = new int[2][];
+        highlight_cameras_active = new bool[highlightCameras.Length];
+        highlight_cameras_snapped = new bool[highlightCameras.Length];
+        highlight_cameras_ms = new double[highlightCameras.Length];
 
         ply_master_id = Networking.LocalPlayer.playerId;
 
@@ -414,6 +433,8 @@ public class GameController : UdonSharpBehaviour
         snd_game_sfx_clips[(int)game_sfx_name.Announcement] = snd_game_sfx_clips_announcement;
 
         room_spectator_portal.SetActive(false);
+        ui_highlightcanvas.SetActive(false);
+        ui_spectatorcanvas.SetActive(true);
 
         RefreshSetupUI();
         ui_initialized = true;
@@ -560,8 +581,8 @@ public class GameController : UdonSharpBehaviour
                 global_powerup_arr[i] = powerup_obj.GetComponent<ItemPowerup>();
                 global_powerup_arr[i].item_is_template = true;
                 global_powerup_arr[i].ResetPowerup();
-                //global_powerup_arr[i].gameObject.SetActive(false);
                 global_powerup_arr[i].global_index = i;
+                global_powerup_arr[i].gameObject.SetActive(false);
                 global_powerup_refs[i] = -1;
             }
             return_index = global_powerup_refs[global_powerup_cnt];
@@ -573,7 +594,7 @@ public class GameController : UdonSharpBehaviour
                 GameObject harmnumber_obj = Instantiate(local_uiplytoself.PTSHarmNumberTemplate, local_uiplytoself.transform);
                 global_harmnumber_arr[i] = harmnumber_obj.GetComponent<UIHarmNumber>();
                 global_harmnumber_arr[i].ResetDisplay();
-                //global_powerup_arr[i].gameObject.SetActive(false);
+                //global_harmnumber_arr[i].gameObject.SetActive(false);
                 global_harmnumber_arr[i].global_index = i;
                 global_harmnumber_refs[i] = -1;
             }
@@ -604,11 +625,33 @@ public class GameController : UdonSharpBehaviour
             LocalPerSecondUpdate();
             local_every_second_timer = 0.0f;
         }
+        local_tick_timer += Time.deltaTime;
+        if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
+        {
+            LocalPerTickUpdate();
+            local_tick_timer = 0.0f;
+        }
+    }
 
+    private void LocalPerTickUpdate()
+    {
         // If our local map is desynced with the true map, resync it
         if (map_selected_local != map_selected && round_state != (int)round_state_name.Queued && !restrict_map_change) { SetupMap(); }
 
         OOBFailsafe();
+
+        double server_ms = Networking.GetServerTimeInSeconds();
+        float photo_timer = 0.0f;
+        for (int i = 0; i < highlightCameras.Length; i++)
+        {
+            photo_timer = (float)Networking.CalculateServerDeltaTime(server_ms, highlight_cameras_ms[i]);
+            if (highlight_cameras_active[i] && photo_timer >= 0.5f)
+            {
+                highlight_cameras_snapped[i] = true;
+                highlightCameras[i].gameObject.SetActive(false);
+                highlight_cameras_active[i] = false;
+            }
+        }
 
         // Master handling
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
@@ -663,8 +706,8 @@ public class GameController : UdonSharpBehaviour
             for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
             {
                 if (ply_tracking_dict_values_arr == null) { break; }
-                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby) 
-                { 
+                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby)
+                {
                     ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false);
                 }
             }
@@ -689,7 +732,6 @@ public class GameController : UdonSharpBehaviour
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkRoundStart");
             //RequestSerialization();
         }
-
     }
 
     private void LocalPerSecondUpdate()
@@ -735,6 +777,31 @@ public class GameController : UdonSharpBehaviour
             {
                 snd_game_music_source.pitch = 1.0f;
             }
+
+            // Photo Highlights
+            if (Mathf.RoundToInt(round_length - TimeLeft) >= 30 && highlight_cameras_snapped[2] == false)
+            {
+                // First 30 seconds
+                SnapHighlightPhoto(2, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].right, 1.0f);
+            }
+            else if (Mathf.RoundToInt(TimeLeft) <= Mathf.RoundToInt(round_length / 2.0f) && highlight_cameras_snapped[3] == false)
+            {
+                // Halftime
+                SnapHighlightPhoto(3, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].right, 1.0f);
+            }
+            else if (Mathf.RoundToInt(TimeLeft) <= 30 && highlight_cameras_snapped[4] == false)
+            {
+                // Last 30 seconds
+                SnapHighlightPhoto(4, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].right, 1.0f);
+            }
+        }
+        else if (round_state == (int)round_state_name.Over)
+        {
+            if (Mathf.RoundToInt(over_length - round_timer) <= 3 && highlight_cameras_snapped[5] == false)
+            {
+                // Victory
+                SnapHighlightPhoto(5, room_ready_spawn.transform.position, Vector3.right, 1.0f);
+            }
         }
 
         // Infection-specific handling
@@ -753,8 +820,8 @@ public class GameController : UdonSharpBehaviour
                     // And if we're the last survivor, buff ourselves and give ourselves an infinite ammo rocket launcher
                     if (last_survivor != null && last_survivor == Networking.LocalPlayer)
                     {
-                        local_plyAttr.ply_speed *= 1.5f;
-                        local_plyAttr.ply_atk *= 2.0f;
+                        //local_plyAttr.ply_speed *= 1.5f;
+                        local_plyAttr.ply_atk *= 1.5f;
                         local_plyAttr.ply_def *= 1.0f;
                         local_plyweapon.weapon_temp_ammo = -1;
                         local_plyweapon.weapon_temp_duration = -1;
@@ -787,11 +854,18 @@ public class GameController : UdonSharpBehaviour
             }
             else if (infection_zombig_active)
             {
-                if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.ZombigSpawn]) { PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.ZombigSpawn, 1.0f, true); }
+                if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.ZombigSpawn]) 
+                {
+                    music_clip_ts = snd_game_music_source.time;
+                    PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.ZombigSpawn, 1.0f, true); 
+                }
             }
             else
             {
-                if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.Start]) { PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.Start, 1.0f, true); }
+                if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.Start]) 
+                { 
+                    PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.Start, 1.0f, true, music_clip_ts); 
+                }
             }
 
             // Reset patient zero once 124 of survivors are dead
@@ -945,7 +1019,7 @@ public class GameController : UdonSharpBehaviour
             PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
         }
 
-        AdjustVoiceRange();
+        //AdjustVoiceRange();
         RefreshSetupUI();
     }
 
@@ -976,15 +1050,13 @@ public class GameController : UdonSharpBehaviour
             string gamemode_tutorial_description = "";
             for (int i = 0; i < round_option_names.Length; i++)
             {
-                if (i > 0) { gamemode_tutorial_description += "\n\n"; }
-                gamemode_tutorial_description += round_option_names[i] + ": ";
-                gamemode_tutorial_description += round_option_descriptions[i];
+                if (ui_tutorial_gamemodes_txt == null || i >= ui_tutorial_gamemodes_txt.Length) { break; }
+                gamemode_tutorial_description = round_option_descriptions[i];
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$TIMER", "X");
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$POINTS_A", "X");
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$LIVES", "X");
+                ui_tutorial_gamemodes_txt[i].text = gamemode_tutorial_description;
             }
-            ui_tutorial_gamemodes_txt.text = gamemode_tutorial_description;
-
         }
 
         if (ui_ply_option_weapon_dropdown != null && local_weapon_count < (int)weapon_type_name.ENUM_LENGTH)
@@ -1085,6 +1157,7 @@ public class GameController : UdonSharpBehaviour
             ui_adv_option_boss_def_mod.interactable = true;
             ui_adv_option_boss_speed_mod.interactable = true;
             ui_adv_option_boss_scale_mod.interactable = true;
+            ui_adv_option_item_debuff_toggle.interactable = true;
         }
         else
         {
@@ -1117,6 +1190,7 @@ public class GameController : UdonSharpBehaviour
             ui_adv_option_boss_def_mod.interactable = false;
             ui_adv_option_boss_speed_mod.interactable = false;
             ui_adv_option_boss_scale_mod.interactable = false;
+            ui_adv_option_item_debuff_toggle.interactable = false;
         }
 
         if (VRCPlayerApi.GetPlayerById(ply_master_id) != null)
@@ -1178,6 +1252,7 @@ public class GameController : UdonSharpBehaviour
             ui_round_option_goal_input_b.gameObject.SetActive(true);
         }
         ui_round_option_description.text = ModifyModeDescription(round_option_descriptions[option_gamemode]);
+        ui_round_option_image.sprite = round_option_images[option_gamemode];
 
         // Starting & Advanced Options Parsing
         ui_ply_option_dp.text = Mathf.RoundToInt(plysettings_dp).ToString();
@@ -1198,6 +1273,8 @@ public class GameController : UdonSharpBehaviour
         ui_adv_option_boss_speed_mod.text = Mathf.RoundToInt(plysettings_boss_speed_mod * 100.0f).ToString();
         ui_adv_option_item_frequency.text = Mathf.RoundToInt(plysettings_item_frequency * 100.0f).ToString();
         ui_adv_option_item_duration.text = Mathf.RoundToInt(plysettings_item_duration * 100.0f).ToString();
+
+        ui_adv_option_item_debuff_toggle.isOn = plysettings_item_debuff;
 
         //if (map_selected < mapscript_list.Length) { ui_round_map_description.text = mapscript_list[map_selected].map_description; }
         RefreshGameUI();
@@ -1284,7 +1361,8 @@ public class GameController : UdonSharpBehaviour
         }
         else if (option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
-            goal_input_a = 45;
+            if (option_teamplay) { goal_input_a = Mathf.RoundToInt(90.0f / Mathf.Max(1, team_count)); }
+            else { goal_input_a = Mathf.RoundToInt(Mathf.Lerp(60, 20, Mathf.Min(1.0f, ply_count / 8))); }
             goal_input_b = 6;
             ui_round_length_input.text = "1200";
             ui_round_length_toggle.isOn = false;
@@ -1297,6 +1375,7 @@ public class GameController : UdonSharpBehaviour
         }
         ui_round_option_goal_input_a.text = goal_input_a.ToString();
         ui_round_option_goal_input_b.text = goal_input_b.ToString();
+        ui_adv_option_item_debuff_toggle.isOn = !option_teamplay;
         RoundOptionAdjust();
     }
 
@@ -1319,12 +1398,13 @@ public class GameController : UdonSharpBehaviour
         ui_ply_option_powerup_toggle.isOn = true;
 
         ui_adv_option_respawn_duration.text = "3";
-        ui_adv_option_boss_scale_mod.text = "300";
+        ui_adv_option_boss_scale_mod.text = "350";
         ui_adv_option_boss_atk_mod.text = "0";
         ui_adv_option_boss_def_mod.text = "150";
         ui_adv_option_boss_speed_mod.text = "0";
         ui_adv_option_item_frequency.text = "100";
         ui_adv_option_item_duration.text = "100";
+        ui_adv_option_item_debuff_toggle.isOn = !option_teamplay;
 
         ui_updating = false;
         ChangeGamemode();
@@ -1446,6 +1526,8 @@ public class GameController : UdonSharpBehaviour
         int ui_ply_option_item_duration = 0; Int32.TryParse(ui_adv_option_item_duration.text, out ui_ply_option_item_duration); ui_ply_option_item_duration = Mathf.Min(Mathf.Max(ui_ply_option_item_duration, 1), 1000);
         plysettings_item_duration = 0.01f * (ushort)ui_ply_option_item_duration;
 
+        plysettings_item_debuff = ui_adv_option_item_debuff_toggle.isOn;
+
         RequestSerialization();
         RefreshSetupUI();
     }
@@ -1493,8 +1575,10 @@ public class GameController : UdonSharpBehaviour
             //networkJoinTime = Networking.GetServerTimeInSeconds();
             local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
             PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
+            local_uiplytoself.local_uimessagestoself = plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>();
             local_plyAttr = plyAttributesComponent;
             local_plyweapon = plyWeaponObj.GetComponent<PlayerWeapon>();
+            if (local_plyweapon != null) { local_plyweapon.OnDrop(); }
             local_plyhitbox = plyHitboxObj.GetComponent<PlayerHitbox>();
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
             local_ppp_options.RefreshAllOptions();
@@ -1614,7 +1698,11 @@ public class GameController : UdonSharpBehaviour
 
     public void ToggleReadyRoomCollisions(bool toggle)
     {
-        Transform[] AllChildren = room_ready_script.gameObject.transform.GetComponentsInChildren<Transform>();
+        // Since the ready room no longer dangles over everyone, we can just toggle the ready room's primary collider
+        // This also prevents us from accidentally disabling the canvas colliders (which would prevent interacting with them!)
+        room_ready_script.trigger_player.enabled = toggle;
+
+        /*Transform[] AllChildren = room_ready_script.gameObject.transform.GetComponentsInChildren<Transform>();
         foreach (Transform t in AllChildren)
         {
             Collider component = t.GetComponent<Collider>();
@@ -1623,7 +1711,7 @@ public class GameController : UdonSharpBehaviour
                 component.enabled = toggle;
             }
         }
-        room_ready_script.gameObject.GetComponent<Collider>().enabled = toggle;
+        room_ready_script.gameObject.GetComponent<Collider>().enabled = toggle;*/
     }
 
     // -- Round Management --
@@ -1812,6 +1900,7 @@ public class GameController : UdonSharpBehaviour
 
         if (local_plyAttr.ply_team < 0) { room_training_portal.SetActive(true); }
 
+        music_clip_ts = 0.0f;
         if (option_gamemode == (int)gamemode_name.BossBash)
         {
             PlaySFXFromArray(snd_game_music_source, snd_boss_music_clips, -1, 1, true);
@@ -1882,7 +1971,20 @@ public class GameController : UdonSharpBehaviour
             }
         }
 
+        // Reset the highlight cameras 
+        for (int i = 0; i < highlight_cameras_snapped.Length; i++)
+        {
+            highlight_cameras_snapped[i] = false;
+            // Ensure they don't have photos from the previous round and that they're reset after
+            SnapHighlightPhoto(i, Vector3.zero, Vector3.right, 1.0f);
+            highlight_cameras_active[i] = false;
+            highlight_cameras_snapped[i] = false;
+            highlightCameras[i].gameObject.SetActive(false);
+        }
+
         room_spectator_portal.SetActive(true);
+        ui_highlightcanvas.SetActive(false);
+        ui_spectatorcanvas.SetActive(true);
 
         // -- Master Handling Below --
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
@@ -1970,6 +2072,7 @@ public class GameController : UdonSharpBehaviour
                 plyHitboxObj.SetActive(true);
             }
         }
+        SnapHighlightPhoto(0, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].right, 1.0f);
     }
 
     [NetworkCallable]
@@ -2433,7 +2536,8 @@ public class GameController : UdonSharpBehaviour
 
         if (winner_name != null && winner_name.Length > 0)
         {
-            AddToLocalTextQueue("WINNER: " + winner_name + "!", winning_color, over_length + 2.0f);
+            AddToLocalTextQueue("WINNER:", Color.white, over_length + 2.0f);
+            AddToLocalTextQueue(winner_name + "!", winning_color, over_length + 2.0f);
             if (ui_round_scoreboard_canvas != null)
             {
                 ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = "WINNER: " + winner_name;
@@ -2501,6 +2605,8 @@ public class GameController : UdonSharpBehaviour
 
         room_training_portal.SetActive(true);
         room_spectator_portal.SetActive(false);
+        ui_spectatorcanvas.SetActive(false);
+        ui_highlightcanvas.SetActive(true);
 
         restrict_map_change = false;
         RefreshSetupUI();
@@ -2519,7 +2625,6 @@ public class GameController : UdonSharpBehaviour
             PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true);
         }
     }
-
 
     public void TeleportLocalPlayerToGameSpawnZone(int spawnZoneIndex = -1)
     {
@@ -2703,6 +2808,36 @@ public class GameController : UdonSharpBehaviour
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].room_spectator_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
+    }
+
+    [NetworkCallable]
+    public void SnapHighlightPhoto(int camera_id, Vector3 target_pos, Vector3 target_right, float scaleDist)
+    {
+        if (camera_id < 0 || camera_id > highlightCameras.Length) { return; }
+        if (map_selected < 0 || map_selected > mapscript_list.Length || mapscript_list[map_selected] == null || mapscript_list[map_selected].map_campoints == null || mapscript_list[map_selected].map_campoints.Length == 0) { return; }
+
+        if (highlight_cameras_snapped[camera_id] == true || highlight_cameras_active[camera_id] == true) { return; }
+
+        highlightCameras[camera_id].gameObject.SetActive(true);
+
+        //int map_cam_above_index = Mathf.Min(1, mapscript_list[map_selected].map_campoints.Length - 1);
+
+        if (camera_id == 0 || camera_id == 2 || camera_id == 3 || camera_id == 4) // Match start, after 30 seconds, halftime, last 30 seconds
+        {
+            highlightCameras[camera_id].transform.position = mapscript_list[map_selected].map_campoints[0].transform.position;
+            highlightCameras[camera_id].transform.rotation = mapscript_list[map_selected].map_campoints[0].transform.rotation;
+        }
+        else if (camera_id == 1 || camera_id == 5) // First KO, Victory
+        {
+            highlightCameras[camera_id].transform.position = target_pos + (Vector3.right * 5.0f * scaleDist) + (Vector3.up * 2.5f * scaleDist);
+            Quaternion rotateTo = highlightCameras[camera_id].transform.rotation;
+            rotateTo = RotateTowards(Networking.LocalPlayer.GetPosition(), target_pos + (Vector3.right * 5.0f * scaleDist) + (Vector3.up * 2.5f * scaleDist));
+            highlightCameras[camera_id].transform.rotation = rotateTo;
+        }
+
+        highlight_cameras_active[camera_id] = true;
+        highlight_cameras_ms[camera_id] = Networking.GetServerTimeInSeconds();
+
     }
 
     // -- Weapon Handling --
@@ -3213,7 +3348,7 @@ public class GameController : UdonSharpBehaviour
 
 
     // -- Game Helper Functions --
-    public void PlaySFXFromArray(AudioSource source, AudioClip[] clips, int index = -1, float pitch = 1.0f, bool is_music = false)
+    public void PlaySFXFromArray(AudioSource source, AudioClip[] clips, int index = -1, float pitch = 1.0f, bool is_music = false, float time_to_skip_to = 0.0f)
     {
         AudioClip clip_to_play = null;
         float volume_scale = 1.0f;
@@ -3239,6 +3374,7 @@ public class GameController : UdonSharpBehaviour
             //music_volume_stored = source.volume;
             music_clip_playing = clip_to_play;
             source.Play();
+            source.time = time_to_skip_to;
         }
         else if (local_ppp_options != null) { source.PlayOneShot(clip_to_play, volume_scale); }
         else { source.PlayOneShot(clip_to_play, 1.0f); }
@@ -3827,7 +3963,10 @@ public class GameController : UdonSharpBehaviour
                 if (global_hurtbox_cnt > 0 && global_hurtbox_cnt <= global_hurtbox_refs.Length)
                 {
                     global_hurtbox_refs[ref_index] = global_hurtbox_refs[global_hurtbox_cnt - 1];
-                    global_hurtbox_arr[global_hurtbox_refs[ref_index]].ref_index = ref_index;
+                    if (global_hurtbox_refs[ref_index] < global_hurtbox_arr.Length && global_hurtbox_arr[global_hurtbox_refs[ref_index]] != null)
+                    {
+                        global_hurtbox_arr[global_hurtbox_refs[ref_index]].ref_index = ref_index; //CRASH null refernce! need allocation check!
+                    }
                     global_hurtbox_refs[global_hurtbox_cnt - 1] = -1;
                     ref_index = -1;
                     global_hurtbox_cnt--;

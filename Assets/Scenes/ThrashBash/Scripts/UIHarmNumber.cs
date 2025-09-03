@@ -44,6 +44,7 @@ public class UIHarmNumber : UdonSharpBehaviour
     public void ResetDisplay()
     {
         duration = 0.0f;
+        display_value = 0;
         isOn = false;
         gameObject.SetActive(false);
     }

@@ -121,14 +121,14 @@ public class ItemGeneric : UdonSharpBehaviour
             else if (i > -1 && recolor_children && child_Renderers.Length == 0) { break; }
             else if (i > -1 && !recolor_children) { break; }
 
-            if (spawner_parent != null && m_Renderer != null)
+            if (spawner_parent != null && m_Renderer != null && spawner_parent.gameController != null)
             {
 
                 if (render_for_team && team_id >= 0 && team_id < spawner_parent.gameController.team_count) { team_to_render = team_id; }
                 //else if (render_for_team && spawner_parent.gameController.local_plyAttr != null && gameController.local_plyAttr.ply_team >= 0) { team_to_render = gameController.local_plyAttr.ply_team; }
                 else { render_for_team = false; }
 
-                if (render_for_team)
+                if (render_for_team && spawner_parent.gameController.team_colors_bright != null)
                 {
                     byte alpha = 25; // previously 92
                     if (i > 0) { alpha = 255; }

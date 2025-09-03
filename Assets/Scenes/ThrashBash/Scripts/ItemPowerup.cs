@@ -30,7 +30,7 @@ public class ItemPowerup : ItemGeneric
     [NonSerialized] public int powerup_type;
     [NonSerialized] public float powerup_duration;
     [NonSerialized] public double powerup_start_ms;
-    [NonSerialized] public double powerup_timer_local = 0.0f;
+    //[NonSerialized] public double powerup_timer_local = 0.0f;
     [NonSerialized] public double powerup_timer_network = 0.0f;
 
     [NonSerialized] public bool render_powerup = true;
@@ -157,7 +157,7 @@ public class ItemPowerup : ItemGeneric
         item_owner_id = -1;
         allow_effects_to_apply = false;
         powerup_start_ms = 0;
-        powerup_timer_local = 0.0f;
+        //powerup_timer_local = 0.0f;
         powerup_timer_network = 0.0f;
         Start();
     }
@@ -234,9 +234,9 @@ public class ItemPowerup : ItemGeneric
 
     internal bool ProcessTimer()
     {
-        powerup_timer_local += Time.deltaTime;
+        //powerup_timer_local += Time.deltaTime;
         powerup_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), powerup_start_ms);
-        if (powerup_duration > 0 && (powerup_timer_local >= powerup_duration || powerup_timer_network >= powerup_duration))
+        if (powerup_duration > 0 && (powerup_timer_network >= powerup_duration)) //powerup_timer_local >= powerup_duration || 
         {
             return true;
         }
@@ -329,7 +329,7 @@ public class ItemPowerup : ItemGeneric
 
         item_state = (int)item_state_name.FadingFromOwner;
         powerup_start_ms = Networking.GetServerTimeInSeconds();
-        powerup_timer_local = 0.0f;
+        //powerup_timer_local = 0.0f;
         powerup_timer_network = 0.0f;
 
         if (powerup_snd_clips.Length > (int)item_sfx_index.PowerupFade) { powerup_duration = powerup_snd_clips[(int)item_sfx_index.PowerupFade].length; }

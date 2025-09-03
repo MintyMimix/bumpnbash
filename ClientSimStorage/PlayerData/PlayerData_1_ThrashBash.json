@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-08-20T15:11:14.4940428-04:00",
+    "LastUpdated": "2025-08-31T21:44:16.8077409-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 8.0
     }
   },
   "UISeparation": {
@@ -56,7 +56,7 @@
     }
   },
   "MusicVolume": {
-    "LastUpdated": "2025-08-25T09:47:26.8769393-04:00",
+    "LastUpdated": "2025-08-31T21:43:58.2843219-04:00",
     "Key": "MusicVolume",
     "Value": {
       "type": "Float",
@@ -64,7 +64,7 @@
     }
   },
   "SoundVolume": {
-    "LastUpdated": "2025-08-13T15:42:31.6016943-04:00",
+    "LastUpdated": "2025-08-31T17:43:58.248972-04:00",
     "Key": "SoundVolume",
     "Value": {
       "type": "Float",
@@ -96,15 +96,15 @@
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-08-20T14:50:57.9931043-04:00",
+    "LastUpdated": "2025-08-31T21:44:16.8077409-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 12.0
     }
   },
   "ParticleShow": {
-    "LastUpdated": "2025-08-21T19:05:01.1205211-04:00",
+    "LastUpdated": "2025-08-31T15:15:28.5702504-04:00",
     "Key": "ParticleShow",
     "Value": {
       "type": "Bool",
@@ -120,7 +120,7 @@
     }
   },
   "UIOtherScale": {
-    "LastUpdated": "2025-08-25T09:47:38.4433668-04:00",
+    "LastUpdated": "2025-08-31T18:24:44.464314-04:00",
     "Key": "UIOtherScale",
     "Value": {
       "type": "Float",

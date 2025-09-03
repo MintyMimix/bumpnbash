@@ -80,6 +80,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public string[] local_tutorial_message_str_vr;
 
     [NonSerialized] [UdonSynced] public byte infection_special = 0;
+    [NonSerialized] public float local_tick_timer = 0.0f;
 
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
@@ -204,9 +205,16 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Hnadle multi-jump
         if (Networking.LocalPlayer.IsPlayerGrounded()) { ply_jumps_tracking = 0; }
 
+        local_tick_timer += Time.deltaTime;
+        if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
+        {
+            LocalPerTickUpdate();
+            local_tick_timer = 0.0f;
+        }
+
     }
 
-    private void FixedUpdate()
+    private void LocalPerTickUpdate()
     {
         // Update size
         if (plyEyeHeight_change && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
@@ -228,6 +236,10 @@ public class PlayerAttributes : UdonSharpBehaviour
                 if (ply_scale > gameController.largest_ply_scale) { gameController.SendCustomNetworkEvent(NetworkEventTarget.Owner, "UpdateLargestPlayer", ply_scale); }
                 plyEyeHeight_change = false; 
             }
+        }
+        else if (in_ready_room && !ply_training && plyEyeHeight_desired != plyEyeHeight_default && !plyEyeHeight_change) 
+        { 
+            LocalResetScale(); 
         }
     }
 
@@ -267,6 +279,13 @@ public class PlayerAttributes : UdonSharpBehaviour
         plyEyeHeight_default = default_height;
         plyEyeHeight_desired = plyEyeHeight_default;
         
+    }
+
+    public void LocalResetScale()
+    {
+        ply_scale = 1.0f;
+        plyEyeHeight_desired = plyEyeHeight_default;
+        plyEyeHeight_change = true;
     }
 
     [NetworkCallable]
@@ -403,6 +422,12 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
         gameController.AddToLocalTextQueue("You knocked out " + VRCPlayerApi.GetPlayerById(defenderPlyId).displayName + "!");
         TryHapticEvent((int)game_sfx_name.Kill);
+
+        if (gameController.highlight_cameras_snapped[1] == false)
+        {
+            gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "SnapHighlightPhoto", 1, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.right, ply_scale);
+        }
+
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
         if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
     }
@@ -427,9 +452,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             { 
                 ply_lives--;
             }
-            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training && ply_respawn_duration > gameController.plysettings_respawn_duration)
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
-                gameController.AddToLocalTextQueue("[Slowed during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)]", Color.white, ply_respawn_duration);
+                gameController.AddToLocalTextQueue("Slowed during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)", Color.cyan, ply_respawn_duration);
             }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
@@ -672,6 +697,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
             index_iter++;
         }
+        plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+        plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+        plyEyeHeight_change = true;
         powerups_are_resetting = false;
     }
 

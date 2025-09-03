@@ -1,11 +1,12 @@
 ﻿
 using System;
+using System.IO.Pipes;
+using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VRC.SDKBase;
 using VRC.Udon;
-using UnityEngine.UIElements;
-using TMPro;
 
 public class UIMessagesToSelf : UdonSharpBehaviour
 {
@@ -77,6 +78,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
     {
         float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         float scaleUI = 1.0f * 0.5f;
+        float distanceUI = 1.0f;
         if (gameController != null && gameController.local_ppp_options != null && gameController.local_uiplytoself != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
@@ -87,6 +89,8 @@ public class UIMessagesToSelf : UdonSharpBehaviour
             {
                 PTMTextStack[i].gameObject.SetActive(useWrist > 0);
             }
+
+            distanceUI *= (ppp_options.ui_distance);
 
             heightUI *= (ppp_options.ui_scale);
             PTMCanvas.sizeDelta = new Vector2(500, 300);
@@ -122,7 +126,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
         }
 
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
-        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI);
+        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
         Vector3 posFinal = posOut; //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(

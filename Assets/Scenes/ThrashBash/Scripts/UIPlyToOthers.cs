@@ -204,7 +204,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
             scaleUI *= ((0.0f + ppp_options.ui_other_scale) / 1.0f);
-            posUI *= ((2.0f + ppp_options.ui_other_scale) / 2.0f);
+            posUI *= ((1.5f + ppp_options.ui_other_scale) / 2.5f);
         }
         transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;

@@ -3,6 +3,7 @@ using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Components;
 using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -15,8 +16,14 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public bool should_sync = false;
     [SerializeField] public GameController gameController;
     [NonSerialized] public GameObject harmTester;
+    [NonSerialized] public Vector3 canvas_pos_init;
+    [NonSerialized] public Quaternion canvas_rot_init;
+    [SerializeField] public TMP_Text tutorial_text;
+    [SerializeField] public PPP_Pickup ppp_pickup;
+    [SerializeField] public UnityEngine.UI.Button close_button;
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_n;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_l;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_r;
     [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
@@ -25,6 +32,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uidistanceslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiotherscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
@@ -32,6 +40,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uiscaletext;
     [SerializeField] public TMP_Text ui_uiseparationtext;
     [SerializeField] public TMP_Text ui_uistretchtext;
+    [SerializeField] public TMP_Text ui_uidistancetext;
     [SerializeField] public TMP_Text ui_uiotherscaletext;
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
@@ -40,10 +49,12 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public bool colorblind = false;
     [NonSerialized] public bool haptics_on = true;
     [NonSerialized] public bool intend_to_be_spectator = false;
+    [NonSerialized] public int force_weapon_hand = 0; // 0 = None, 1 = Left, 2 = Right
     [NonSerialized] public int ui_wrist = 0; // 0 = None, 1 = Left, 2 = Right
     [NonSerialized] public float ui_scale = 1.0f;
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
+    [NonSerialized] public float ui_distance = 1.0f;
     [NonSerialized] public float ui_harm_scale = 1.0f;
     [NonSerialized] public float ui_other_scale = 1.0f;
     [NonSerialized] public bool waiting_on_playerdata = true;
@@ -52,6 +63,8 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public bool particles_on = true;
     [NonSerialized] public bool lock_wrist = false;
 
+    [NonSerialized] public bool render_in_front = false;
+
     private void Start()
     {
         if (gameController == null)
@@ -59,7 +72,12 @@ public class PPP_Options : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
-        harmTester = gameController.GetChildTransformByName(transform, "HarmTester").gameObject;
+        Transform harmtester_transform = gameController.GetChildTransformByName(transform, "HarmTester");
+        if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
+
+        canvas_pos_init = transform.position;
+        canvas_rot_init = transform.rotation;
+        close_button.gameObject.SetActive(false);
     }
 
     private void Update()
@@ -71,7 +89,15 @@ public class PPP_Options : UdonSharpBehaviour
         }
         else
         {
-            ui_spectatortoggle.interactable = !(gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready);
+            bool allow_round_state = !(gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready);
+            bool allow_ply_team = false;
+            bool allow_ply_state = false;
+            if (gameController.local_plyAttr != null) 
+            { 
+                allow_ply_team = gameController.local_plyAttr.ply_team < 0;
+                allow_ply_state = gameController.local_plyAttr.ply_state == (int)player_state_name.Spectator || gameController.local_plyAttr.ply_state == (int)player_state_name.Dead || gameController.local_plyAttr.ply_state == (int)player_state_name.Inactive || gameController.local_plyAttr.ply_state == (int)player_state_name.Joined;
+            }
+            ui_spectatortoggle.interactable = allow_ply_state && (allow_round_state || allow_ply_team);
         }
 
         if (sync_timer < sync_impulse)
@@ -83,7 +109,21 @@ public class PPP_Options : UdonSharpBehaviour
             sync_timer = 0.0f;
             if (should_sync) { SyncData(); }
         }
+
+        if (canvas_pos_init == Vector3.zero)
+        {
+            canvas_pos_init = transform.position;
+            canvas_rot_init = transform.rotation;
+        }
     }
+
+    /*public override void PostLateUpdate()
+    {
+        if (render_in_front)
+        {
+            transform.position = Networking.LocalPlayer.GetPosition() + Vector3.forward;
+        }
+    }*/
 
     public override void OnPlayerRestored(VRCPlayerApi player)
     {
@@ -91,6 +131,10 @@ public class PPP_Options : UdonSharpBehaviour
         //gameController.local_ppp_options = this;
         RefreshAllOptions();
         waiting_on_playerdata = false;
+
+        string tutorial_method = "pushing your E or F key";
+        if (Networking.LocalPlayer.IsUserInVR()) { tutorial_method = "grabbing behind your head"; }
+        tutorial_text.text = tutorial_text.text.Replace("$METHOD", tutorial_method);
     }
 
     public void RefreshAllOptions()
@@ -99,6 +143,7 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateUIScale();
         UpdateUISeparation();
         UpdateUIStretch();
+        UpdateUIDistance();
         UpdateUIWrist();
         UpdateSpectatorIntent();
         UpdateHurtbox();
@@ -131,6 +176,12 @@ public class PPP_Options : UdonSharpBehaviour
                 {
                     ui_uistretchslider.value = 10.0f;
                     UpdateUIStretch();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UIDistance"))
+                {
+                    ui_uidistanceslider.value = 10.0f;
+                    UpdateUIDistance();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "UIOtherScale"))
@@ -196,6 +247,7 @@ public class PPP_Options : UdonSharpBehaviour
                 }
                 if (!PlayerData.HasKey(player, "UIWrist"))
                 {
+                    ui_wristtoggle_n.isOn = true;
                     ui_wristtoggle_l.isOn = false;
                     ui_wristtoggle_r.isOn = false;
                     UpdateUIWrist();
@@ -253,6 +305,18 @@ public class PPP_Options : UdonSharpBehaviour
             ui_uistretchslider.value = 10.0f;
             UpdateUIStretch();
         }
+
+        float out_UIDistance;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIDistance", out out_UIDistance))
+        {
+            ui_uidistanceslider.value = out_UIDistance;
+        }
+        else
+        {
+            ui_uidistanceslider.value = 10.0f;
+            UpdateUIDistance();
+        }
+
 
         float out_UIOtherScale;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIOtherScale", out out_UIOtherScale))
@@ -350,11 +414,13 @@ public class PPP_Options : UdonSharpBehaviour
             int out_UIWrist;
             if (PlayerData.TryGetInt(Networking.LocalPlayer, "UIWrist", out out_UIWrist))
             {
+                ui_wristtoggle_n.isOn = out_UIWrist == 0;
                 ui_wristtoggle_l.isOn = out_UIWrist == 1;
                 ui_wristtoggle_r.isOn = out_UIWrist == 2;
             }
             else
             {
+                ui_wristtoggle_n.isOn = true;
                 ui_wristtoggle_l.isOn = false;
                 ui_wristtoggle_r.isOn = false;
                 UpdateUIWrist();
@@ -373,9 +439,11 @@ public class PPP_Options : UdonSharpBehaviour
         }
         else
         {
+            ui_wristtoggle_n.isOn = true;
             ui_wristtoggle_l.isOn = false;
             ui_wristtoggle_r.isOn = false;
             ui_haptictoggle.isOn = false;
+            ui_wristtoggle_n.interactable = false;
             ui_wristtoggle_l.interactable = false;
             ui_wristtoggle_r.interactable = false;
             ui_haptictoggle.interactable = false;
@@ -389,6 +457,7 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIScale", ui_uiscaleslider.value);
         PlayerData.SetFloat("UIVertical", ui_uiseparationslider.value);
         PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
+        PlayerData.SetFloat("UIDistance", ui_uidistanceslider.value);
         PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
@@ -442,6 +511,18 @@ public class PPP_Options : UdonSharpBehaviour
         sync_timer = 0.0f;
     }
 
+    public void UpdateUIDistance()
+    {
+        ui_distance = ui_uidistanceslider.value / 10.0f;
+        ShowDemoUI();
+        ui_uidistancetext.text = "UI Distance: " + (ui_distance * 100.0f) + "%";
+        if ((ui_distance * 10.0f) <= ui_uidistanceslider.minValue) { ui_uidistancetext.color = Color.red; }
+        else { ui_uidistancetext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
 
     public void UpdateUIOtherScale()
     {
@@ -566,11 +647,28 @@ public class PPP_Options : UdonSharpBehaviour
         sync_timer = 0.0f;
     }
 
+    public void UpdateUIWristNone()
+    {
+        if (!lock_wrist)
+        {
+            if (ui_wristtoggle_n.isOn) 
+            { 
+                ui_wristtoggle_l.isOn = false;
+                ui_wristtoggle_r.isOn = false;
+            } 
+            UpdateUIWrist();
+        }
+    }
+
     public void UpdateUIWristL()
     {
         if (!lock_wrist)
         {
-            if (ui_wristtoggle_l.isOn) { ui_wristtoggle_r.isOn = false; } // We don't want to do inverse because we want both to be able to be off
+            if (ui_wristtoggle_l.isOn) 
+            {
+                ui_wristtoggle_n.isOn = false;
+                ui_wristtoggle_r.isOn = false;
+            }
             UpdateUIWrist();
         }
     }
@@ -579,7 +677,11 @@ public class PPP_Options : UdonSharpBehaviour
     {
         if (!lock_wrist)
         {
-            if (ui_wristtoggle_r.isOn) { ui_wristtoggle_l.isOn = false; } // We don't want to do inverse because we want both to be able to be off
+            if (ui_wristtoggle_r.isOn) 
+            {
+                ui_wristtoggle_n.isOn = false;
+                ui_wristtoggle_l.isOn = false;
+            } 
             UpdateUIWrist();
         }
     }
@@ -589,7 +691,6 @@ public class PPP_Options : UdonSharpBehaviour
         intend_to_be_spectator = ui_spectatortoggle.isOn;
         gameController.RefreshSetupUI();
         gameController.LocalDeclareSpectatorIntent(intend_to_be_spectator);
-
     }
 
     public void ShowDemoUI()
@@ -609,6 +710,26 @@ public class PPP_Options : UdonSharpBehaviour
         }
     }
 
+    public void ResetPPPCanvas()
+    {
+        render_in_front = false;
+        transform.position = canvas_pos_init;
+        transform.rotation = canvas_rot_init;
+        close_button.gameObject.SetActive(false);
+    }
+
+    public void PushPPPCanvas()
+    {
+        render_in_front = true;
+        float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        Vector3 posFinal = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * 6.5f * heightUI);
+        transform.SetPositionAndRotation(
+            posFinal
+            , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
+        );
+        close_button.gameObject.SetActive(true);
+    }
 
     // Spectator does not require persistence
     /*public void SpectateGame()

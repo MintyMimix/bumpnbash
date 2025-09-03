@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: StarMat
-  m_Shader: {fileID: 4800000, guid: 3ad043b7f9839cb48a75a9238d433dec, type: 3}
+  m_Shader: {fileID: 4800000, guid: 9200bec112b65ec4fbbbd33fa89c20f4, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -84,5 +84,5 @@ Material:
     - _ZWrite: 1
     m_Colors:
     - _Color: {r: 1, g: 0.8630006, b: 0, a: 1}
-    - _EmissionColor: {r: 0.4000096, g: 0.25504282, b: 0.014755872, a: 0.39999998}
+    - _EmissionColor: {r: 1.39772, g: 0.8911747, b: 0.051560204, a: 0.39999998}
   m_BuildTextureStacks: []

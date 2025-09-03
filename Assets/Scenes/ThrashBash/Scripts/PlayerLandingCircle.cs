@@ -15,7 +15,7 @@ public class PlayerLandingCircle : UdonSharpBehaviour
     [NonSerialized] public PlayerAttributes playerAttributes;
     //[NonSerialized] private Rigidbody rb;
 
-    private void Update()
+    private void Update() //fo
     {
         if (playerAttributes != null && owner != null)
         {

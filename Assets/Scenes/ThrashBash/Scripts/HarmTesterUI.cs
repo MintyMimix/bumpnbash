@@ -8,6 +8,10 @@ using VRC.Udon;
 
 public class HarmTesterUI : UdonSharpBehaviour
 {
+    [SerializeField] public GameController gameController;
+    [SerializeField] public UnityEngine.UI.Image FlagImage;
+    [SerializeField] public UnityEngine.UI.Image PoleImage;
+    [SerializeField] public UnityEngine.UI.Image CBSpriteImage;
     public float timer = 0.0f;
     public float duration = 0.0f;
     public Transform child_canvas = null;
@@ -40,6 +44,11 @@ public class HarmTesterUI : UdonSharpBehaviour
 
         if (timer >= duration) { timer = 0.0f; gameObject.SetActive(false); }
         else { timer += Time.deltaTime; }
+
+        if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { CBSpriteImage.enabled = true; }
+        else { CBSpriteImage.enabled = false; }
+        FlagImage.enabled = !CBSpriteImage.enabled;
+        PoleImage.enabled = FlagImage.enabled;
 
     }
 }

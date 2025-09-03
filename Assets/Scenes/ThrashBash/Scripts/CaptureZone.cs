@@ -130,15 +130,22 @@ public class CaptureZone : UdonSharpBehaviour
                 if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
                 {
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
-                    if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
-                    else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
+                    if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
                     {
                         // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
+                        // However, the pause timer for contesting is instant if they aren't on point!
+                        if (contest_id >= 0 && contest_pause_timer > 0.0f) 
+                        { 
+                            contest_pause_timer = contest_pause_duration;
+                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
+                        }
                     }
                     else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
                     {
                         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
                     }
+                    else if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
+
                 }
 
                 // Respawn duration should scale with progress
@@ -156,6 +163,12 @@ public class CaptureZone : UdonSharpBehaviour
                         || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
                         ))
                     { gameController.local_plyAttr.ply_respawn_duration *= 2.5f; }
+                    // Respawn duration is slightly longer for the contestor
+                    if ((
+                        (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
+                        || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
+                        ))
+                    { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
                 }
             }
         }
@@ -670,7 +683,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return; }
         VRCPlayerApi player = Networking.GetOwner(other.gameObject);
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
-        if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning)
+        if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning && player.playerId == Networking.LocalPlayer.playerId)
         {
             gameController.AddToLocalTextQueue("Cannot interact with point while invulnerable!", Color.gray);
         }

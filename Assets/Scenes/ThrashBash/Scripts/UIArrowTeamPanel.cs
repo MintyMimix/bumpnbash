@@ -14,15 +14,20 @@ public class UIArrowTeamPanel : UIArrow
     [NonSerialized] public bool is_template = true;
     [NonSerialized] public int array_id = -1;
     [NonSerialized] public float local_width_init = 380.0f;
-    [NonSerialized] public float local_xoffset_init = -205.0f;
+    [NonSerialized] public float local_xoffset_init = 120.0f;
     [NonSerialized] private float HOST_MARGIN_SIZE = 15.0f;
 
     public void Start()
     {
         wrap_value = true;
-        local_width_init = caption_transform.sizeDelta.x;
-        local_xoffset_init = caption_transform.localPosition.x;
+        //local_width_init = caption_transform.sizeDelta.x;
+        //local_xoffset_init = caption_transform.localPosition.x;
         UpdateOwnership();
+    }
+
+    private void OnEnable()
+    {
+        Start();
     }
 
     private void LateUpdate()

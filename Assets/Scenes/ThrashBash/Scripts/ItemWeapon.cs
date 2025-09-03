@@ -109,7 +109,8 @@ public class ItemWeapon : ItemGeneric
         allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
-        bool player_is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1;
+        //bool player_is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1;
+        bool player_is_boss = false;
         if (plyWeapon != null && !player_is_boss)
         {
             item_is_template = true; // Temporarily set template status of self to true, then reset at end of instantiate

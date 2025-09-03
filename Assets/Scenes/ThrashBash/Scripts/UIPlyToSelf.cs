@@ -64,6 +64,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public ParticleSystem[] PTSParticleList;
    
     [NonSerialized] public PlayerAttributes playerAttributes;
+    [NonSerialized] public UIMessagesToSelf local_uimessagestoself;
 
     // Fields used for demonstrating UI scale when modifying local options
     [SerializeField] public float ui_demo_duration = 5.0f;
@@ -76,6 +77,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public int text_queue_full_max_lines = 24; // What is the hardcap on queued messages?
     [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
     [SerializeField] public float text_queue_duration_default = 5.0f; // How long should an active message be displayed?
+    [SerializeField] public int text_queue_duration_max_characters = 90; // How many characters should a message be for it to be double the default display time?
     [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
     [SerializeField] public float text_queue_limited_extend = 0.5f; // How much longer should an active message be displayed if it is not the top message?
     [NonSerialized] public float[] text_queue_limited_timers;
@@ -101,7 +103,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public int gamevars_local_team_members_alive;
     [NonSerialized] public byte gamevars_local_players_alive;
     [NonSerialized] public byte gamevars_local_teams_alive;
-
+    
     void Start()
     {
         if (gameController == null)
@@ -230,7 +232,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else if (text_queue_full_str.Length == 0) 
         { 
             text_queue_full_colors[0] = color;
-            text_queue_full_durations[0] = text_queue_duration_default;
+            text_queue_full_durations[0] = duration;
         }
         else if (text_queue_full_str.Length > 0) 
         { 
@@ -244,11 +246,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
     }
     public void AddToTextQueue(string input)
     {
-        AddToTextQueue(input, Color.white, text_queue_duration_default);
+        float duration = Mathf.Lerp(text_queue_duration_default, text_queue_duration_default * 2.0f, input.Length / text_queue_duration_max_characters);
+        AddToTextQueue(input, Color.white, duration);
     }
     public void AddToTextQueue(string input, Color color)
     {
-        AddToTextQueue(input, color, text_queue_duration_default);
+        float duration = Mathf.Lerp(text_queue_duration_default, text_queue_duration_default * 2.0f, input.Length / text_queue_duration_max_characters);
+        AddToTextQueue(input, color, duration);
     }
 
     public void UpdateGameVariables()
@@ -610,7 +614,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 if (local_rank == 0) { FlagText = ""; }
                 else
                 {
-                    FlagText = "\n\n1st:\n" + (-gamevars_progress_arr[0]).ToString() + " Falls";
+                    FlagText = "\n\n1st:\n" + (gamevars_progress_arr[0]).ToString() + " Falls";
                 }
             }
 
@@ -902,18 +906,21 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     public Vector3 SetUIForward()
     {
-        var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        var scaleUI = 1.0f;
+        float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        float scaleUI = 1.0f;
+        float distanceUI = 1.0f;
         int useWrist = 0;
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
             useWrist = ppp_options.ui_wrist;
 
-            for (int i = 0; i < text_queue_limited_lines; i++)
+            /*for (int i = 0; i < text_queue_limited_lines; i++)
             {
                 PTSTextStack[i].gameObject.SetActive(useWrist > 0);
-            }
+            }*/
+
+            distanceUI *= (ppp_options.ui_distance);
 
             scaleUI *= (ppp_options.ui_scale);
             //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
@@ -966,6 +973,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             //ppp_options.ui_scale
         }
 
+
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
         /*float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);
         Vector3 velAdd = Vector3.zero;
@@ -977,7 +985,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (useWrist > 0) { velAdd *= 2.0f; } // When wrist hud is active, we want to increase the tracking speed
         }*/
 
-        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI);
+        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
         Vector3 posFinal = posOut; //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
@@ -1002,7 +1010,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).position;
                 wrist_rot = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation;
-                offset_rot = Quaternion.Euler(0.0f, 55.0f+90.0f, 0.0f);
+                offset_rot = Quaternion.Euler(0.0f, 120.0f, 0.0f);
             }
 
             transform.SetPositionAndRotation(
@@ -1019,6 +1027,12 @@ public class UIPlyToSelf : UdonSharpBehaviour
     public void ShowPainIndicator(float damage, Vector3 point_towards)
     {
         GameObject indicator_obj = Instantiate(PTSPainDirTemplate, transform);
+        Vector3 indicator_world_pos = indicator_obj.transform.position;
+        if (local_uimessagestoself != null) 
+        { 
+            indicator_obj.transform.parent = local_uimessagestoself.gameObject.transform;
+            indicator_obj.transform.position = indicator_world_pos;
+        }
         UIPainIndicator indicator_script = indicator_obj.GetComponent<UIPainIndicator>();
         indicator_script.pointTowards = point_towards;
         indicator_script.duration = Mathf.Clamp(damage / 10.0f, indicator_script.min_duration, indicator_script.max_duration);
@@ -1070,18 +1084,36 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             //int internal_id = gameController.DictIndexFromKey(defender_id, gameController.ply_tracking_dict_keys_arr);
             // Food for thought: instead of creating/destroying all of these, just have 80 on standby and then assign to the players in the tracking index accordingly and activate/deactivate
-            GameObject harm_obj = Instantiate(PTSHarmNumberTemplate, transform);
-            harm_obj.transform.SetParent(null);
-            UIHarmNumber harm_script = harm_obj.GetComponent<UIHarmNumber>();
-            harm_script.ui_parent = gameObject;
-            harm_script.UpdateValue(Mathf.RoundToInt(damage), false);
-            harm_script.origin = origin_point;
-            harm_script.target_id = defender_id;
-            if (playerAttributes != null) { harm_script.duration = playerAttributes.combo_send_duration; }
-            harm_script.ui_text.color = defender_color;
-            harm_obj.SetActive(true);
-            harm_script.StartTimer();
-            PTSHarmNumberList[internal_id] = harm_script;
+            //GameObject harm_obj = Instantiate(PTSHarmNumberTemplate, transform);
+            if (gameController.global_harmnumber_arr == null || gameController.global_harmnumber_arr.Length == 0)
+            {
+                gameController.PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
+            }
+            if (gameController.global_harmnumber_cnt >= gameController.global_harmnumber_arr.Length || gameController.global_lowest_available_harmnumber_index >= gameController.global_harmnumber_arr.Length || gameController.global_lowest_available_harmnumber_index == -1)
+            {
+                UnityEngine.Debug.LogWarning("Exceeded maximum harmnumbers possible!");
+            }
+            else
+            {
+                if (gameController.global_harmnumber_arr[gameController.global_lowest_available_harmnumber_index] == null)
+                {
+                    gameController.PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
+                }
+
+                GameObject harm_obj = gameController.PreallocAddSlot((int)prealloc_obj_name.UIHarmNumber);
+                harm_obj.transform.SetParent(null);
+                UIHarmNumber harm_script = harm_obj.GetComponent<UIHarmNumber>();
+                harm_script.ResetDisplay();
+                harm_script.ui_parent = gameObject;
+                harm_script.UpdateValue(Mathf.RoundToInt(damage), false);
+                harm_script.origin = origin_point;
+                harm_script.target_id = defender_id;
+                if (playerAttributes != null) { harm_script.duration = playerAttributes.combo_send_duration; }
+                harm_script.ui_text.color = defender_color;
+                harm_obj.SetActive(true);
+                harm_script.StartTimer();
+                PTSHarmNumberList[internal_id] = harm_script;
+            }
         }
         else
         {
@@ -1099,7 +1131,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         int internal_id = -1;
         if (PTSHarmNumberList == null || PTSHarmNumberList.Length == 0)
         {
-            if (inHarmNumberObj != null) { Destroy(inHarmNumberObj); }
+            if (inHarmNumberObj != null) { Destroy(inHarmNumberObj); } // If we have an empty list, this is a dangling object created from some unknown source. Destory it.
             return;
         }
         else
@@ -1110,9 +1142,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
             // If the entry does not exist, just destroy the object
             if (internal_id < 0) { Destroy(inHarmNumberObj); }
-            // Otherwise, remove from the array first before doing so
+            // Otherwise, remove from the arrays
             else
             {
+                UIHarmNumber harmNumberScript = PTSHarmNumberList[internal_id];
                 UIHarmNumber[] tempHarmNumberList = new UIHarmNumber[PTSHarmNumberList.Length - 1];
                 for (int i = 0; i < PTSHarmNumberList.Length; i++)
                 {
@@ -1120,7 +1153,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     else if (i > internal_id) { tempHarmNumberList[i - 1] = PTSHarmNumberList[i]; }
                 }
                 PTSHarmNumberList = tempHarmNumberList;
-                Destroy(inHarmNumberObj);
+                gameController.PreallocClearSlot((int)prealloc_obj_name.UIHarmNumber, harmNumberScript.global_index, ref harmNumberScript.ref_index);
+
+                //Destroy(inHarmNumberObj);
             }
         }
     }
@@ -1156,7 +1191,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             GameObject harmTesterUI = harmTester.transform.GetChild(0).gameObject;
             HarmTesterUI harmtester_script = harmTesterUI.GetComponent<HarmTesterUI>();
             float scaleOtherUI = ((0.0f + ppp_options.ui_other_scale) / 1.0f);
-            float posOtherUI = ((1.0f + ppp_options.ui_other_scale) / 2.0f);
+            float posOtherUI = ((1.5f + ppp_options.ui_other_scale) / 2.5f);
             harmTesterUI.transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleOtherUI;
             harmTesterUI.transform.position = harmTester.transform.position + new Vector3(0.0f, 1.2f * posOtherUI, 0.0f);
             if (playerAttributes != null) { harmtester_script.duration = playerAttributes.combo_send_duration; }
