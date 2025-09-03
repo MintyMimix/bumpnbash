@@ -2,6 +2,7 @@
 using System;
 using TMPro;
 using UdonSharp;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.ProBuilder;
 using VRC.SDK3.UdonNetworkCalling;
@@ -87,12 +88,20 @@ public class WeaponProjectile : UdonSharpBehaviour
                                 mat.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
                             }
                             Transform trail = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Trail");
-                            if (trail != null && trail.GetComponent<TrailRenderer>() != null){ trail.GetComponent<TrailRenderer>().startColor = mat.GetColor("_EmissionColor"); trail.GetComponent<TrailRenderer>().endColor = mat.GetColor("_EmissionColor"); }
+                            if (trail != null && trail.GetComponent<TrailRenderer>() != null) 
+                            {
+                                trail.GetComponent<TrailRenderer>().startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                                trail.GetComponent<TrailRenderer>().endColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                            }
                             Transform particle = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Particle");
                             if (particle != null && particle.GetComponent<ParticleSystem>() != null)
                             {
                                 var particle_main = particle.GetComponent<ParticleSystem>().main;
-                                particle_main.startColor = m_Renderer.material.GetColor("_EmissionColor");
+                                particle_main.startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                                particle_main.duration = projectile_duration;
+                                particle_main.playOnAwake = true;
+                                particle.gameObject.SetActive(true);
+                                particle.GetComponent<ParticleSystem>().Play();
                             }
                         }
                     }

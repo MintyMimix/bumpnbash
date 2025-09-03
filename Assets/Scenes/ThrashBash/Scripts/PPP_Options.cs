@@ -7,21 +7,29 @@ using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class PPP_Options : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
+    [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uisoundslider;
     [SerializeField] public TMP_Text ui_uiscaletext;
     [SerializeField] public TMP_Text ui_uiseparationtext;
+    [SerializeField] public TMP_Text ui_uistretchtext;
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
+    [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
+    [NonSerialized] public bool intend_to_be_spectator = false;
     [NonSerialized] public float ui_scale = 1.0f;
     [NonSerialized] public float ui_separation = 300.0f;
+    [NonSerialized] public float ui_stretch = 1.0f;
     [NonSerialized] public bool waiting_on_playerdata = true;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
@@ -56,6 +64,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         RefreshComponents();
         UpdateUIScale();
+        UpdateHurtbox();
         UpdateColorblind();
         UpdateMusicVolume();
         UpdateSoundVolume();
@@ -67,30 +76,47 @@ public class PPP_Options : UdonSharpBehaviour
             var should_refresh = false;
             for (int i = 0; i < infos.Length; i++)
             {
-
                 if (!PlayerData.HasKey(player, "UIScale"))
                 {
                     ui_uiscaleslider.value = 10.0f;
                     UpdateUIScale();
-                    break;
+                    continue;
                 }
-                if (!PlayerData.HasKey(player, "UISeparation"))
+                if (!PlayerData.HasKey(player, "UIVertical"))
                 {
-                    ui_uiseparationslider.value = 30.0f;
+                    ui_uiseparationslider.value = 10.0f;
                     UpdateUISeparation();
-                    break;
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UIStretch"))
+                {
+                    ui_uistretchslider.value = 10.0f;
+                    UpdateUIStretch();
+                    continue;
                 }
                 if (!PlayerData.HasKey(player, "MusicVolume"))
                 {
                     ui_uimusicslider.value = 10.0f;
                     UpdateMusicVolume();
-                    break;
+                    continue;
                 }
                 if (!PlayerData.HasKey(player, "SoundVolume"))
                 {
                     ui_uisoundslider.value = 10.0f;
                     UpdateSoundVolume();
-                    break;
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "Colorblind"))
+                {
+                    ui_colorblindtoggle.isOn = false;
+                    UpdateColorblind();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "HurtboxShow"))
+                {
+                    ui_hurtboxtoggle.isOn = true;
+                    UpdateHurtbox();
+                    continue;
                 }
                 if (infos[i].State == PlayerData.State.Restored || infos[i].State == PlayerData.State.Changed)
                 { 
@@ -124,14 +150,25 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         float out_UISeparation;
-        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UISeparation", out out_UISeparation))
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIVertical", out out_UISeparation))
         {
             ui_uiseparationslider.value = out_UISeparation;
         }
         else
         {
-            ui_uiseparationslider.value = 30.0f;
+            ui_uiseparationslider.value = 10.0f;
             UpdateUISeparation();
+        }
+
+        float out_UIStretch;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIStretch", out out_UIStretch))
+        {
+            ui_uistretchslider.value = out_UIStretch;
+        }
+        else
+        {
+            ui_uistretchslider.value = 10.0f;
+            UpdateUIStretch();
         }
 
         float out_MusicVolume;
@@ -156,7 +193,28 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateSoundVolume();
         }
 
-        ui_colorblindtoggle.isOn = PlayerData.GetBool(Networking.LocalPlayer, "Colorblind");
+        bool out_Colorblind;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "Colorblind", out out_Colorblind))
+        {
+            ui_colorblindtoggle.isOn = out_Colorblind;
+        }
+        else
+        {
+            ui_colorblindtoggle.isOn = false;
+            UpdateColorblind();
+        }
+
+        bool out_HurtboxShow;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "HurtboxShow", out out_HurtboxShow))
+        {
+            ui_hurtboxtoggle.isOn = out_HurtboxShow;
+        }
+        else
+        {
+            ui_hurtboxtoggle.isOn = true;
+            UpdateHurtbox();
+        }
+
     }
 
     public void UpdateUIScale()
@@ -183,26 +241,43 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateUISeparation()
     {
-        ui_separation = ui_uiseparationslider.value * 10.0f;
+        ui_separation = ui_uiseparationslider.value / 10.0f;
         GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
         if (ui_plyself_obj != null && ui_plyself_obj.GetComponent<UIPlyToSelf>() != null)
         {
             ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
             ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
         }
-        ui_uiseparationtext.text = "UI Separation: " + (ui_separation * 1.0f) + "\n (Default: 300)";
+        ui_uiseparationtext.text = "UI Vertical: " + (ui_separation * 100.0f) + "%";
         if ((ui_separation * 10.0f) <= ui_uiseparationslider.minValue) { ui_uiseparationtext.color = Color.red; }
         else { ui_uiseparationtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UISeparation", ui_uiseparationslider.value);
+        PlayerData.SetFloat("UIVertical", ui_uiseparationslider.value);
+    }
+
+    public void UpdateUIStretch()
+    {
+        ui_stretch = ui_uistretchslider.value / 10.0f;
+        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+        if (ui_plyself_obj != null && ui_plyself_obj.GetComponent<UIPlyToSelf>() != null)
+        {
+            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
+            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
+        }
+        ui_uistretchtext.text = "UI Horizontal: " + (ui_stretch * 100.0f) + "%";
+        if ((ui_stretch * 10.0f) <= ui_uistretchslider.minValue) { ui_uistretchtext.color = Color.red; }
+        else { ui_uistretchtext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
     }
 
     public void UpdateMusicVolume()
     {
-        music_volume = ui_uimusicslider.value;
+        music_volume = ui_uimusicslider.value / 10.0f;
 
-        ui_uimusictext.text = "Music Volume: " + (music_volume * 10.0f) + "%";
+        ui_uimusictext.text = "Music Volume: " + (music_volume * 100.0f) + "%";
         if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) { ui_uimusictext.color = Color.red; }
         else { ui_uimusictext.color = Color.white; }
 
@@ -213,9 +288,9 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateSoundVolume()
     {
-        sound_volume = ui_uisoundslider.value;
+        sound_volume = ui_uisoundslider.value / 10.0f;
 
-        ui_uisoundtext.text = "Sound Volume: " + (sound_volume * 10.0f) + "%";
+        ui_uisoundtext.text = "Sound Volume: " + (sound_volume * 100.0f) + "%";
         if ((sound_volume * 10.0f) <= ui_uisoundslider.minValue) { ui_uisoundtext.color = Color.red; }
         else { ui_uisoundtext.color = Color.white; }
 
@@ -230,7 +305,32 @@ public class PPP_Options : UdonSharpBehaviour
 
         if (waiting_on_playerdata) { return; }
         PlayerData.SetBool("Colorblind", ui_colorblindtoggle.isOn);
-        
     }
 
+    public void UpdateHurtbox()
+    {
+        hurtbox_show = ui_hurtboxtoggle.isOn;
+        gameController.RefreshSetupUI();
+
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
+    }
+
+    // Spectator does not require persistence
+    /*public void SpectateGame()
+    {
+        intend_to_be_spectator = ui_spectatortoggle.isOn;
+        if (intend_to_be_spectator)
+        {
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, -1, false);
+        }
+        else
+        {
+            if (intend_to_be_spectator)
+            {
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, -3, false);
+            }
+        }
+        gameController.RefreshSetupUI();
+    }*/
 }

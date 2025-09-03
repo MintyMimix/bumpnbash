@@ -22,18 +22,22 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public Sprite PTSTimerImage;
     [SerializeField] public TMP_Text PTSLives;
     [SerializeField] public UnityEngine.UI.Image PTSLivesImage;
+    [SerializeField] public RectTransform PTSLivesTransform;
     [SerializeField] public Sprite PTSLivesSprite;
     [SerializeField] public Sprite PTSPointsSprite;
     [SerializeField] public Sprite PTSDeathsSprite;
     [SerializeField] public Sprite PTSFlagSprite;
     [SerializeField] public TMP_Text PTSDamage;
+    [SerializeField] public RectTransform PTSDamageTransform;
     [SerializeField] public TMP_Text PTSAttack;
     [SerializeField] public TMP_Text PTSDefense;
     [SerializeField] public TMP_Text PTSInvul;
+    [SerializeField] public RectTransform PTSInvulTransform;
     [SerializeField] public GameObject PTSTeamFlag;
     [SerializeField] public UnityEngine.UI.Image PTSTeamFlagImage;
     [SerializeField] public UnityEngine.UI.Image PTSTeamPoleImage;
     [SerializeField] public TMP_Text PTSTeamText;
+    [SerializeField] public RectTransform PTSTeamTransform;
     [SerializeField] public UnityEngine.UI.Image PTSTeamCBSpriteImage;
     [SerializeField] public TMP_Text PTSPlacementText;
     [SerializeField] public UnityEngine.UI.Image PTSWeaponSprite;
@@ -385,11 +389,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             ui_demo_enabled = false;
             if (ui_show_intro_text) {
-                AddToTextQueue("Step in the square to join the game!", Color.white);
-                AddToTextQueue(" -- ALPHA BUILD VERSION 0.16.1 --", Color.white);
                 AddToTextQueue("This game is in development; there may be major bugs or issues!", Color.red);
-
+                AddToTextQueue(" -- ALPHA BUILD VERSION 0.17.1 --", Color.white);
+                AddToTextQueue("Step in the square to join the game!", Color.white);
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
+                if (gameController != null && Networking.IsMaster) { gameController.ResetGameOptionsToDefault(false); }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
@@ -493,11 +497,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
 
-        if (gamevars_leaderboard_arr == null) { return; }
-
         string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
-        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0
+        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0 && gamevars_leaderboard_arr != null
             && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team)
         {
 
@@ -572,68 +574,71 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
 
         var LivesText = "";
-        if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_gamemode == (int)gamemode_name.Survival || (playerAttributes.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
+        if (gamevars_leaderboard_arr != null)
         {
-            // If we are in survival mode or are the boss, display lives
-            LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
-            PTSLivesImage.sprite = PTSLivesSprite;
-            float livesRatio = (float)((float)playerAttributes.ply_lives / (float)gameController.plysettings_lives);
-            if (livesRatio < 1.0f) { livesRatio -= 0.5f * (float)(1.0f / (float)gameController.plysettings_lives); }
-            livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
-            PTSLivesImage.color = Color.white;
-            PTSLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
-        }
-        else if (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.gamemode_boss_id >= 0)
-        {
-            // If this is boss bash, display the boss's points as a total death counter
-            var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
-            if (bossAttr != null)
+            if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
+            else if (gameController.option_gamemode == (int)gamemode_name.Survival || (playerAttributes.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
             {
-                LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_gm_goal;
+                // If we are in survival mode or are the boss, display lives
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
+                PTSLivesImage.sprite = PTSLivesSprite;
+                float livesRatio = (float)((float)playerAttributes.ply_lives / (float)gameController.plysettings_lives);
+                if (livesRatio < 1.0f) { livesRatio -= 0.5f * (float)(1.0f / (float)gameController.plysettings_lives); }
+                livesRatio = Mathf.Min(Mathf.Max(0.0f, livesRatio), 1.0f);
+                PTSLivesImage.color = Color.white;
+                PTSLives.color = new Color(1.0f, livesRatio, livesRatio, 1.0f);
             }
-            else { LivesText = "?"; }
-            PTSLives.color = Color.white;
-            PTSLivesImage.color = Color.white;
-            PTSLivesImage.sprite = PTSDeathsSprite;
-        }
-        else if (gameController.option_gamemode == (int)gamemode_name.Infection)
-        {
-            // If this is infection, display the total infections
-            if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
-            PTSLives.color = Color.white;
-            PTSLivesImage.color = Color.white;
-            PTSLivesImage.sprite = PTSDeathsSprite;
-        }
-        // If this is King of the Hill, display the total capture time remaining
-        else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
-        {
-            float timeLeft;
-            if (gameController.option_teamplay && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)gamevars_local_team_points[playerAttributes.ply_team] / gameController.koth_decimal_division)); }
-            else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); }
-            LivesText = timeLeft.ToString();
-            float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
-            PTSLives.color = new Color(timeRatio, 1.0f, timeRatio / 1.5f, 1.0f);
-            PTSLivesImage.color = PTSTeamFlagImage.color;
-            PTSLivesImage.sprite = PTSTimerImage;
-        }
-        // If this is Fitting In, display the number of deaths
-        else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
-        {
-            if (gameController.option_teamplay && gamevars_local_team_deaths != null && gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_deaths[playerAttributes.ply_team]).ToString(); }
-            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString(); }
-            PTSLives.color = Color.white;
-            PTSLivesImage.color = Color.white;
-            PTSLivesImage.sprite = PTSDeathsSprite;
-        }
-        else
-        {
-            // Otherwise, display points
-            if (gameController.option_teamplay && gamevars_local_team_points != null && gamevars_local_team_points.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_points[playerAttributes.ply_team]).ToString() + "/" + gameController.option_gm_goal; }
-            else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_gm_goal; }
-            PTSLives.color = Color.white;
-            PTSLivesImage.color = PTSTeamFlagImage.color;
-            PTSLivesImage.sprite = PTSPointsSprite;
+            else if (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.gamemode_boss_id >= 0)
+            {
+                // If this is boss bash, display the boss's points as a total death counter
+                var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
+                if (bossAttr != null)
+                {
+                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_gm_goal;
+                }
+                else { LivesText = "?"; }
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = Color.white;
+                PTSLivesImage.sprite = PTSDeathsSprite;
+            }
+            else if (gameController.option_gamemode == (int)gamemode_name.Infection)
+            {
+                // If this is infection, display the total infections
+                if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = Color.white;
+                PTSLivesImage.sprite = PTSDeathsSprite;
+            }
+            // If this is King of the Hill, display the total capture time remaining
+            else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
+            {
+                float timeLeft;
+                if (gameController.option_teamplay && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)gamevars_local_team_points[playerAttributes.ply_team] / gameController.koth_decimal_division)); }
+                else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); }
+                LivesText = timeLeft.ToString();
+                float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
+                PTSLives.color = new Color(timeRatio, 1.0f, timeRatio / 1.5f, 1.0f);
+                PTSLivesImage.color = PTSTeamFlagImage.color;
+                PTSLivesImage.sprite = PTSTimerImage;
+            }
+            // If this is Fitting In, display the number of deaths
+            else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
+            {
+                if (gameController.option_teamplay && gamevars_local_team_deaths != null && gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_deaths[playerAttributes.ply_team]).ToString(); }
+                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString(); }
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = Color.white;
+                PTSLivesImage.sprite = PTSDeathsSprite;
+            }
+            else
+            {
+                // Otherwise, display points
+                if (gameController.option_teamplay && gamevars_local_team_points != null && gamevars_local_team_points.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_points[playerAttributes.ply_team]).ToString() + "/" + gameController.option_gm_goal; }
+                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_gm_goal; }
+                PTSLives.color = Color.white;
+                PTSLivesImage.color = PTSTeamFlagImage.color;
+                PTSLivesImage.sprite = PTSPointsSprite;
+            }
         }
         PTSLives.text = LivesText;
  
@@ -729,10 +734,26 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (owner != Networking.LocalPlayer || owner == null) { return; }
         var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         var scaleUI = 1.0f;
-        if (gameController != null && gameController.local_ppp_options != null) { 
-            scaleUI *= (gameController.local_ppp_options.ui_scale);
-            PTSCanvas.sizeDelta = new Vector2(gameController.local_ppp_options.ui_separation * (5.0f / 3.0f), gameController.local_ppp_options.ui_separation);
-            //gameController.local_ppp_options.ui_scale
+        if (gameController != null && gameController.local_ppp_options != null) {
+            PPP_Options ppp_options = gameController.local_ppp_options;
+            scaleUI *= (ppp_options.ui_scale);
+            //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
+            PTSCanvas.sizeDelta = new Vector2(500, 300);
+            float x_separation = (PTSTimerTransform.localPosition.x - PTSTeamTransform.localPosition.x) / 2.0f;
+            PTSLivesTransform.localPosition = new Vector3(
+                x_separation * ppp_options.ui_stretch //150
+                , PTSLivesTransform.localPosition.y
+                , PTSLivesTransform.localPosition.z
+                );
+            PTSDamageTransform.localPosition = new Vector3(
+                -x_separation * ppp_options.ui_stretch //150
+                , PTSDamageTransform.localPosition.y
+                , PTSDamageTransform.localPosition.z
+                );
+            PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
+            PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
+            //ppp_options.ui_separation * (5.0f / 3.0f)
+            //ppp_options.ui_scale
         }
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
         float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);

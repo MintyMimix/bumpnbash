@@ -51,7 +51,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
     {
         players_struck = new int[0];
         rb = gameObject.GetComponent<Rigidbody>();
-       
+
+        if (gameController != null && gameController.local_ppp_options != null)
+        {
+            Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
+            m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
+        }
     }
 
     public void SetMesh()
@@ -116,6 +121,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
             weapon_script = weapon_parent.GetComponent<PlayerWeapon>();
         }
         owner_plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(owner_id));
+
+        if (gameController != null && gameController.local_ppp_options != null)
+        {
+            Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
+            m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
+        }
 
         SetMesh();
 
@@ -212,10 +223,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
             }
-            if (particle != null && particle.GetComponent<ParticleSystemRenderer>() != null) 
+            if (particle != null && particle.GetComponent<ParticleSystem>() != null) 
             {
                 var particle_main = particle.GetComponent<ParticleSystem>().main;
-                particle_main.startColor = m_Renderer.material.GetColor("_EmissionColor");
+                particle_main.startColor = new Color(m_Renderer.material.GetColor("_Color").r, m_Renderer.material.GetColor("_Color").g, m_Renderer.material.GetColor("_Color").b, 1.0f);
             }
         }
     }

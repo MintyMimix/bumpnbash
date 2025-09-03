@@ -94,7 +94,7 @@ public class MapSelectPanel : UdonSharpBehaviour
         {
             active_maps_condensed[j] = active_maps_from_full[j];
         }
-        UnityEngine.Debug.Log("Active maps: " + gameController.ConvertIntArrayToString(active_maps_condensed));
+        //UnityEngine.Debug.Log("Active maps: " + gameController.ConvertIntArrayToString(active_maps_condensed));
         return active_maps_condensed;
     }
 

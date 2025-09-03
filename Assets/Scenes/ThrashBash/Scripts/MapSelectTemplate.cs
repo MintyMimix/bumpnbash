@@ -20,8 +20,11 @@ public class MapSelectTemplate : UdonSharpBehaviour
         UnityEngine.UI.Toggle getToggle = GetComponent<UnityEngine.UI.Toggle>();
         if (getToggle != null)
         {
-            if (Networking.IsMaster && getToggle.interactable == false) { getToggle.interactable = true; }
-            else if (!Networking.IsMaster && getToggle.interactable == true) { getToggle.interactable = false; }
+            bool toggle_should_be_on = Networking.IsMaster;
+            if (parent_mapselectpanel != null && parent_mapselectpanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+
+            if (toggle_should_be_on && getToggle.interactable == false) { getToggle.interactable = true; }
+            else if (!toggle_should_be_on && getToggle.interactable == true) { getToggle.interactable = false; }
         }
     }
 

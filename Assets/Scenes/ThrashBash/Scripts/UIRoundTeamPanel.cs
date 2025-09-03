@@ -122,7 +122,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
             //UIScrollPanelGridLayoutGroup.spacing = new Vector2(grid_result[4], grid_result[5]);
             for (int i = 0; i < team_obj_list.Length; i++)
             {
-                ((RectTransform)team_obj_list[i].transform).localScale = new Vector3(grid_result[1], grid_result[2], grid_result[3]);
+                //((RectTransform)team_obj_list[i].transform).localScale = new Vector3(grid_result[1], grid_result[2], grid_result[3]);
             }
 
         }

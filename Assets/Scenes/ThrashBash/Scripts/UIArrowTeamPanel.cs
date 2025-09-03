@@ -18,6 +18,19 @@ public class UIArrowTeamPanel : UIArrow
         UpdateOwnership();
     }
 
+    private void LateUpdate()
+    {
+        if (button_increment != null && button_decrement != null)
+        {
+            bool toggle_should_be_on = Networking.IsMaster;
+            if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+            if (toggle_should_be_on && button_increment.interactable == false) { button_increment.interactable = true; }
+            else if (!toggle_should_be_on && button_increment.interactable == true) { button_increment.interactable = false; }
+            if (toggle_should_be_on && button_decrement.interactable == false) { button_decrement.interactable = true; }
+            else if (!toggle_should_be_on && button_decrement.interactable == true) { button_decrement.interactable = false; }
+        }
+    }
+
     public void Refresh()
     {
         // Check if we can latch onto a player

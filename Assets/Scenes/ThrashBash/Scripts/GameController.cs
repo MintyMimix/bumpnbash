@@ -11,8 +11,10 @@ using TMPro;
 using UdonSharp;
 using Unity.Burst.Intrinsics;
 using UnityEngine;
+using UnityEngine.Playables;
 using UnityEngine.ProBuilder;
 using UnityEngine.Rendering.PostProcessing;
+using UnityEngine.Windows;
 using VRC.SDK3.Components;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
@@ -82,6 +84,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public Transform ui_round_scoreboard_canvas;
     [SerializeField] public MapSelectPanel ui_round_mapselect;
 
+    [SerializeField] public UnityEngine.UI.Button ui_round_option_default_button;
     [SerializeField] public TMP_Text ui_round_option_description;
     [SerializeField] public TMP_Dropdown ui_round_option_dropdown;
     //[SerializeField] public TMP_Text ui_round_map_description;
@@ -91,6 +94,23 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public TMP_InputField ui_round_option_goal_input_a;
     [SerializeField] public TMP_InputField ui_round_option_goal_input_b;
 
+    [SerializeField] public TMP_InputField ui_ply_option_dp;
+    [SerializeField] public TMP_InputField ui_ply_option_atk;
+    [SerializeField] public TMP_InputField ui_ply_option_def;
+    [SerializeField] public TMP_InputField ui_ply_option_speed;
+    [SerializeField] public TMP_InputField ui_ply_option_grav;
+    [SerializeField] public TMP_Dropdown ui_ply_option_weapon_dropdown;
+    [SerializeField] public UnityEngine.UI.Toggle ui_ply_option_weapon_toggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_ply_option_powerup_toggle;
+
+    [SerializeField] public TMP_InputField ui_adv_option_respawn_duration;
+    [SerializeField] public TMP_InputField ui_adv_option_item_frequency;
+    [SerializeField] public TMP_InputField ui_adv_option_item_duration;
+    [SerializeField] public TMP_InputField ui_adv_option_boss_atk_mod;
+    [SerializeField] public TMP_InputField ui_adv_option_boss_def_mod;
+    [SerializeField] public TMP_InputField ui_adv_option_boss_speed_mod;
+    [SerializeField] public TMP_InputField ui_adv_option_boss_scale_mod;
+
     [SerializeField] public Room_Ready room_ready_script;
     [SerializeField] public GameObject room_ready_spawn;
     [SerializeField] public Mapscript[] mapscript_list;
@@ -98,6 +118,7 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public string maps_active_str = "";
     [NonSerialized] public sbyte map_selected_local = -1;
     [NonSerialized] public string maps_active_local = "";
+    [NonSerialized] public bool restrict_map_change = false;
     //[SerializeField] public Collider[] room_game_spawnzones; // To-do: replace with mapscript
     //[SerializeField] public GameObject room_game_extended; // To-do: replace with mapscript
     [SerializeField] public TextMeshProUGUI room_ready_txt;
@@ -156,6 +177,17 @@ public class GameController : UdonSharpBehaviour
     [UdonSynced] public float plysettings_def = 1.0f;
     [Tooltip("Starting Gravity, as a multiplier (default: 1.0x)")]
     [UdonSynced] public float plysettings_grav = 1.0f;
+    [Tooltip("Starting Weapon")]
+    [UdonSynced] public int plysettings_weapon = (int)weapon_type_name.PunchingGlove;
+    [Tooltip("Spawn Weapon Pickups")]
+    [UdonSynced] public bool plysettings_iweapons = true;
+    [Tooltip("Spawn Powerup Pickups")]
+    [UdonSynced] public bool plysettings_powerups = true;
+    [Tooltip("Item Spawn Frequency, as a multiplier (default 1.0x)")]
+    [UdonSynced] public float plysettings_item_frequency = 1.0f;
+    [Tooltip("Item Spawn Duration, as a multiplier (default: 1.0x)")]
+    [UdonSynced] public float plysettings_item_duration = 1.0f;
+
     [Tooltip("Starting Scale damage factor, which determines how much player size affects abilities, as a multiplier (default: 1.0x)")]
     [UdonSynced] public float scale_damage_factor = 2.0f;
 
@@ -165,6 +197,8 @@ public class GameController : UdonSharpBehaviour
     [UdonSynced] public float plysettings_boss_atk_mod = 0.0f;
     [Tooltip("(Boss Bash) How much should The Big Boss's defense be modified, after scale factor is applied?")]
     [UdonSynced] public float plysettings_boss_def_mod = 1.5f;
+    [Tooltip("(Boss Bash) How much should The Big Boss's speed be modified, after scale factor is applied?")]
+    [UdonSynced] public float plysettings_boss_speed_mod = 0.0f;
 
     [Header("Voice Settings")]
     [Tooltip("Range 0 - 1,000,000. The near radius, in meters, where volume begins to fall off. (VRC Default: 0; Game Default: 25)")]
@@ -207,7 +241,8 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public string[] round_option_names; // NOTE: Corresponds to gamemode_name
     [SerializeField] public string[] round_option_descriptions; // NOTE: Corresponds to gamemode_name
     [NonSerialized] [UdonSynced] public byte option_gamemode = 0;
-    [NonSerialized] public byte local_gamemode_count = 0; // For some reason, Udon doesn't support TMP_Dropwn.options, so we have to track this manually
+    [NonSerialized] public byte local_gamemode_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
+    [NonSerialized] public byte local_weapon_count = 0; // For some reason, Udon doesn't support TMP_Dropown.options, so we have to track this manually
     [NonSerialized] [UdonSynced] public ushort option_gm_goal; // The goal for each gamemode, such as points to win, boss KOs, or time to capture
     [NonSerialized] [UdonSynced] public ushort option_gm_config_a; // A variable for additional configuration options for a gamemode, such as starting infected or boss lives
     //[NonSerialized] [UdonSynced] public ushort option_gm_config_b; // A variable for additional configuration options for a gamemode, such as starting infected or boss lives
@@ -235,6 +270,9 @@ public class GameController : UdonSharpBehaviour
 
     [NonSerialized] public int koth_decimal_division = 1000;
 
+    [NonSerialized] public bool ui_initialized = false;
+    [NonSerialized] public bool ui_updating = false;
+
     // Personal Player Variables
     [NonSerialized] public PPP_Options local_ppp_options;
     [NonSerialized] public UIPlyToSelf local_uiplytoself;
@@ -245,6 +283,7 @@ public class GameController : UdonSharpBehaviour
     // -- Initialization --
     private void Start()
     {
+        ui_initialized = false;
         skybox.mainTexture = default_skybox_tex;
         //DebugTestDictFunctions();
         //item_spawns = new ItemSpawner[0];
@@ -279,6 +318,7 @@ public class GameController : UdonSharpBehaviour
         if (Networking.IsMaster)
         {
             ResetPlyDicts();
+            ResetGameOptionsToDefault(false);
         }
 
         music_volume_default = snd_game_music_source.volume;
@@ -289,8 +329,8 @@ public class GameController : UdonSharpBehaviour
         snd_game_sfx_clips[(int)game_sfx_name.HitReceive] = snd_game_sfx_clips_hitreceive;
 
         PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true);
-
         RefreshSetupUI();
+        ui_initialized = true;
     }
 
     public float[] GetStatsFromWeaponType(int weapon_type)
@@ -337,8 +377,8 @@ public class GameController : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = projectile_speed * weapon_stats[(int)weapon_stats_name.Projectile_Duration];
             weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
             weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 30.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 2.85f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.0f; // 2.85
             weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
         }
@@ -351,8 +391,8 @@ public class GameController : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 100.0f;
             weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
             weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 50.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.4f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
             weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
         }
@@ -365,9 +405,9 @@ public class GameController : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 200.0f;
             weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Laser;
             weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 40.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0f
             weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 2.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.5f; // 2.0
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Laser;
         }
         else
@@ -410,7 +450,7 @@ public class GameController : UdonSharpBehaviour
         }
 
         // If our local map is desynced with the true map, resync it
-        if (map_selected_local != map_selected) { SetupMap(); }
+        if (map_selected_local != map_selected && round_state != (int)round_state_name.Queued && !restrict_map_change) { SetupMap(); }
 
         OOBFailsafe();
 
@@ -423,8 +463,8 @@ public class GameController : UdonSharpBehaviour
             int[][] players_in_game = GetPlayersInGame();
             for (int j = 0; j < mapscript_list[map_selected].map_item_spawns.Length; j++)
             {
-                // Only spawn if we have enough players
-                if (players_in_game[1].Length >= mapscript_list[map_selected].map_item_spawns[j].item_spawn_min_players)
+                // Only spawn if we have enough players and it isn't effectively disabled
+                if (players_in_game[1].Length >= mapscript_list[map_selected].map_item_spawns[j].item_spawn_min_players && mapscript_list[map_selected].map_item_spawns[j].item_spawn_chance_total > 0)
                 {
                     // Don't spawn the item if it is FFA-only and we are in teamplay mode
                     if (option_teamplay && mapscript_list[map_selected].map_item_spawns[j].item_spawn_team == -2) { mapscript_list[map_selected].map_item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Disabled; }
@@ -459,6 +499,11 @@ public class GameController : UdonSharpBehaviour
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
             round_state = (int)round_state_name.Start;
+            for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
+            {
+                if (ply_tracking_dict_values_arr == null) { break; }
+                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby) { ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false); }
+            }
             TeleportLocalPlayerToReadyRoom(); // Failsafe in case the master gets left behind in the arena. Sometimes occurs if they are the last Infected.
             RefreshSetupUI();
             RequestSerialization();
@@ -501,10 +546,10 @@ public class GameController : UdonSharpBehaviour
             //UnityEngine.Debug.Log("CLIENT: Syncing new arrays: " + ply_tracking_dict_keys_str + " | " + ply_tracking_dict_values_str);
         }
 
-        PlayerAttributes localPlyAttr = FindPlayerAttributes(Networking.LocalPlayer);
-        if (localPlyAttr != null)
+        if (local_plyAttr == null) { local_plyAttr = FindPlayerAttributes(Networking.LocalPlayer); }
+        if (local_plyAttr != null)
         {
-            localPlyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            local_plyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
         }
 
         if (ui_round_mapselect != null)
@@ -531,12 +576,20 @@ public class GameController : UdonSharpBehaviour
             wait_for_sync_for_player_join = false;
         }
 
+        if (local_uiplytoself == null)
+        {
+            var plyUIToSelf = FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+            local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
+        }
+
         AdjustVoiceRange();
         RefreshSetupUI();
     }
 
     public void RefreshSetupUI()
     {
+        ui_updating = true;
+
         ui_round_teamplay_toggle.isOn = option_teamplay;
         ui_round_master_only_toggle.isOn = option_start_from_master_only;
 
@@ -555,6 +608,17 @@ public class GameController : UdonSharpBehaviour
             ui_round_option_dropdown.ClearOptions();
             ui_round_option_dropdown.AddOptions(round_option_names);
             local_gamemode_count = (byte)round_option_names.Length;
+        }
+
+        if (ui_ply_option_weapon_dropdown != null && local_weapon_count < (int)weapon_type_name.ENUM_LENGTH)
+        {
+            ui_ply_option_weapon_dropdown.ClearOptions();
+            string[] weapon_options = new string[(int)weapon_type_name.ENUM_LENGTH];
+            for (int i = 0; i < weapon_options.Length; i++) {
+                weapon_options[i] = WeaponTypeToStr(i);
+            }
+            ui_ply_option_weapon_dropdown.AddOptions(weapon_options);
+            local_weapon_count = (byte)weapon_options.Length;
         }
 
         /*if (ui_round_map_dropdown != null && (map_selected >= mapscript_list.Length || map_selected < 0))
@@ -613,24 +677,58 @@ public class GameController : UdonSharpBehaviour
             ui_round_master_only_toggle.interactable = true;
             ui_round_teamplay_toggle.interactable = true && !option_force_teamplay;
             ui_round_option_dropdown.interactable = true;
-            //ui_round_map_dropdown.interactable = true;   
+            ui_round_option_default_button.interactable = true;
             ui_round_length_input.interactable = true;
             ui_round_option_goal_input_a.interactable = true;
             ui_round_option_goal_input_b.interactable = true;
             ui_round_teamplay_sort_button.interactable = option_teamplay;
             ui_round_teamplay_count_input.interactable = option_teamplay && !option_enforce_team_limits;
+
+            ui_ply_option_dp.interactable = true;
+            ui_ply_option_atk.interactable = true;
+            ui_ply_option_def.interactable = true;
+            ui_ply_option_speed.interactable = true;
+            ui_ply_option_grav.interactable = true;
+            ui_ply_option_weapon_dropdown.interactable = true;
+            ui_ply_option_weapon_toggle.interactable = true;
+            ui_ply_option_powerup_toggle.interactable = true;
+
+            ui_adv_option_respawn_duration.interactable = true;
+            ui_adv_option_item_frequency.interactable = true;
+            ui_adv_option_item_duration.interactable = true;
+            ui_adv_option_boss_atk_mod.interactable = true;
+            ui_adv_option_boss_def_mod.interactable = true;
+            ui_adv_option_boss_speed_mod.interactable = true;
+            ui_adv_option_boss_scale_mod.interactable = true;
         }
         else
         {
             ui_round_master_only_toggle.interactable = false;
             ui_round_teamplay_toggle.interactable = false;
             ui_round_option_dropdown.interactable = false;
-            //ui_round_map_dropdown.interactable = false;
+            ui_round_option_default_button.interactable = false;
             ui_round_length_input.interactable = false;
             ui_round_option_goal_input_a.interactable = false;
             ui_round_option_goal_input_b.interactable = false;
             ui_round_teamplay_sort_button.interactable = false;
             ui_round_teamplay_count_input.interactable = false;
+
+            ui_ply_option_dp.interactable = false;
+            ui_ply_option_atk.interactable = false;
+            ui_ply_option_def.interactable = false;
+            ui_ply_option_speed.interactable = false;
+            ui_ply_option_grav.interactable = false;
+            ui_ply_option_weapon_dropdown.interactable = false;
+            ui_ply_option_weapon_toggle.interactable = false;
+            ui_ply_option_powerup_toggle.interactable = false;
+
+            ui_adv_option_respawn_duration.interactable = false;
+            ui_adv_option_item_frequency.interactable = false;
+            ui_adv_option_item_duration.interactable = false;
+            ui_adv_option_boss_atk_mod.interactable = false;
+            ui_adv_option_boss_def_mod.interactable = false;
+            ui_adv_option_boss_speed_mod.interactable = false;
+            ui_adv_option_boss_scale_mod.interactable = false;
         }
 
         if (VRCPlayerApi.GetPlayerById(ply_master_id) != null)
@@ -659,7 +757,7 @@ public class GameController : UdonSharpBehaviour
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
-            ui_round_option_goal_text_a.text = "Boss Eliminations";
+            ui_round_option_goal_text_a.text = "Boss KOs to Win";
             ui_round_option_goal_input_a.text = option_gm_goal.ToString();
             ui_round_option_goal_text_b.text = "Boss Lives";
             ui_round_option_goal_input_b.text = plysettings_lives.ToString();
@@ -692,8 +790,30 @@ public class GameController : UdonSharpBehaviour
             ui_round_option_goal_input_b.gameObject.SetActive(true);
         }
         ui_round_option_description.text = ModifyModeDescription(round_option_descriptions[option_gamemode]);
+
+        // Starting & Advanced Options Parsing
+        ui_ply_option_dp.text = Mathf.RoundToInt(plysettings_dp * 100.0f).ToString();
+        ui_ply_option_atk.text = Mathf.RoundToInt(plysettings_atk * 100.0f).ToString();
+        ui_ply_option_def.text = Mathf.RoundToInt(plysettings_def * 100.0f).ToString();
+        ui_ply_option_speed.text = Mathf.RoundToInt(plysettings_speed * 100.0f).ToString();
+        ui_ply_option_grav.text = Mathf.RoundToInt(plysettings_grav * 100.0f).ToString();
+
+        ui_ply_option_weapon_dropdown.value = plysettings_weapon;
+        ui_ply_option_weapon_toggle.isOn = plysettings_iweapons;
+        ui_ply_option_powerup_toggle.isOn = plysettings_powerups;
+
+        ui_adv_option_respawn_duration.text = Mathf.RoundToInt(plysettings_respawn_duration).ToString();
+        ui_adv_option_boss_scale_mod.text = Mathf.RoundToInt(plysettings_boss_scale_mod * 100.0f).ToString();
+        ui_adv_option_boss_atk_mod.text = Mathf.RoundToInt(plysettings_boss_atk_mod * 100.0f).ToString();
+        ui_adv_option_boss_def_mod.text = Mathf.RoundToInt(plysettings_boss_def_mod * 100.0f).ToString();
+        ui_adv_option_boss_speed_mod.text = Mathf.RoundToInt(plysettings_boss_speed_mod * 100.0f).ToString();
+        ui_adv_option_item_frequency.text = Mathf.RoundToInt(plysettings_item_frequency * 100.0f).ToString();
+        ui_adv_option_item_duration.text = Mathf.RoundToInt(plysettings_item_duration * 100.0f).ToString();
+
         //if (map_selected < mapscript_list.Length) { ui_round_map_description.text = mapscript_list[map_selected].map_description; }
         RefreshGameUI();
+
+        ui_updating = false;
     }
 
     public void RefreshGameUI()
@@ -705,50 +825,85 @@ public class GameController : UdonSharpBehaviour
     {
         // Function called by the dropdown when the gamemode value changes
         // Set these all to some default value
-        // To-do: auto-set based on player counts
         int ply_count = 0;
         int[][] plyInGame = GetPlayersInGame();
         if (plyInGame != null && plyInGame[0] != null) { ply_count = plyInGame[0].Length; }
+        UnityEngine.Debug.Log("Players in game: " + ply_count);
         int goal_input_a = 0; int goal_input_b = 0;
         option_gamemode = (byte)ui_round_option_dropdown.value;
+        
         if (option_gamemode == (int)gamemode_name.Survival)
         {
-            if (ply_count < 12) { goal_input_a = 3; }
-            else { goal_input_a = 2; }
+            goal_input_a = 3;
+            ui_round_length_input.text = "240";
         }
         else if (option_gamemode == (int)gamemode_name.Clash)
         {
-            if (ply_count > 4) { goal_input_a = 3 + Mathf.FloorToInt((float)ply_count / (float)4.0f); }
-            else { goal_input_a = 3; }
+            goal_input_a = 3 + Mathf.FloorToInt((float)ply_count / (float)3.0f);
+            ui_round_length_input.text = "240";
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
-            goal_input_a = Mathf.FloorToInt((float)ply_count * (float)2.0f);
-            goal_input_a = 2 + Mathf.FloorToInt((float)ply_count / (float)12.0f);
+            goal_input_a = Mathf.FloorToInt((float)Mathf.Pow((float)ply_count, 1.75f));
+            goal_input_b = 2 + Mathf.FloorToInt((float)ply_count / (float)12.0f);
+            ui_round_length_input.text = "300";
         }
         else if (option_gamemode == (int)gamemode_name.Infection)
         {
-            goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)4.0f);
+            goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)5.0f);
+            ui_round_length_input.text = "150";
         }
         else if (option_gamemode == (int)gamemode_name.ENUM_LENGTH)
         {
             goal_input_a = 45;
             goal_input_b = 6;
+            ui_round_length_input.text = "1200";
         }
         else if (option_gamemode == (int)gamemode_name.FittingIn)
         {
             goal_input_a = 400;
             goal_input_b = 100;
+            ui_round_length_input.text = "240";
         }
         ui_round_option_goal_input_a.text = goal_input_a.ToString();
         ui_round_option_goal_input_b.text = goal_input_b.ToString();
         RoundOptionAdjust();
     }
 
+    public void ResetGameOptionsToDefault()
+    {
+
+        if (!Networking.IsMaster) { return; }
+
+        ui_updating = true;
+
+        ui_ply_option_dp.text = "0";
+        ui_ply_option_atk.text = "100";
+        ui_ply_option_def.text = "100";
+        ui_ply_option_speed.text = "100";
+        ui_ply_option_grav.text = "100";
+
+        ui_ply_option_weapon_dropdown.value = (int)weapon_type_name.PunchingGlove;
+        ui_ply_option_weapon_toggle.isOn = true;
+        ui_ply_option_powerup_toggle.isOn = true;
+
+        ui_adv_option_respawn_duration.text = "3";
+        ui_adv_option_boss_scale_mod.text = "300";
+        ui_adv_option_boss_atk_mod.text = "0";
+        ui_adv_option_boss_def_mod.text = "150";
+        ui_adv_option_boss_speed_mod.text = "0";
+        ui_adv_option_item_frequency.text = "100";
+        ui_adv_option_item_duration.text = "100";
+
+        ui_updating = false;
+        ChangeGamemode();
+    }
+
     public void RoundOptionAdjust()
     {
         if (!Networking.IsMaster) { return; }
         if (round_state != (int)round_state_name.Start) { return; }
+        if (!ui_initialized || ui_updating) { return; }
 
         option_gamemode = (byte)ui_round_option_dropdown.value;
         option_force_teamplay = false;
@@ -825,8 +980,45 @@ public class GameController : UdonSharpBehaviour
         //UnityEngine.Debug.Log("TIME TO CHANGE THE ROUND LENGTH FROM " + round_length + " TO " + try_round_length_parse);
         round_length = (float)try_round_length_parse;
 
+        // Starting & Advanced Options Parsing
+        int try_option_parse_dp = 0; Int32.TryParse(ui_ply_option_dp.text, out try_option_parse_dp); try_option_parse_dp = Mathf.Min(Mathf.Max(try_option_parse_dp, 0), 99999);
+        plysettings_dp = 0.01f * (ushort)try_option_parse_dp;
+        int try_option_parse_atk = 1; Int32.TryParse(ui_ply_option_atk.text, out try_option_parse_atk); try_option_parse_atk = Mathf.Min(Mathf.Max(try_option_parse_atk, 1), 999);
+        plysettings_atk = 0.01f * (ushort)try_option_parse_atk;
+        int try_option_parse_def = 1; Int32.TryParse(ui_ply_option_def.text, out try_option_parse_def); try_option_parse_def = Mathf.Min(Mathf.Max(try_option_parse_def, 0), 999);
+        plysettings_def = 0.01f * (ushort)try_option_parse_def;
+        int try_option_parse_speed = 1; Int32.TryParse(ui_ply_option_speed.text, out try_option_parse_speed); try_option_parse_speed = Mathf.Min(Mathf.Max(try_option_parse_speed, 1), 999);
+        plysettings_speed = 0.01f * (ushort)try_option_parse_speed;
+        int try_option_parse_grav = 1; Int32.TryParse(ui_ply_option_grav.text, out try_option_parse_grav); try_option_parse_grav = Mathf.Min(Mathf.Max(try_option_parse_grav, -999), 999);
+        plysettings_grav = 0.01f * (ushort)try_option_parse_grav;
+
+        plysettings_weapon = ui_ply_option_weapon_dropdown.value;
+        plysettings_iweapons = ui_ply_option_weapon_toggle.isOn;
+        plysettings_powerups = ui_ply_option_powerup_toggle.isOn;
+
+        int try_option_parse_respawn_duration = 3; Int32.TryParse(ui_adv_option_respawn_duration.text, out try_option_parse_respawn_duration); try_option_parse_respawn_duration = Mathf.Min(Mathf.Max(try_option_parse_respawn_duration, 0), Mathf.RoundToInt(round_length - 1.0f));
+        plysettings_respawn_duration = 1.0f * (ushort)try_option_parse_respawn_duration;
+        int try_option_parse_boss_scale_mod = 100; Int32.TryParse(ui_adv_option_boss_scale_mod.text, out try_option_parse_boss_scale_mod); try_option_parse_boss_scale_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_scale_mod, 0), 999);
+        plysettings_boss_scale_mod = 0.01f * (ushort)try_option_parse_boss_scale_mod;
+        int try_option_parse_boss_atk_mod = 0; Int32.TryParse(ui_adv_option_boss_atk_mod.text, out try_option_parse_boss_atk_mod); try_option_parse_boss_atk_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_atk_mod, 0), 999);
+        plysettings_boss_atk_mod = 0.01f * (ushort)try_option_parse_boss_atk_mod;
+        int try_option_parse_boss_def_mod = 0; Int32.TryParse(ui_adv_option_boss_def_mod.text, out try_option_parse_boss_def_mod); try_option_parse_boss_def_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_def_mod, 0), 999);
+        plysettings_boss_def_mod = 0.01f * (ushort)try_option_parse_boss_def_mod;
+        int try_option_parse_boss_speed_mod = 150; Int32.TryParse(ui_adv_option_boss_speed_mod.text, out try_option_parse_boss_speed_mod); try_option_parse_boss_speed_mod = Mathf.Min(Mathf.Max(try_option_parse_boss_speed_mod, 0), 999);
+        plysettings_boss_speed_mod = 0.01f * (ushort)try_option_parse_boss_speed_mod;
+        int ui_ply_option_item_frequency = 0; Int32.TryParse(ui_adv_option_item_frequency.text, out ui_ply_option_item_frequency); ui_ply_option_item_frequency = Mathf.Min(Mathf.Max(ui_ply_option_item_frequency, 1), 999);
+        plysettings_item_frequency = 0.01f * (ushort)ui_ply_option_item_frequency;
+        int ui_ply_option_item_duration = 0; Int32.TryParse(ui_adv_option_item_duration.text, out ui_ply_option_item_duration); ui_ply_option_item_duration = Mathf.Min(Mathf.Max(ui_ply_option_item_duration, 1), 999);
+        plysettings_item_duration = 0.01f * (ushort)ui_ply_option_item_duration;
+
         RequestSerialization();
         RefreshSetupUI();
+    }
+
+    public void ResetGameOptionsToDefault(bool play_sfx)
+    {
+        ResetGameOptionsToDefault();
+        if (play_sfx) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.QueueCancel); }
     }
 
     public override void OnPlayerJoined(VRCPlayerApi player)
@@ -865,7 +1057,7 @@ public class GameController : UdonSharpBehaviour
             if (Networking.IsMaster) { ui_round_mapselect.BuildMapList(); SetupMap(); }
         }
 
-        plyAttributesComponent.SendCustomNetworkEvent(NetworkEventTarget.Owner, "ResetDefaultEyeHeight");
+        //plyAttributesComponent.SendCustomNetworkEvent(NetworkEventTarget.Owner, "ResetDefaultEyeHeight");
 
         plyWeaponObj.SetActive(false);
         plyHitboxObj.SetActive(false);
@@ -937,7 +1129,7 @@ public class GameController : UdonSharpBehaviour
         {
             local_plyAttr.ply_scale = 1.0f;
             local_plyAttr.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
-            local_plyAttr.plyEyeHeight_desired = local_plyAttr.plyEyeHeight_default * local_plyAttr.ply_scale;
+            local_plyAttr.plyEyeHeight_desired = local_plyAttr.plyEyeHeight_default;
             local_plyAttr.plyEyeHeight_change = true;
         }
 
@@ -988,6 +1180,17 @@ public class GameController : UdonSharpBehaviour
             snd_game_sfx_sources[i].minDistance = snd_game_sfx_sources[i].maxDistance;
         }
 
+        // Refresh item spawn chances
+        foreach (ItemSpawner itemSpawner in mapscript_list[map_selected].map_item_spawns)
+        {
+            if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+            itemSpawner.item_spawn_powerups_enabled = plysettings_powerups;
+            itemSpawner.item_spawn_weapons_enabled = plysettings_iweapons;
+            itemSpawner.item_spawn_frequency_mul = plysettings_item_frequency;
+            itemSpawner.item_spawn_duration_mul = plysettings_item_duration;
+            itemSpawner.SetSpawnChances();
+        }
+
         // KOTH Capture Zone handling. 
         foreach (CaptureZone capturezone in mapscript_list[map_selected].map_capturezones)
         {
@@ -1003,7 +1206,7 @@ public class GameController : UdonSharpBehaviour
     // This function gets called only AFTER a client's team arrays have been fully synced up.
     public void LocalRoundStart()
     {
-
+        restrict_map_change = false;
         int[][] ply_parent_arr = GetPlayersInGame();
         UnityEngine.Debug.Log("[DICT_TEST]: ROUND START - " + ConvertIntArrayToString(ply_parent_arr[0]) + " | " + ConvertIntArrayToString(ply_parent_arr[1]));
 
@@ -1060,6 +1263,7 @@ public class GameController : UdonSharpBehaviour
                 playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * plysettings_boss_scale_mod;
                 playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
                 playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
+                playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
                 playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                 playerData.plyEyeHeight_change = true;
                 personal_description = "You are THE BIG BOSS! Crush everyone who stands in your way!";
@@ -1073,9 +1277,15 @@ public class GameController : UdonSharpBehaviour
                     else { personal_description = "You are a Survivor!"; }
                     playerData.ply_lives = 2; // We set lives to 2 so that you always have at least one left upon death (although this should never decrement, it never hurts to be safe)
                 }
-                // To-do: have mapscript or game option override the starting weapon
-                plyWeaponObj.GetComponent<PlayerWeapon>().weapon_type_default = (int)weapon_type_name.PunchingGlove;
-                plyWeaponObj.GetComponent<PlayerWeapon>().weapon_type = plyWeaponObj.GetComponent<PlayerWeapon>().weapon_type_default;
+
+                PlayerWeapon plyWeapon = plyWeaponObj.GetComponent<PlayerWeapon>();
+                plyWeapon.weapon_type_default = plysettings_weapon;
+                plyWeapon.weapon_type = plyWeapon.weapon_type_default;
+                if (plyWeapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+                {
+                    plyWeapon.weapon_temp_ammo = -1;
+                    plyWeapon.weapon_temp_duration = -1;
+                }
             }
             plyWeaponObj.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType();
         }
@@ -1117,12 +1327,11 @@ public class GameController : UdonSharpBehaviour
         }
         if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length) { color_team = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
 
-        if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team); }
+        AddToLocalTextQueue(round_option_names[option_gamemode], Color.yellow);
+        AddToLocalTextQueue(gamemode_description, Color.white);
         if (VRCPlayerApi.GetPlayerById(gamemode_boss_id) != null) { personal_description = personal_description.Replace("$BOSS", VRCPlayerApi.GetPlayerById(gamemode_boss_id).displayName); }
         if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal); }
-        AddToLocalTextQueue(gamemode_description, Color.white);
-        AddToLocalTextQueue(round_option_names[option_gamemode], Color.yellow);
-
+        if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team); }
 
         if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
         else { mapscript_list[map_selected].room_game_extended.SetActive(false); }
@@ -1161,6 +1370,7 @@ public class GameController : UdonSharpBehaviour
             if (ui_round_mapselect != null) { map_selected = (sbyte)ui_round_mapselect.SelectRandomActiveMap(); }
             RequestSerialization();
         }
+        restrict_map_change = true;
         RefreshSetupUI();
     }
 
@@ -1187,6 +1397,9 @@ public class GameController : UdonSharpBehaviour
     {
         AddToLocalTextQueue("GO!");
         room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
+        if (local_plyweapon != null) {
+            local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+            }
     }
 
     [NetworkCallable]
@@ -1547,13 +1760,13 @@ public class GameController : UdonSharpBehaviour
 
         if (winner_name != null && winner_name.Length > 0)
         {
-            AddToLocalTextQueue(winner_name + "!", winning_color);
             AddToLocalTextQueue("THE WINNER IS:");
+            AddToLocalTextQueue(winner_name + "!", winning_color);
         }
         else
         {
-            AddToLocalTextQueue("no one wins :(");
             AddToLocalTextQueue("STALEMATE!");
+            AddToLocalTextQueue("no one wins :(");
         }
 
         PlaySFXFromArray(snd_game_music_source, snd_ready_music_clips, -1, 1, true);
@@ -1565,6 +1778,7 @@ public class GameController : UdonSharpBehaviour
             largest_ply_scale = 1.0f;
             RequestSerialization();
         }
+        restrict_map_change = false;
         RefreshSetupUI();
     }
 
@@ -1612,7 +1826,9 @@ public class GameController : UdonSharpBehaviour
         var rz = UnityEngine.Random.Range(min_z, max_z);
 
         platformHook.custom_force_unhook = true;
-        Networking.LocalPlayer.TeleportTo(new Vector3(rx, spawnZoneBounds.center.y, rz), Networking.LocalPlayer.GetRotation());
+        Quaternion rotateTo = Networking.LocalPlayer.GetRotation();
+        if (spawnzone.orient_towards != null) { rotateTo.SetFromToRotation(Networking.LocalPlayer.GetPosition(), spawnzone.orient_towards.position); }
+        Networking.LocalPlayer.TeleportTo(new Vector3(rx, spawnZoneBounds.center.y, rz), rotateTo);
         UnityEngine.Debug.Log("Teleporting player to spawn zone " + spawnZoneIndex);
         platformHook.custom_force_unhook = false;
     }
@@ -1624,6 +1840,9 @@ public class GameController : UdonSharpBehaviour
         if (local_plyAttr != null)
         {
             var plyWeapon = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+            var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
+            plyWeapon.SetActive(false);
+            plyHitboxObj.SetActive(false);
             if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
             if (local_plyAttr.ply_state != (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
             local_plyAttr.ResetPowerups();
@@ -1720,8 +1939,18 @@ public class GameController : UdonSharpBehaviour
         newHurtboxObj.transform.parent = null;
         var hurtbox = newHurtboxObj.GetComponent<WeaponHurtbox>();
 
+        float scaleBias = 1.0f;
+        // Explosive type weapons should not be resized as harshly as other hurtbox types
+        if (weapon_type == (int)weapon_type_name.Rocket)
+        {
+            scaleBias = 0.5f;
+        }
+        else if (weapon_type == (int)weapon_type_name.Bomb)
+        {
+            scaleBias = 0.75f;
+        }
 
-        newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * player_scale * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
+        newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * Mathf.Lerp(plysettings_scale, player_scale, scaleBias) * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
         newHurtboxObj.transform.position = position;
         newHurtboxObj.transform.rotation = rotation;
 
@@ -1935,7 +2164,11 @@ public class GameController : UdonSharpBehaviour
         float max_bound = 10000.0f;
         if (Mathf.Abs(Networking.LocalPlayer.GetPosition().x) > max_bound || Mathf.Abs(Networking.LocalPlayer.GetPosition().y) > max_bound || Mathf.Abs(Networking.LocalPlayer.GetPosition().z) > max_bound)
         {
-            TeleportLocalPlayerToGameSpawnZone();
+            if (local_plyAttr != null 
+                && (local_plyAttr.ply_state != (int)player_state_name.Inactive && local_plyAttr.ply_state != (int)player_state_name.Joined)
+                && (round_state == (int)round_state_name.Ready || round_state == (int)round_state_name.Ongoing))
+            { TeleportLocalPlayerToGameSpawnZone(); }
+            else { TeleportLocalPlayerToReadyRoom(); }
         }
     }
 
@@ -2305,8 +2538,8 @@ public class GameController : UdonSharpBehaviour
     }
     public int KeyToWeaponType(string enum_str_name)
     {
-        var cleanStr = enum_str_name.Trim().ToLower();
-        var output = 0;
+        string cleanStr = enum_str_name.Trim().ToLower();
+        int output = 0;
         if (cleanStr == "punchingglove") { output = (int)weapon_type_name.PunchingGlove; }
         else if (cleanStr == "bomb") { output = (int)weapon_type_name.Bomb; }
         else if (cleanStr == "rocket") { output = (int)weapon_type_name.Rocket; }
@@ -2314,6 +2547,19 @@ public class GameController : UdonSharpBehaviour
         else if (cleanStr == "hyperglove") { output = (int)weapon_type_name.HyperGlove; }
         else if (cleanStr == "megaglove") { output = (int)weapon_type_name.MegaGlove; }
         else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
+        return output;
+    }
+    public string WeaponTypeToStr(int in_weapon_type)
+    {
+        string output = "";
+        if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = "Punching Glove"; }
+        else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = "Bomb"; }
+        else if (in_weapon_type == (int)weapon_type_name.Rocket) { output = "Rocket Launcher"; }
+        else if (in_weapon_type == (int)weapon_type_name.BossGlove) { output = "Big Boss Glove"; }
+        else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = "Hyper Glove"; }
+        else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = "Mega Glove"; }
+        else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = "Superlaser"; }
+        else { output = "(PLACEHOLDER)"; }
         return output;
     }
 

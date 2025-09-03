@@ -77,8 +77,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         powerups_active = new GameObject[0];
-        
-        ResetDefaultEyeHeight();
+
+        SetDefaultEyeHeight();
     }
 
     public override void OnDeserialization(DeserializationResult deserializationResult)
@@ -187,7 +187,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void FixedUpdate()
     {
         // Update size
-        if (plyEyeHeight_change)
+        if (plyEyeHeight_change && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             var plyCurrentEyeHeight = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
             var lerp_delta = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), plyEyeHeight_lerp_start_ms);
@@ -211,13 +211,14 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public override void OnAvatarChanged(VRCPlayerApi player) {
         if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
-        ResetDefaultEyeHeight();
+        SetDefaultEyeHeight();
     }
 
     public override void OnAvatarEyeHeightChanged(VRCPlayerApi player, float prevHeight)
     {
         if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
-        //if (ply_scale == 1.0f && plyEyeHeight_default != prevHeight) { ResetDefaultEyeHeight(); }
+        if (prevHeight == 0) { SetDefaultEyeHeight(); }
+        //else if (ply_scale == 1.0f && player.GetAvatarEyeHeightAsMeters() != prevHeight && plyEyeHeight_default != player.GetAvatarEyeHeightAsMeters()) { ResetDefaultEyeHeight(); }
     }
 
     public void TryHapticEvent(int haptic_event_type)
@@ -229,7 +230,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void ResetDefaultEyeHeight()
+    public void SetDefaultEyeHeight()
     {
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         ResetPowerups();
@@ -394,7 +395,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             var total_lives = 0; var members_alive = 0;
             gameController.CheckSingleTeamLives(0, ref members_alive, ref total_lives);
             if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1 && gameController.GetGlobalTeam(Networking.LocalPlayer.playerId) == 0
-                && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); }
+                && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
             else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
         }
         else
