@@ -1,5 +1,7 @@
 ﻿
 using System;
+using System.Diagnostics;
+using System.Net.Sockets;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -55,8 +57,8 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public AudioClip[] snd_game_sfx_clips_hitreceive; // NOTE: Corresponds to damage_type
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponfire; // NOTE: Corresponds to weapon_type
 
-    [SerializeField] public Transform item_spawn_points_parent;
-    [NonSerialized] public Transform[] item_spawn_points;
+    [SerializeField] public Transform item_spawns_parent;
+    [NonSerialized] public ItemSpawner[] item_spawns;
 
     [NonSerialized][UdonSynced] public int round_state = 0;
     [NonSerialized][UdonSynced] public float round_length = 120.0f;
@@ -85,22 +87,24 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public int[] ply_in_game_arr;
 
     [NonSerialized] public int[][] ply_teams_arr;
+    //[NonSerialized] public int[][] ply_teams_arr;
 
-    public float powerup_spawn_impulse = 3.0f;
-    public float powerup_spawn_chance = 0.33f;
-    public int powerup_spawn_limit = 5;
-    [NonSerialized] public double powerup_spawn_last_impulse_ms;
-    [NonSerialized] public int powerup_spawn_count = 0;
-    [NonSerialized] public GameObject[] powerup_list; // Note: this must be stored locally on each player's instance of the gameobject
+
+    //public float powerup_spawn_impulse = 3.0f;
+    //public float powerup_spawn_chance = 0.33f;
+    //public int powerup_spawn_limit = 5;
+    //[NonSerialized] public double powerup_spawn_last_impulse_ms;
+    //[NonSerialized] public int powerup_spawn_count = 0;
+    //[NonSerialized] public GameObject[] powerup_list; // Note: this must be stored locally on each player's instance of the gameobject
 
     // -- Initialization --
     private void Start()
     {
-        item_spawn_points = new Transform[0];
+        item_spawns = new ItemSpawner[0];
         ply_ready_arr = new int[0];
         ply_in_game_arr = new int[0];
         ply_teams_arr = new int[0][];
-        powerup_list = new GameObject[powerup_spawn_limit]; // To-do: update list size based on powerup spawn limit configurable option
+        //powerup_list = new GameObject[powerup_spawn_limit]; // To-do: update list size based on powerup spawn limit configurable option
 
         //projectiles = new GameObject[0];
         //hurtboxes = new GameObject[0];
@@ -112,18 +116,19 @@ public class GameController : UdonSharpBehaviour
         snd_game_sfx_clips[(int)game_sfx_index.WeaponFire] = snd_game_sfx_clips_weaponfire;
 
         PlaySFXFromArray(snd_ready_music_source, snd_ready_music_clips);
-
-        if (item_spawn_points_parent != null)
+        // To-do: make this map-specific
+        if (item_spawns_parent != null)
         {
-            item_spawn_points = new Transform[item_spawn_points_parent.childCount];
+            item_spawns = new ItemSpawner[item_spawns_parent.transform.childCount];
             var item_index = 0;
-            foreach (Transform t in item_spawn_points_parent.transform)
+            foreach (Transform t in item_spawns_parent.transform)
             {
-                item_spawn_points[item_index] = t;
+                item_spawns[item_index] = t.GetComponent<ItemSpawner>();
+                item_spawns[item_index].item_spawn_global_index = item_index;
                 item_index++;
             }
         }
-        powerup_spawn_last_impulse_ms = Networking.GetServerTimeInSeconds();
+        //powerup_spawn_last_impulse_ms = Networking.GetServerTimeInSeconds();
 
     }
 
@@ -193,6 +198,12 @@ public class GameController : UdonSharpBehaviour
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
             round_state = (int)round_state_name.Ongoing;
+
+            for (int j = 0; j < item_spawns.Length; j++)
+            {
+                item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Spawnable;
+            }
+
             RequestSerialization();
         }
         else if (round_state == (int)round_state_name.Ongoing && round_timer >= round_length)
@@ -202,10 +213,10 @@ public class GameController : UdonSharpBehaviour
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RoundEnd");
             //RequestSerialization();
         }
-        else if (round_state == (int)round_state_name.Ongoing && round_timer < round_length)
+        /*else if (round_state == (int)round_state_name.Ongoing && round_timer < round_length)
         {
             HandlePowerupChances();
-        }
+        }*/
         else if (round_state == (int)round_state_name.Over && round_timer >= ready_length)
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
@@ -287,7 +298,7 @@ public class GameController : UdonSharpBehaviour
     public int[][] DebugTeamArray(int[] trackingArr)
     {
         if (!Networking.LocalPlayer.isMaster) { return new int[0][]; }
-        if (team_count <= 0) { Debug.LogError("Team count is <= 0!"); return new int[0][]; } // This should never happen
+        if (team_count <= 0) { UnityEngine.Debug.LogError("Team count is <= 0!"); return new int[0][]; } // This should never happen
         var ply_teams = new int[team_count][];
         for (int j = 0; j < team_count; j++)
         {
@@ -305,6 +316,7 @@ public class GameController : UdonSharpBehaviour
         return ply_teams;
     }
 
+    /*
     public void HandlePowerupChances()
     {
         if (Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), powerup_spawn_last_impulse_ms) >= powerup_spawn_impulse)
@@ -313,7 +325,7 @@ public class GameController : UdonSharpBehaviour
             var roll_for_powerup = UnityEngine.Random.Range(0, 100);
 
             // To-do: make type and duration go against a table of powerup cards with differing rarities and stats
-            var roll_for_powerup_type = UnityEngine.Random.Range(0, (int)item_powerup_name.ENUM_LENGTH);
+            var roll_for_powerup_type = UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH);
 
             if (((float)roll_for_powerup/100.0f) <= powerup_spawn_chance && powerup_spawn_count < powerup_spawn_limit)
             {
@@ -358,6 +370,7 @@ public class GameController : UdonSharpBehaviour
         }
 
     }
+    */
 
     // -- Round Management --
     [NetworkCallable]
@@ -415,7 +428,7 @@ public class GameController : UdonSharpBehaviour
     {
         if (!Networking.LocalPlayer.isMaster) { return; }
         if (round_state != (int)round_state_name.Ongoing) { return; }
-        if (team_count <= 0) { Debug.LogError("Team count is <= 0!"); return; } // This should never happen
+        if (team_count <= 0) { UnityEngine.Debug.LogError("Team count is <= 0!"); return; } // This should never happen
 
         var plyAlivePerTeam = new int[team_count];
         var teams_alive = 0;
@@ -429,7 +442,7 @@ public class GameController : UdonSharpBehaviour
             if (plyAttributes.ply_lives > 0)
             {
                 total_players_alive++;
-                if (plyAttributes.ply_team > team_count) { Debug.LogError("Player is on team " + plyAttributes.ply_team.ToString() + ", but the game only has " + team_count.ToString() + " teams!"); continue; }
+                if (plyAttributes.ply_team > team_count) { UnityEngine.Debug.LogError("Player is on team " + plyAttributes.ply_team.ToString() + ", but the game only has " + team_count.ToString() + " teams!"); continue; }
                 if (plyAttributes.ply_team >= 0) { plyAlivePerTeam[plyAttributes.ply_team]++; } // Should only ever error out in ClientSim, but just in case, let's make sure it's not index < 0
             }
         }
@@ -480,11 +493,19 @@ public class GameController : UdonSharpBehaviour
             }
         }
 
+        // To-do: make this map-specific
+        for (int j = 0; j < item_spawns.Length; j++)
+        {
+            item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Disabled;
+        }
+
+        /*
         for (int j = 0; j < powerup_list.Length; j++) 
         {
             if (powerup_list[j] == null) { continue; }
             SendDestroyPowerup(powerup_list[j].GetComponent<ItemPowerup>().powerup_stored_global_index, (int)item_powerup_destroy_reason_code.ItemExpire, false ); 
         }
+        */
 
         snd_game_music_source.Stop();
         PlaySFXFromArray(snd_ready_music_source, snd_ready_music_clips);
@@ -588,7 +609,8 @@ public class GameController : UdonSharpBehaviour
         newHurtboxObj.SetActive(true);
 
     }
-
+    
+    /*
     [NetworkCallable]
     public void NetworkCreatePowerup(int powerup_type, Vector3 spawnPos)
     {
@@ -615,7 +637,9 @@ public class GameController : UdonSharpBehaviour
         //PlaySFXFromArray(powerup.item_snd_source, powerup.item_snd_clips, (int)item_snd_clips_name.Spawn);
 
     }
+    */
 
+    /*
     [NetworkCallable]
     public void NetworkDestroyPowerup(int stored_index, int reason_code, bool playSound)
     {
@@ -646,7 +670,7 @@ public class GameController : UdonSharpBehaviour
 
         SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkDestroyPowerup", stored_index, reason_code, playSound);
     
-    }
+    }*/
 
     // -- Player Tracking --
     [NetworkCallable]
@@ -876,5 +900,52 @@ public class GameController : UdonSharpBehaviour
         return arrOut;
     }
 
+    // Enum replacement helper
+    public int KeyToPowerupType(string enum_str_name)
+    {
+        var cleanStr = enum_str_name.Trim().ToLower();
+        var output = (int)powerup_type_name.Fallback;
+        if (cleanStr == "sizeup") { output = (int)powerup_type_name.SizeUp; }
+        else if (cleanStr == "sizedown") { output = (int)powerup_type_name.SizeDown; }
+        else if (cleanStr == "speedup") { output = (int)powerup_type_name.SpeedUp; }
+        else if (cleanStr == "atkup") { output = (int)powerup_type_name.AtkUp; }
+        else if (cleanStr == "defup") { output = (int)powerup_type_name.DefUp; }
+        else if (cleanStr == "atkdown") { output = (int)powerup_type_name.AtkDown; }
+        else if (cleanStr == "defdown") { output = (int)powerup_type_name.DefDown; }
+        else if (cleanStr == "lowgrav") { output = (int)powerup_type_name.LowGrav; }
+        UnityEngine.Debug.Log("Attempted to match key '" + cleanStr + "' to value: " + output);
+        return output;
+    }
+    public int KeyToWeaponType(string enum_str_name)
+    {
+        var cleanStr = enum_str_name.Trim().ToLower();
+        var output = 0;
+        if (cleanStr == "punchingglove") { output = (int)weapon_type_name.PunchingGlove; }
+        else if (cleanStr == "bomb") { output = (int)weapon_type_name.Bomb; }
+        else if (cleanStr == "rocket") { output = (int)weapon_type_name.Rocket; }
+        return output;
+    }
+    public string DebugPrintFloatArray(float[] inArr)
+    {
+        var strOut = "{";
+        for (int i = 0; i < inArr.Length; i++)
+        {
+            strOut += inArr[i].ToString();
+            if (i < inArr.Length - 1) { strOut += ","; }
+        }
+        strOut += "}";
+        return strOut;
+    }
+    public string DebugPrintIntArray(int[] inArr)
+    {
+        var strOut = "{";
+        for (int i = 0; i < inArr.Length; i++)
+        {
+            strOut += inArr[i].ToString();
+            if (i < inArr.Length - 1) { strOut += ","; }
+        }
+        strOut += "}";
+        return strOut;
+    }
 }
 

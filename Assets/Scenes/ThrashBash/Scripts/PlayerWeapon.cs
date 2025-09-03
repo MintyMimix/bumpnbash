@@ -8,9 +8,9 @@ using VRC.SDKBase;
 using VRC.Udon;
 using static VRC.SDKBase.VRCPlayerApi;
 
-public enum weapon_type_name
+public enum weapon_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToWeaponType()
 {
-    PunchingGlove, Bomb, Rocket
+    PunchingGlove, Bomb, Rocket, ENUM_LENGTH
 }
 
 public class PlayerWeapon : UdonSharpBehaviour
@@ -22,7 +22,6 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public float animate_pct;
     [SerializeField] public GameObject[] weapon_mdl;
     [SerializeField] public GameController gameController;
-
 
 
     void Start()

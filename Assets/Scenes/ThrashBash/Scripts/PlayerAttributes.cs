@@ -225,9 +225,6 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (ply_lives > 0)
         {
             ply_dp = ply_dp_default;
-            // To-Do: Remove all active powerups
-            // To-Do: Reset stats based on GameHandler's settings
-            // plyAtkMul = 1.0f;
             gameController.TeleportLocalPlayerToGameSpawnZone();
         }
         else
@@ -244,80 +241,87 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     }
 
-    public void ProcessPowerUp(ItemPowerup powerup, bool is_add = false)
+    public void ProcessPowerUp(GameObject powerup_template, bool is_add = false)
     {
         //powerups_active
-        if (powerup == null) { return; }
+        if (powerup_template == null || powerup_template.GetComponent<ItemPowerup>() == null) { return; }
 
         if (is_add) {
-            powerups_active = gameController.AddToGameObjectArray(powerup.gameObject, powerups_active);
-            for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
+
+			// Create a new copy of the powerup with all its inherited properties, then make sure it's set to be a template
+			ItemPowerup powerup = powerup_template.GetComponent<ItemPowerup>();
+            if (powerup == null) { return; }
+			
+			for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
             {
                 Debug.Log("PROCESSING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
                 switch (i)
                 {
-                    case (int)item_powerup_stat_name.Scale:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_scale = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_scale += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_scale *= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Scale:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_scale = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale *= powerup.powerup_stat_value[i]; }
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;
                         break;
-                    case (int)item_powerup_stat_name.Speed:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_speed = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_speed += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_speed *= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Speed:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_speed = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_speed += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_speed *= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Atk:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_atk = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_atk += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_atk *= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Atk:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_atk = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_atk += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_atk *= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Def:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_def = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_def += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_def *= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Def:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_def = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_def += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_def *= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Grav:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_grav = powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_grav += powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_grav *= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Grav:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_grav = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_grav += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_grav *= powerup.powerup_stat_value[i]; }
                         break;
                     default:
                         break;
                 }
             }
-        }
+
+			powerups_active = gameController.AddToGameObjectArray(powerup_template, powerups_active);
+		}
 
         else
         {
-            for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
+            ItemPowerup powerup = powerup_template.GetComponent<ItemPowerup>();
+			for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
             {
                 switch (i)
                 {
-                    case (int)item_powerup_stat_name.Scale:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_scale -= powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_scale /= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Scale:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_scale -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_scale /= powerup.powerup_stat_value[i]; }
                         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
                         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
                         plyEyeHeight_change = true;
                         break;
-                    case (int)item_powerup_stat_name.Speed:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_speed -= powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_speed /= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Speed:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_speed -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_speed /= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Atk:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_atk -= powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_atk /= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Atk:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_atk -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_atk /= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Def:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_def -= powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_def /= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Def:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_def -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_def /= powerup.powerup_stat_value[i]; }
                         break;
-                    case (int)item_powerup_stat_name.Grav:
-                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_grav -= powerup.powerup_stat_value[i]; }
-                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_grav /= powerup.powerup_stat_value[i]; }
+                    case (int)powerup_stat_name.Grav:
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_grav -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_grav /= powerup.powerup_stat_value[i]; }
                         break;
                     default:
                         break;
@@ -340,9 +344,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             {
                 var powerup = powerups_active[0].GetComponent<ItemPowerup>();
                 //Debug.Log("Found powerup at " + i + ": " + powerups_active[i - index_iter].name + "; type: " + powerups_active[i].GetComponent<ItemPowerup>().powerup_type + "; global index: " + powerups_active[i].GetComponent<ItemPowerup>().powerup_stored_global_index);
-                ProcessPowerUp(powerup, false); // this may remove entries from the list as it occurs, resulting in errors.
-                gameController.SendDestroyPowerup(powerup.powerup_stored_global_index, (int)item_powerup_destroy_reason_code.PowerupFade, true);
-            }
+                //ProcessPowerUp(powerup.gameObject, false); // this may remove entries from the list as it occurs, resulting in errors.
+                powerup.FadeOutAndDestroy();
+			}
             else
             {
                 //Debug.Log("Found powerup at " + i + " index that does not exist; resetting in array");
