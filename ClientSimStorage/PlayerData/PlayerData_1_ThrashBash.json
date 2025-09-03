@@ -1,0 +1,138 @@
+{
+  "LocalOptions_UIScale": {
+    "LastUpdated": "2025-07-19T10:20:59.962788-04:00",
+    "Key": "LocalOptions_UIScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "LocalOptions_Colorblind": {
+    "LastUpdated": "2025-07-17T16:28:22.050012-04:00",
+    "Key": "LocalOptions_Colorblind",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "LocalOptions_UISeparation": {
+    "LastUpdated": "2025-07-19T21:58:34.1526242-04:00",
+    "Key": "LocalOptions_UISeparation",
+    "Value": {
+      "type": "Float",
+      "value": 30.0
+    }
+  },
+  "LocalOptions_MusicVolume": {
+    "LastUpdated": "2025-07-17T20:41:21.9231316-04:00",
+    "Key": "LocalOptions_MusicVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "LocalOptions_SoundVolume": {
+    "LastUpdated": "2025-07-17T20:41:25.3605859-04:00",
+    "Key": "LocalOptions_SoundVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIScale": {
+    "LastUpdated": "2025-08-20T15:11:14.4940428-04:00",
+    "Key": "UIScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UISeparation": {
+    "LastUpdated": "2025-08-05T00:02:08.2738616-04:00",
+    "Key": "UISeparation",
+    "Value": {
+      "type": "Float",
+      "value": 30.0
+    }
+  },
+  "MusicVolume": {
+    "LastUpdated": "2025-08-25T09:47:26.8769393-04:00",
+    "Key": "MusicVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "SoundVolume": {
+    "LastUpdated": "2025-08-13T15:42:31.6016943-04:00",
+    "Key": "SoundVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "Colorblind": {
+    "LastUpdated": "2025-08-28T09:03:43.9911611-04:00",
+    "Key": "Colorblind",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "HurtboxShow": {
+    "LastUpdated": "2025-08-21T19:05:02.5212246-04:00",
+    "Key": "HurtboxShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "UIStretch": {
+    "LastUpdated": "2025-08-13T13:04:50.9249017-04:00",
+    "Key": "UIStretch",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIVertical": {
+    "LastUpdated": "2025-08-20T14:50:57.9931043-04:00",
+    "Key": "UIVertical",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "ParticleShow": {
+    "LastUpdated": "2025-08-21T19:05:01.1205211-04:00",
+    "Key": "ParticleShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "UIHarmScale": {
+    "LastUpdated": "2025-08-28T09:05:13.1604054-04:00",
+    "Key": "UIHarmScale",
+    "Value": {
+      "type": "Float",
+      "value": 5.0
+    }
+  },
+  "UIOtherScale": {
+    "LastUpdated": "2025-08-25T09:47:38.4433668-04:00",
+    "Key": "UIOtherScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIWrist": {
+    "LastUpdated": "2025-08-13T16:20:38.0810114-04:00",
+    "Key": "UIWrist",
+    "Value": {
+      "type": "Int",
+      "value": 0
+    }
+  }
+}

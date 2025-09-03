@@ -1,0 +1,83 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f11136daadff0b44ac2278a314682ab, type: 3}
+  m_Name: ItemSpawner (2) Udon Graph Program Asset
+  m_EditorClassIdentifier: 
+  serializedUdonProgramAsset: {fileID: 11400000, guid: 6ffe5ec8343cdce47aa2089d8ca4ec0f,
+    type: 2}
+  udonAssembly: ".data_start\r\n\r\n    \r\n    beep: %SystemBoolean, null\r\n\r\n.data_end\r\n\r\n.code_start\r\n\r\n\r\n.code_end\r\n"
+  assemblyError: 
+  graphData:
+    name: 
+    description: 
+    nodes:
+    - fullName: Event_OnPlayerJoined
+      uid: a75276b9-0c09-4923-9154-11b1d1b0ffa1
+      position: {x: 235, y: 206}
+      nodeUIDs: []
+      flowUIDs:
+      - cd9eb918-d87e-4f64-b5bb-7e39e5640881
+      nodeValues: []
+    - fullName: Variable_SystemBoolean
+      uid: 1d02b171-1f6a-4eb3-860e-5779b847ae24
+      position: {x: 0, y: 0}
+      nodeUIDs:
+      - 
+      - 
+      - 
+      - 
+      - 
+      flowUIDs: []
+      nodeValues:
+      - unityObjectValue: {fileID: 0}
+        stringValue: 
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089|beep
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral,
+          PublicKeyToken=b77a5c561934e089|False
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral,
+          PublicKeyToken=b77a5c561934e089|False
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089|none
+    - fullName: Get_Variable
+      uid: dfd31b80-b1b0-4978-bea8-f8271bda9bbe
+      position: {x: 289, y: 79}
+      nodeUIDs:
+      - 
+      flowUIDs: []
+      nodeValues:
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089|1d02b171-1f6a-4eb3-860e-5779b847ae24
+      - unityObjectValue: {fileID: 0}
+        stringValue: 
+    - fullName: Set_Variable
+      uid: cd9eb918-d87e-4f64-b5bb-7e39e5640881
+      position: {x: 487, y: 171}
+      nodeUIDs:
+      - 
+      - dfd31b80-b1b0-4978-bea8-f8271bda9bbe|0
+      - 
+      flowUIDs: []
+      nodeValues:
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089|1d02b171-1f6a-4eb3-860e-5779b847ae24
+      - unityObjectValue: {fileID: 0}
+        stringValue: 
+      - unityObjectValue: {fileID: 0}
+        stringValue: System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral,
+          PublicKeyToken=b77a5c561934e089|False
+    updateOrder: 0
+  graphElementData: []
+  version: 1.0.0
+  showAssembly: 0
