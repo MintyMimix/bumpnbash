@@ -11,7 +11,7 @@ using static VRC.SDKBase.VRCPlayerApi;
 
 public enum damage_type_name
 {
-    Strike, ForceExplosion, ENUM_LENGTH
+    Strike, ForceExplosion, Kapow, ENUM_LENGTH
 }
 
 public class WeaponHurtbox : UdonSharpBehaviour
@@ -27,10 +27,28 @@ public class WeaponHurtbox : UdonSharpBehaviour
     //public bool struck_local = false;
     [NonSerialized] public int owner_id;
     [NonSerialized] public int damage_type;
+    [NonSerialized] public GameObject weapon_parent; // WARNING: Only use if keep_parent is on from WeaponProjectile
+    [NonSerialized] public float local_offset;
 
     private void Start()
     {
         players_struck = new int[0];
+    }
+
+    private void OnEnable()
+    {
+        if (weapon_parent != null) { local_offset = Vector3.Distance(transform.position, weapon_parent.transform.position); }
+    }
+
+    private void FixedUpdate()
+    {
+        if (weapon_parent != null) {
+            var layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
+            Vector3 next_pos = weapon_parent.transform.position + (weapon_parent.transform.right * local_offset);
+            var ray_cast = Physics.Linecast(weapon_parent.transform.position, next_pos, out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
+            if (hitInfo.collider != null) { transform.position = hitInfo.point; }
+            else { transform.position = next_pos; }
+        }
     }
 
     private void Update()
@@ -52,21 +70,21 @@ public class WeaponHurtbox : UdonSharpBehaviour
             {
                 m_Renderer.material.SetColor("_Color",
                     new Color32(
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
-                    (byte)0.0f));
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
+                    (byte)0));
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor",
                     new Color32(
-                    (byte)Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
-                    (byte)Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
-                    (byte)Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
                     (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
             }
             else
             {
-                m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 255));
+                m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 0));
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
             }
@@ -76,6 +94,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
     // Attacker-focused code 
     private void OnTriggerStay(Collider other)
     {
+        if (other == null) { return; }
         // Run this only if we are the owner of the hurtbox
         if (owner_id != Networking.LocalPlayer.playerId) { return; }
         // And that we're not colliding with our own hurtbox
@@ -99,10 +118,9 @@ public class WeaponHurtbox : UdonSharpBehaviour
         force_dir = new Vector3(force_dir.x, 0, force_dir.z);
 
         // Check teams as well
-        // To-do: make a helper function to make this less complicated to write every time!
         if (
-            gameController.DictValueFromKey(colliderOwner.playerId, gameController.ply_tracking_dict_keys_arr, gameController.ply_tracking_dict_values_arr)
-            == gameController.DictValueFromKey(owner_id, gameController.ply_tracking_dict_keys_arr, gameController.ply_tracking_dict_values_arr)
+            gameController.GetGlobalTeam(colliderOwner.playerId)
+            == gameController.GetGlobalTeam(owner_id)
             && gameController.option_teamplay
             ) { return; }
 

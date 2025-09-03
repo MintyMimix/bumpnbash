@@ -28,10 +28,12 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] private double projectile_timer_network = 0.0f;
     [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameController gameController;
-    [NonSerialized] private GameObject weapon_parent;
+    [NonSerialized] public GameObject weapon_parent;
+    [NonSerialized] public Vector3 local_offset;
+    [NonSerialized] public Vector3 previousPosition;
 
     //To-do: when updating position, perform a ray trace to see if any objects in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed; if so, make the next position that instead
-    void OnEnable()
+    /*void OnEnable()
     {
         //layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox");
         //Debug.Log("TIME LEFT IN PROJECTILE: " + (1 - (float)(projectile_timer_network / projectile_duration)).ToString());
@@ -40,11 +42,21 @@ public class WeaponProjectile : UdonSharpBehaviour
         // This code is not scalable; run only once
         if (keep_parent)
         {
-            weapon_parent = gameController.FindPlayerOwnedObject(VRCPlayerApi.GetPlayerById(owner_id), "PlayerWeapon");
+            //weapon_parent = gameController.FindPlayerOwnedObject(VRCPlayerApi.GetPlayerById(owner_id), "PlayerWeapon");
             if (weapon_parent != null) {
                 pos_start = weapon_parent.transform.position;
             }
         }
+    }*/
+
+    private void Start()
+    {
+        previousPosition = transform.position;
+    }
+
+    private float CalcDistanceAtTime(double time_elapsed)
+    {
+        return projectile_distance * (float)(time_elapsed / projectile_duration);
     }
 
     private Vector3 CalcPosAtTime(double time_elapsed)
@@ -53,8 +65,8 @@ public class WeaponProjectile : UdonSharpBehaviour
         switch (projectile_type)
         {
             case (int)projectile_type_name.Bullet:
-                outPos = pos_start + (transform.right * (projectile_distance * (float)(time_elapsed / projectile_duration)));
-                if (keep_parent && weapon_parent) { outPos = pos_start + (weapon_parent.transform.right * (projectile_distance * (float)(time_elapsed / projectile_duration))); }
+                if (keep_parent && weapon_parent != null) { pos_start = weapon_parent.transform.position; }
+                outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
                 break;
             default:
                 break;
@@ -66,27 +78,40 @@ public class WeaponProjectile : UdonSharpBehaviour
     {
         projectile_timer_local += Time.deltaTime;
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
-        if (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration)
-        {
-            var rb = this.GetComponent<Rigidbody>();
-            rb.MovePosition(CalcPosAtTime(projectile_duration));
-            OnProjectileHit(CalcPosAtTime(projectile_duration));
-        }
     }
 
     private void FixedUpdate()
     {
         var rb = this.GetComponent<Rigidbody>();
+        // Before anything else, if we have a parent, make sure we're positioned and rotated with the parent properly
+        if (keep_parent && weapon_parent != null)
+        {
+            rb.MoveRotation(weapon_parent.transform.rotation);
+            rb.MovePosition(weapon_parent.transform.position + (weapon_parent.transform.right * CalcDistanceAtTime(projectile_timer_network)));
+        }
 
-        var lerpPos = Vector3.Lerp(transform.position, CalcPosAtTime(projectile_timer_network), (float)(projectile_timer_network / projectile_duration));
-        //var lerpPos = CalcPosAtTime(projectile_timer_network);
-        //Debug.Log(lerpPos.ToString() + "; " + projectile_timer_network.ToString() + " seconds; " + ((float)(projectile_timer_network / projectile_duration)).ToString() + "%" );
-        rb.MovePosition(lerpPos);
+        // Then we calculate the next position, either based on lerp from the distance or raycast if there's an obstacle between our current and next position
+        var lerpPos = Vector3.Lerp(transform.position, CalcPosAtTime(projectile_timer_network), Mathf.Min(1.0f,(float)(projectile_timer_network / projectile_duration)));
+        var rayPos = RaycastToNextPos(projectile_timer_network);
+        if (rayPos.x != -999999) 
+        { 
+            rb.MovePosition(rayPos);
+            OnProjectileHit(rayPos, true);
+        }
+        else 
+        { 
+            rb.MovePosition(lerpPos);
+            if (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration)
+            {
+                OnProjectileHit(CalcPosAtTime(projectile_duration), false);
+            }
+        }
+
+
     }
 
-    public void OnProjectileHit(Vector3 position)
+    public void OnProjectileHit(Vector3 position, bool contact_made)
     {
-        // To-do: create hurtbox based on weapon_type
         //NetworkCreateHurtBox(Vector3 position, float damage, double start_ms, int player_id, int weapon_type)
         if (owner_id == Networking.LocalPlayer.playerId)
         {
@@ -106,41 +131,58 @@ public class WeaponProjectile : UdonSharpBehaviour
                 );
         }
         // Play the striking sound, if applicable
-        switch (weapon_type)
+        if (weapon_parent != null && weapon_parent.GetComponent<PlayerWeapon>() != null && contact_made)
         {
-            case (int)weapon_type_name.Bomb:
-                gameController.PlaySFXFromArray(
-                gameController.snd_game_sfx_sources[(int)game_sfx_index.WeaponFire], gameController.snd_game_sfx_clips[(int)game_sfx_index.WeaponFire], weapon_type
-                );
-                break;
-            case (int)weapon_type_name.Rocket:
-                gameController.PlaySFXFromArray(
-                gameController.snd_game_sfx_sources[(int)game_sfx_index.WeaponFire], gameController.snd_game_sfx_clips[(int)game_sfx_index.WeaponFire], weapon_type
-                );
-                break;
-            default:
-                break;
+            var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
+            gameController.PlaySFXFromArray(
+                plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, weapon_type
+            );
+            /*
+            switch (weapon_type)
+            {
+                case (int)weapon_type_name.Bomb:
+                    gameController.PlaySFXFromArray(
+                    weapon_parent.GetComponent<PlayerWeapon>().weapon_snd_source, gameController.snd_game_sfx_clips[(int)game_sfx_name.WeaponFire], weapon_type
+                    );
+                    break;
+                case (int)weapon_type_name.Rocket:
+                    gameController.PlaySFXFromArray(
+                    weapon_parent.GetComponent<PlayerWeapon>().weapon_snd_source, gameController.snd_game_sfx_clips[(int)game_sfx_name.WeaponFire], weapon_type
+                    );
+                    break;
+                default:
+                    break;
+            }*/
         }
 
         Destroy(gameObject);
     }
 
-    private void OnTriggerEnter(Collider other)
+    private bool CheckCollider(Collider other)
     {
+        if (other == null) { UnityEngine.Debug.LogError("Checking for nonexistant collider!");  return false; }
         // Did we hit a hitbox?
         if (other.gameObject.GetComponent<PlayerHitbox>() != null)
         {
             if (owner_id != Networking.GetOwner(other.gameObject).playerId)
             {
-                OnProjectileHit(transform.position);
+                return true;
             }
         }
         // Did we hit the environment?
         else if (other.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
-            OnProjectileHit(transform.position);
+            return true;
         }
+        return false;
+    }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (CheckCollider(other))
+        {
+            OnProjectileHit(transform.position, true);
+        }
     }
 
     private void OnCollisionEnter(UnityEngine.Collision collision)
@@ -150,14 +192,26 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             if (owner_id != Networking.GetOwner(collision.gameObject).playerId)
             {
-                OnProjectileHit(transform.position);
+                OnProjectileHit(transform.position, true);
             }
         }
         // Did we hit the environment?
         else if (collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
-            OnProjectileHit(transform.position);
+            OnProjectileHit(transform.position, true);
         }
 
+    }
+
+    private Vector3 RaycastToNextPos(double time_elapsed)
+    {
+        var layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
+        var ray_cast = Physics.Linecast(previousPosition, CalcPosAtTime(projectile_timer_network), out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
+        //UnityEngine.Debug.DrawLine(previousPosition, CalcPosAtTime(projectile_timer_network), Color.red, 0.1f);
+        previousPosition = transform.position;
+        // Since vectors are non-nullable, let's just return something impossible
+        if (!ray_cast || hitInfo.collider == null || !CheckCollider(hitInfo.collider)) { return new Vector3(-999999, -999999, -999999); }
+        UnityEngine.Debug.Log("Raycast found something! " + hitInfo.point.ToString() + ": " + hitInfo.collider.gameObject.name);
+        return hitInfo.point;
     }
 }

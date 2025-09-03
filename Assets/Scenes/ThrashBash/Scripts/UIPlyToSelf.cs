@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Linq;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -13,21 +14,23 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
-    [SerializeField] TMP_Text PTSPrimaryInfo;
-    [SerializeField] public TMP_Text PTSSecondaryInfo;
+    [SerializeField] public TMP_Text[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
     [SerializeField] public TMP_Text PTSTimer;
     [SerializeField] public TMP_Text PTSLives;
     [SerializeField] public UnityEngine.UI.Image PTSLivesImage;
     [SerializeField] public Sprite PTSLivesSprite;
     [SerializeField] public Sprite PTSPointsSprite;
+    [SerializeField] public Sprite PTSDeathsSprite;
     [SerializeField] public TMP_Text PTSDamage;
     [SerializeField] public TMP_Text PTSAttack;
     [SerializeField] public TMP_Text PTSDefense;
     [SerializeField] public TMP_Text PTSInvul;
     [SerializeField] public GameObject PTSTeamFlag;
     [SerializeField] public UnityEngine.UI.Image PTSTeamFlagImage;
+    [SerializeField] public UnityEngine.UI.Image PTSTeamPoleImage;
     [SerializeField] public TMP_Text PTSTeamText;
+    [SerializeField] public UnityEngine.UI.Image PTSTeamCBSpriteImage;
 
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
@@ -35,10 +38,24 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [NonSerialized] public PlayerAttributes playerAttributes;
 
+    // Fields used for demonstrating UI scale when modifying local options
+    [SerializeField] public float ui_demo_duration = 5.0f;
+    [NonSerialized] public float ui_demo_timer = 0.0f;
+    [NonSerialized] public bool ui_demo_enabled = false;
+    [NonSerialized] public bool ui_show_intro_text = true;
+
+    [NonSerialized] public string text_queue_full_str = ""; // Queue system for local HUD messages, separated by the delineation character.
+    [NonSerialized] public char text_queue_separator = '$';
+    [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
+    [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should a message on the text queue be displayed?
+    [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
+    [NonSerialized] public float[] text_queue_limited_timers;
+
     void Start()
     {
         var item_index = 0;
         var item_size = 0;
+        text_queue_limited_timers = new float[text_queue_limited_lines];
         RectTransform temp_parent = null;
         for (var i = 0; i < PTSPowerupPanel.transform.childCount; i++)
         {
@@ -60,72 +77,107 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 item_index++;
             }
         }
+        ui_show_intro_text = true;
+        if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
+        ui_demo_enabled = true;
 
     }
+
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
         owner = newOwner;
         playerAttributes = gameController.FindPlayerAttributes(newOwner);
     }
 
+    public void AddToTextQueue(string input)
+    {
+        if (text_queue_full_str.Length > 0) { text_queue_full_str += text_queue_separator; }
+        text_queue_full_str += input;
+    }
+
+    public void ProcessTextQueue()
+    {
+        if (text_queue_limited_timers == null) { return; }
+        // First, check the string to see if we even have 4 lines
+        string[] splitStr = text_queue_full_str.Split(text_queue_separator);
+        int new_queue_size = splitStr.Length;
+        float[] new_queue_timers = text_queue_limited_timers;
+        int iterateAmount = Mathf.Min(splitStr.Length, text_queue_limited_lines);
+        int iteration = 0;
+        while (iteration < iterateAmount)
+        {
+            if (text_queue_full_str.Length == 0) { break; }
+            if (new_queue_timers[iteration] < text_queue_limited_duration)
+            {
+                new_queue_timers[iteration] += Time.deltaTime;
+            }
+            else
+            {
+                // Shift timer entries up
+                for (int j = iteration; j < iterateAmount - 1; j++)
+                {
+                    new_queue_timers[j] = new_queue_timers[j + 1];
+                }
+                new_queue_timers[iterateAmount - 1] = 0.0f;
+                // Shift string entries up
+                for (int k = iteration; k < splitStr.Length - 1; k++)
+                {
+                    splitStr[k] = splitStr[k + 1];
+                }
+                splitStr[splitStr.Length - 1] = "";
+                new_queue_size--;
+                iteration--; // Now that entries are shifted up, we need to check again
+                iterateAmount--;
+            }
+            iteration++;
+        }
+        text_queue_full_str = String.Join(text_queue_separator, splitStr, 0, new_queue_size);
+    }
+
     private void Update()
     {
         if (owner != Networking.LocalPlayer || owner == null) { return; }
 
-        var showTextPrimary = "Damage: " + Mathf.RoundToInt(playerAttributes.ply_dp)
-            + "%\nLives: " + Mathf.RoundToInt(playerAttributes.ply_lives)
-            + "\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
-            + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
-        var showTextSecondary = "";
+        ProcessTextQueue();
 
-        if (gameController.option_teamplay) { showTextPrimary += "\nTeam: " + playerAttributes.ply_team; }
-        if (playerAttributes.last_kill_ply > -1 && VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply) != null) { showTextSecondary += "You knocked out " + VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply).displayName + "!"; }
-
-        switch (playerAttributes.ply_state)
+        
+        string[] splitStr = text_queue_full_str.Split(text_queue_separator);
+        for (int i = 0; i < text_queue_limited_lines; i++)
         {
-            case (int)player_state_name.Inactive:
-                showTextPrimary = "Move in the zone to join the game!";
-                break;
-            case (int)player_state_name.Joined:
-                showTextPrimary = "Waiting for game to start";
-                break;
-            case (int)player_state_name.Respawning:
-                if (playerAttributes.last_hit_by_ply == null) { showTextSecondary = "You fell off the map!"; }
-                else { showTextSecondary = "You were knocked out by " + playerAttributes.last_hit_by_ply.displayName + "!"; }
-                showTextPrimary += "\n(Invulnerability: " +
-                    Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString() + ")";
-                break;
-            case (int)player_state_name.Dead:
-                showTextPrimary = "You were defeated!";
-                if (playerAttributes.last_hit_by_ply != null) { showTextSecondary = "Your last KO was from " + playerAttributes.last_hit_by_ply.displayName + "!"; }
-                break;
-            default:
-                break;
+            if (i < splitStr.Length)
+            {
+                PTSTextStack[i].text = splitStr[i].ToUpper();
+                float fade_time = text_queue_limited_duration - (text_queue_limited_fade_time_percent * text_queue_limited_duration);
+                if (text_queue_limited_timers[i] >= fade_time) { PTSTextStack[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (text_queue_limited_duration - fade_time)); }
+                else { PTSTextStack[i].alpha = 1.0f; }
+            }
+            else { PTSTextStack[i].text = ""; }
         }
-        switch (gameController.round_state)
+        //if (ui_show_intro_text) { showTextSecondary += "Welcome! This game is in very early development; there may be major bugs or issues!"; }
+        //else {  }
+        //PTSPrimaryInfo.text = showTextPrimary;
+        //PTSSecondaryInfo.text = showTextSecondary;
+
+        // Tick down demo timer
+        if (ui_demo_enabled && ui_demo_timer < ui_demo_duration)
         {
-            case (int)round_state_name.Ready:
-                showTextPrimary = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString();
-                break;
-            case (int)round_state_name.Ongoing:
-                showTextPrimary = Mathf.Floor(gameController.round_length - gameController.round_timer).ToString() + "\n" + showTextPrimary;
-                break;
-            case (int)round_state_name.Over:
-                showTextPrimary = "Game Over!" + "\n" + showTextPrimary;
-                break;
-            default:
-                break;
+            ui_demo_timer += Time.deltaTime;
         }
-
-        showTextPrimary = "isNetworkSettled(): " + Networking.IsNetworkSettled;
-        showTextSecondary = "isClogged(): " + Networking.IsClogged;
-
-        PTSPrimaryInfo.text = showTextPrimary;
-        PTSSecondaryInfo.text = showTextSecondary;
+        else if (ui_demo_enabled && ui_demo_timer >= ui_demo_duration)
+        {
+            ui_demo_enabled = false;
+            if (ui_show_intro_text) {
+                AddToTextQueue("Step in the square to join the game!");
+                AddToTextQueue(" ");
+                AddToTextQueue("This game is in very early development; there may be major bugs or issues!");
+            }
+            ui_show_intro_text = false;
+            ui_demo_timer = 0.0f;
+        }
 
         // Sort out better without all the debug
-
-        if ((gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Over || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
+        if (ui_demo_enabled && !ui_show_intro_text) { PTSTopPanel.SetActive(true); }
+        else if ((gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Over || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
         else if (!(gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Over || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
         var TimerText = Mathf.Floor(gameController.round_length - gameController.round_timer + 1.0f).ToString();
@@ -168,13 +220,29 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else { PTSDefense.color = new Color32(255, 255, 255, 255); }
         PTSDefense.text = DefenseText;
 
+        if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTSTeamCBSpriteImage.enabled = true; }
+        else { PTSTeamCBSpriteImage.enabled = false;  }
+        PTSTeamFlagImage.enabled = !PTSTeamCBSpriteImage.enabled;
+        PTSTeamPoleImage.enabled = PTSTeamFlagImage.enabled;
+
         if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
         { 
-            if (gameController.option_teamplay) { PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
-            else { PTSTeamFlagImage.color = new Color32(255,255,255,255); }
+            if (gameController.option_teamplay) 
+            { 
+                PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
+            }
+            else 
+            { 
+                PTSTeamFlagImage.color = new Color32(255,255,255,255);
+            }
+            PTSTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
+            PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
         var FlagText = "";
-        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0) { FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString(); }
+        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0) 
+        { 
+            FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString();
+        }
         PTSTeamText.text = FlagText;
 
 
@@ -185,19 +253,28 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSLivesImage.sprite = PTSPointsSprite;
             if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
             {
-                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
+                // If this is boss bash, display the boss's points as a total death counter
                 var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
-                if (bossAttr != null) 
-                { 
-                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + " / " + gameController.option_goal_points_a; 
+                if (bossAttr != null)
+                {
+                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + "/" + gameController.option_goal_value_a;
                 }
                 else { LivesText = "?"; }
                 PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-                PTSLivesImage.color = PTSTeamFlagImage.color;
+                PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLivesImage.sprite = PTSDeathsSprite;
+            }
+            else if (gameController.option_gamemode == (int)round_mode_name.Infection)
+            {
+                LivesText = gameController.CheckSpecificTeamPoints(1).ToString();
+                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLivesImage.sprite = PTSDeathsSprite;
             }
             else
             {
-                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + " / " + gameController.option_goal_points_a;
+                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(gameController.CheckSpecificTeamPoints(playerAttributes.ply_team)).ToString() + "/" + gameController.option_goal_value_a; }
+                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + "/" + gameController.option_goal_value_a; }
                 PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
                 PTSLivesImage.color = PTSTeamFlagImage.color;
             }
@@ -235,11 +312,15 @@ public class UIPlyToSelf : UdonSharpBehaviour
     private void FixedUpdate()
     {
         if (owner != Networking.LocalPlayer || owner == null) { return; }
-        var scaleUI = (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
-        else { scaleUI *= 0.5f; }
-        transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
-        transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * scaleUI);
+        var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        var scaleUI = 1.0f;
+        if (gameController.local_ppp_options != null) { 
+            scaleUI *= (gameController.local_ppp_options.ui_scale * 1.0f); 
+        }
+        //if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
+        //else { scaleUI *= 0.5f; }
+        transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
+        transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * heightUI);
         transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
     }
 

@@ -16,13 +16,16 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image PTOLivesImage;
     [SerializeField] public Sprite PTOLivesSprite;
     [SerializeField] public Sprite PTOPointsSprite;
+    [SerializeField] public Sprite PTODeathsSprite;
     [SerializeField] public TMP_Text PTODamage;
     [SerializeField] public TMP_Text PTOAttack;
     [SerializeField] public TMP_Text PTODefense;
     [SerializeField] public TMP_Text PTOInvul;
     [SerializeField] public GameObject PTOTeamFlag;
     [SerializeField] public UnityEngine.UI.Image PTOTeamFlagImage;
+    [SerializeField] public UnityEngine.UI.Image PTOTeamPoleImage;
     [SerializeField] public TMP_Text PTOTeamText;
+    [SerializeField] public UnityEngine.UI.Image PTOTeamCBSpriteImage;
 
     [NonSerialized] public PlayerAttributes playerAttributes;
 
@@ -83,8 +86,26 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
         { 
-            if (gameController.option_teamplay) { PTOTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
-            else { PTOTeamFlagImage.color = new Color32(255, 255, 255, 255); }
+            if (gameController.option_teamplay)
+            {
+                PTOTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
+                PTOTeamCBSpriteImage.color = PTOTeamFlagImage.color;
+                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
+                if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTOTeamCBSpriteImage.enabled = true; }
+                else { PTOTeamCBSpriteImage.enabled = false; }
+                PTOTeamFlagImage.enabled = !PTOTeamCBSpriteImage.enabled;
+                PTOTeamPoleImage.enabled = PTOTeamFlagImage.enabled;
+            }
+            else
+            {
+                PTOTeamFlagImage.color = new Color32(255, 255, 255, 255);
+                PTOTeamCBSpriteImage.color = PTOTeamFlagImage.color;
+                PTOTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
+                if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTOTeamCBSpriteImage.enabled = true; }
+                else { PTOTeamCBSpriteImage.enabled = false; }
+                PTOTeamFlagImage.enabled = !PTOTeamCBSpriteImage.enabled;
+                PTOTeamPoleImage.enabled = PTOTeamFlagImage.enabled;
+            }
         }
 
         var LivesText = "";
@@ -92,21 +113,23 @@ public class UIPlyToOthers : UdonSharpBehaviour
         else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
         {
             PTOLivesImage.sprite = PTOPointsSprite;
-            if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
-            {
+            if (gameController.option_goal_time) {
                 LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
-                var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
-                if (bossAttr != null)
-                {
-                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + " / " + gameController.option_goal_points_a;
-                }
-                else { LivesText = "?"; }
                 PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
+            else if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
+            {    
+                // If this is boss bash, everyone but the boss should have a death counter
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString();
+                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLivesImage.sprite = PTODeathsSprite;
+                PTOLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+            }
             else
             {
-                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + " / " + gameController.option_goal_points_a;
+                if (gameController.option_teamplay) { LivesText = Mathf.RoundToInt(gameController.CheckSpecificTeamPoints(playerAttributes.ply_team)).ToString(); }
+                else { LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString(); }
                 PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
@@ -120,16 +143,11 @@ public class UIPlyToOthers : UdonSharpBehaviour
         }
         PTOLives.text = LivesText;
 
-        //var FlagText = "";
-        //if (gameController.team_count >= 0) { FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString(); }
-        //PTOTeamText.text = FlagText;
-
-
         var showText = "Damage: " + playerAttributes.ply_dp
             + "%\nLives: " + playerAttributes.ply_lives
             + "%\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
             + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
-        if (gameController.option_teamplay) { showText += "\nTeam: " + playerAttributes.ply_team; } //To-Do: have an array of team colors, and change the person's text color accordingly
+        if (gameController.option_teamplay) { showText += "\nTeam: " + playerAttributes.ply_team; } 
         switch (playerAttributes.ply_state)
         {
             case (int)player_state_name.Inactive:

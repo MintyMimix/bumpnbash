@@ -24,8 +24,8 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] [UdonSynced] public float item_spawn_linger;
     [Tooltip("The number of seconds that need to pass before the chance for an item to be spawned is rolled")]
     [SerializeField] [UdonSynced] public float item_spawn_impulse;
-    [Tooltip("The odds of an item being spawned every impulse, measured between 0.0 and 1.0")]
-    [SerializeField] [UdonSynced] public float item_spawn_chance = 1.0f; 
+    [Tooltip("The odds of an item being spawned every impulse, measured between 0.0001 and 1.0")]
+    [SerializeField] [UdonSynced] public float item_spawn_chance_global = 1.0f; 
     [Tooltip("How long a powerup should last when picked up from this spawner, in seconds")]
     [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f;
     [Tooltip("Which team # should this be assigned to? (-1: all, -2: FFA-only)")]
@@ -70,13 +70,18 @@ public class ItemSpawner : UdonSharpBehaviour
         // Only spawn the item if it's in a spawnable state
         if (item_spawn_state == (int)item_spawn_state_name.Spawnable)
         {
-            // Spawn the item
-            if (Networking.LocalPlayer.isMaster) {
-                item_spawn_index = RollForItem(item_spawn_chances);
-                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
-                
+            // Roll for global spawn chance
+            if (!RollForSpawn()) { StartTimer(item_spawn_impulse); }
+            else {
+                // Spawn the item
+                if (Networking.LocalPlayer.isMaster)
+                {
+                    item_spawn_index = RollForItem(item_spawn_chances);
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index);
+
+                }
             }
-        }
+         }
         else if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
             if (Networking.LocalPlayer.isMaster)
@@ -103,6 +108,7 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             child_powerup.item_owner_id = -1;
             child_powerup.item_team_id = item_spawn_team;
+            child_powerup.SetTeamColor(item_spawn_team);
             child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_state = (int)item_state_name.InWorld;
             child_powerup.item_type = (int)item_type_name.Powerup;
@@ -119,7 +125,8 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_owner_id = -1;
-            child_powerup.item_team_id = item_spawn_team;
+            child_weapon.item_team_id = item_spawn_team;
+            child_weapon.SetTeamColor(item_spawn_team);
             child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
@@ -178,8 +185,8 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public bool RollForSpawn()
     {
-        var roll = UnityEngine.Random.Range(0.0f, 100.0f);
-        if (roll <= item_spawn_chance) { return true; }
+        var roll = UnityEngine.Random.Range(0.0f, 1.0f);
+        if (roll <= item_spawn_chance_global) { return true; }
         return false;
     }
 

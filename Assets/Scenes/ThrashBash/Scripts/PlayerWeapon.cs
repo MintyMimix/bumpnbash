@@ -11,7 +11,7 @@ using static VRC.SDKBase.VRCPlayerApi;
 
 public enum weapon_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToWeaponType()
 {
-    PunchingGlove, Bomb, Rocket, ENUM_LENGTH
+    PunchingGlove, Bomb, Rocket, BossGlove, ENUM_LENGTH
 }
 
 public class PlayerWeapon : UdonSharpBehaviour
@@ -20,10 +20,18 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float use_cooldown;
     [NonSerialized] public float use_timer;
     [NonSerialized] public bool use_ready;
+    [NonSerialized] public int weapon_temp_ammo = -1;
+    [NonSerialized] public float weapon_temp_duration = 30.0f;
+    [NonSerialized] public float weapon_temp_timer = 0.0f;
     [NonSerialized] [UdonSynced] public float animate_pct;
     [SerializeField] public GameObject[] weapon_mdl;
     [SerializeField] public GameController gameController;
+    [SerializeField] public AudioSource snd_source_weaponfire;
+    [SerializeField] public AudioSource snd_source_weaponcontact;
     [NonSerialized] public float scale_inital;
+
+    [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponfire; // NOTE: Corresponds to weapon_type
+    [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponcontact; // NOTE: Corresponds to weapon_type
 
     void Start()
     {
@@ -34,23 +42,18 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public void UpdateStatsFromWeaponType()
     {
-        switch (weapon_type)
-        {
-            case (int)weapon_type_name.PunchingGlove:
-                use_cooldown = 1.2f;
-                break;
-            default:
-                use_cooldown = 1.0f;
-                break;
-        }
+
+        use_cooldown = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
+
         if (weapon_mdl[weapon_type] != null )
         {
             for (int i = 0; i < weapon_mdl.Length; i++)
             {
                 if (i == weapon_type) { weapon_mdl[i].SetActive(true); }
-                else { weapon_mdl[i].SetActive(false); }
+                else if (weapon_mdl[i] != null) { weapon_mdl[i].SetActive(false); }
             }
         }
+
         return;
     }
 
@@ -66,17 +69,17 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             use_timer += Time.deltaTime;
             use_ready = false;
-            if (weapon_type == (int)weapon_type_name.PunchingGlove) { animate_pct = (use_timer / use_cooldown); }
+            if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove) { animate_pct = (use_timer / use_cooldown); }
         }
         else if (gameController.round_state == (int)round_state_name.Ongoing && !use_ready)
         {
             use_ready = true;
-            if (weapon_type == (int)weapon_type_name.PunchingGlove) { animate_pct = 0.0f; }
+            if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove) { animate_pct = 0.0f; }
         }
         else if (gameController.round_state != (int)round_state_name.Ongoing && use_ready)
         {
             use_ready = false;
-            if (weapon_type == (int)weapon_type_name.PunchingGlove) { animate_pct = 0.0f; }
+            if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove) { animate_pct = 0.0f; }
         }
 
         
@@ -109,12 +112,12 @@ public class PlayerWeapon : UdonSharpBehaviour
             transform.GetComponent<VRCPickup>().pickupable = false;
         }
 
-        if (weapon_type == (int)weapon_type_name.PunchingGlove)
+        if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove)
         {
             weapon_mdl[weapon_type].GetComponent<Animator>().SetFloat("AnimationTimer", animate_pct);
         }
 
-        var playerAttributes = gameController.FindPlayerAttributes(Networking.LocalPlayer);
+        var playerAttributes = gameController.FindPlayerAttributes(Networking.GetOwner(gameObject));
         var m_Renderer = GetComponentInChildren<SkinnedMeshRenderer>();
         if (m_Renderer != null && playerAttributes.gameController.team_colors != null && playerAttributes.ply_team >= 0)
         {
@@ -122,16 +125,16 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 m_Renderer.material.SetColor("_Color",
                     new Color32(
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
                     (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor",
                     new Color32(
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
-                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g)),
+                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b)),
                     (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
             }
             else
@@ -148,7 +151,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (!use_ready) { return; }
         use_ready = false;
         use_timer = 0;
-        if (weapon_type == (int)weapon_type_name.PunchingGlove) { animate_pct = 0.0f; }
+        if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove) { animate_pct = 0.0f; }
 
         if (transform.GetComponent<VRCPickup>().currentPlayer == Networking.LocalPlayer)
         {
@@ -158,10 +161,19 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 case (int)weapon_type_name.PunchingGlove:
                     gameController.PlaySFXFromArray(
-                    gameController.snd_game_sfx_sources[(int)game_sfx_index.WeaponFire]
-                    , gameController.snd_game_sfx_clips[(int)game_sfx_index.WeaponFire]
+                    snd_source_weaponfire
+                    , snd_game_sfx_clips_weaponfire
                     , weapon_type
                     , UnityEngine.Random.Range(0.5f, 1.5f)
+                    );
+                    keep_parent = true;
+                    break;
+                case (int)weapon_type_name.BossGlove:
+                    gameController.PlaySFXFromArray(
+                    snd_source_weaponfire
+                    , snd_game_sfx_clips_weaponfire
+                    , weapon_type
+                    , UnityEngine.Random.Range(0.75f, 1.25f)
                     );
                     keep_parent = true;
                     break;

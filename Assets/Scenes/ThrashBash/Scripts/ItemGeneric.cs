@@ -74,4 +74,31 @@ public class ItemGeneric : UdonSharpBehaviour
 
     }
 
+    internal void SetTeamColor(int team_id)
+    {
+        var m_Renderer = GetComponent<MeshRenderer>();
+        if (spawner_parent.gameController.option_teamplay && team_id >= 0)
+        {
+            m_Renderer.material.SetColor("_Color",
+                new Color32(
+                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].r)),
+                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].g)),
+                (byte)Mathf.Max(0, Mathf.Min(255, 80 + spawner_parent.gameController.team_colors[team_id].b)),
+                (byte)92));
+            m_Renderer.material.EnableKeyword("_EMISSION");
+            m_Renderer.material.SetColor("_EmissionColor",
+                new Color32(
+                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].r)),
+                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].g)),
+                (byte)Mathf.Max(0, Mathf.Min(255, -80 + spawner_parent.gameController.team_colors[team_id].b)),
+                92));
+        }
+        else
+        {
+            m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 92));
+            m_Renderer.material.EnableKeyword("_EMISSION");
+            m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 92));
+        }
+    }
+
 }

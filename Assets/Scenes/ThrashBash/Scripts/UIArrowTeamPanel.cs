@@ -41,7 +41,16 @@ public class UIArrowTeamPanel : UIArrow
             (byte)Mathf.Min(255,(80 + parent_teampanel.gameController.team_colors[current_value].g)), 
             (byte)Mathf.Min(255,(80 + parent_teampanel.gameController.team_colors[current_value].b)), 
             (byte)parent_teampanel.gameController.team_colors[current_value].a);
-        if (player != null) { caption.text = player.displayName + " (" + array_id + ") "; }
+        if (player != null) 
+        { 
+            caption.text = player.displayName + " (" + array_id + ") ";
+            image_cb.sprite = parent_teampanel.gameController.team_sprites[current_value];
+            image_cb.color = image_front.color;
+            if (parent_teampanel.gameController.local_ppp_options != null && parent_teampanel.gameController.local_ppp_options.colorblind) { image_cb.enabled = true; }
+            else { image_cb.enabled = false; }
+            image_front.enabled = !image_cb.enabled;
+            image_back.enabled = !image_cb.enabled;
+        }
         else if (!is_template) { Destroy(gameObject); }
         
         UpdateOwnership();

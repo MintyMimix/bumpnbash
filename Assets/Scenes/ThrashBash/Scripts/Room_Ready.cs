@@ -18,10 +18,16 @@ public class Room_Ready : UdonSharpBehaviour
             if (plyAttr != null) { 
                 plyAttr.ply_state = (int)player_state_name.Joined; 
 
-                if (gameController.DictValueFromKey(player.playerId, gameController.ply_tracking_dict_keys_arr, gameController.ply_tracking_dict_values_arr) < 1)
+                if (gameController.GetGlobalTeam(player.playerId) < 0)
                 {
-                    if (gameController.round_state != (int)round_state_name.Start) { gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.WaitingForLobby); }
-                    else { gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, 0, true); }
+                    if (gameController.round_state != (int)round_state_name.Start) 
+                    { 
+                        gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.WaitingForLobby, true);
+                    }
+                    else 
+                    { 
+                        gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, 0, true); 
+                    }
                 }
             }
         }
@@ -56,10 +62,10 @@ public class Room_Ready : UdonSharpBehaviour
             {
                 plyAttr.ply_state = (int)player_state_name.Inactive;
 
-                if (gameController.DictValueFromKey(player.playerId, gameController.ply_tracking_dict_keys_arr, gameController.ply_tracking_dict_values_arr) != (int)player_tracking_name.Spectator)
+                if (gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Spectator && gameController.round_state == (int)round_state_name.Start)
                 {
                     //if (gameController.round_state == (int)round_state_name.Start) { 
-                    gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.Unassigned); 
+                    gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.Unassigned, false); 
                 }
             }
         }

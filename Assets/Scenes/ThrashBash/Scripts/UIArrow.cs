@@ -10,6 +10,7 @@ public class UIArrow : UdonSharpBehaviour
     [Header("References")]
     [SerializeField] public UnityEngine.UI.Image image_front;
     [SerializeField] public UnityEngine.UI.Image image_back;
+    [SerializeField] public UnityEngine.UI.Image image_cb;
     [SerializeField] public UnityEngine.UI.Button button_increment, button_decrement;
     [SerializeField] public TMP_Text caption;
 

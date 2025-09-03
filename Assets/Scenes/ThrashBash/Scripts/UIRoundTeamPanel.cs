@@ -81,6 +81,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
 
     }
 
+    
     public void RedrawPlayerUIGroup()
     {
         // Change localScale of panels, gridlayout cell size, and gridlayout column count based on player count (6 [1], 24 [2], 54 [3])
@@ -165,7 +166,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         else { UITeamCountPanel.GetComponent<HorizontalLayoutGroup>().childControlWidth = false; }
         if (player_team_list_arr.Length >= 6) { UIScrollPanel.GetComponent<VerticalLayoutGroup>().childControlHeight = true; }
         else { UIScrollPanel.GetComponent<VerticalLayoutGroup>().childControlHeight = false; }*/
-
+        RedrawTeamUIGroup();
     }
 
     public void SetTeamCounter(int team_index)
@@ -237,19 +238,38 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         uiarrow.wrap_value = true;
         uiarrow.increment_size = 1;
         uiarrow.is_template = false;
-        if (gameController.ply_tracking_dict_keys_arr == null || gameController.ply_tracking_dict_values_arr == null || index >= gameController.ply_tracking_dict_keys_arr.Length) { UnityEngine.Debug.LogError("Attempted to assign team panel with player at index " + index + " when local player array only has " + gameController.ply_tracking_dict_keys_arr.Length + "entries!"); }
-        else
+        if (gameController.ply_tracking_dict_keys_arr == null || gameController.ply_tracking_dict_values_arr == null)
         {
-            uiarrow.player = VRCPlayerApi.GetPlayerById(gameController.ply_tracking_dict_keys_arr[index]);
-            uiarrow.current_value = gameController.ply_tracking_dict_values_arr[index];
-            UnityEngine.Debug.Log("Creating panel for player " + uiarrow.player.playerId + " at index " + index);
+            UnityEngine.Debug.LogError("Attempted to assign team panel with player at index " + index + " when dictionary does not exist!");
+            Destroy(uiobj);
+            return;
         }
+        else if (index >= gameController.ply_tracking_dict_keys_arr.Length)
+        {
+            UnityEngine.Debug.LogError("Attempted to assign team panel with player at index " + index + " when local player array only has " + gameController.ply_tracking_dict_keys_arr.Length + "entries!");
+            Destroy(uiobj);
+            return;
+        }
+
+        uiarrow.player = VRCPlayerApi.GetPlayerById(gameController.ply_tracking_dict_keys_arr[index]);
+        uiarrow.current_value = gameController.ply_tracking_dict_values_arr[index];
+        UnityEngine.Debug.Log("Creating panel for player " + uiarrow.player.playerId + " at index " + index);
+  
         uiarrow.array_id = player_obj_list.Length;
+        player_obj_list = gameController.AddToGameObjectArray(uiobj, player_obj_list);
+
         uiarrow.Refresh();
 
-        player_obj_list = gameController.AddToGameObjectArray(uiobj, player_obj_list);
-        
         return;
+    }
+
+    public void CreateNewPanelList()
+    {
+        for (int i = 0; i < player_obj_list.Length; i++) { RemovePanel(i); }
+        for (int j = 0; j < gameController.ply_tracking_dict_keys_arr.Length; j++)
+        {
+            CreateNewPanel(j);
+        }
     }
 
     public void RemovePanel(int index)
@@ -258,6 +278,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         player_obj_list = gameController.RemoveIndexFromGameObjectArray(index, player_obj_list);
     }
 
+    
     public void RefreshAllPanels()
     {
         for (int i = 0; i < player_obj_list.Length; i++)
@@ -283,32 +304,10 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         }
         RedrawPlayerUIGroup();
     }
-
-    public void CreateNewPanelList()
-    {
-        for (int i = 0; i < player_obj_list.Length; i++) { RemovePanel(i); }
-        for (int j = 0; j < gameController.ply_tracking_dict_keys_arr.Length; j++)
-        {
-            CreateNewPanel(j);
-        }
-    }
-
+    
     public void PanelListCleanup()
-    {
+    { 
         if (player_obj_list.Length != VRCPlayerApi.GetPlayerCount()) { CreateNewPanelList(); }
-        /*GameObject[] all_panels_in_hierarchy = GameObject.FindGameObjectsWithTag("UIAssignTeamPanelTemplate");
-        if (all_panels_in_hierarchy.Length > player_obj_list.Length)
-        {
-            for (int i = 0; i < all_panels_in_hierarchy.Length; i++)
-            {
-                bool panel_found = false;
-                for (int j = 0; j < player_obj_list.Length; j++)
-                {
-                    if (all_panels_in_hierarchy[i] == player_obj_list[j]) { panel_found = true; break; }
-                }
-                if (!panel_found) { Destroy(all_panels_in_hierarchy[i]); }
-            }
-        }*/
     }
 
 }

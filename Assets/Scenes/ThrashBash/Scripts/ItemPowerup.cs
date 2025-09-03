@@ -10,12 +10,12 @@ using VRC.Udon.Common.Interfaces;
 
 public enum powerup_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToPowerupType()
 {
-    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, Fallback, ENUM_LENGTH
+    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, PartialHeal, FullHeal, Fallback, ENUM_LENGTH
 }
 
 public enum powerup_stat_name
 {
-   Scale, Speed, Atk, Def, Grav, ENUM_LENGTH
+   Scale, Speed, Atk, Def, Grav, Damage, ENUM_LENGTH
 }
 
 public enum powerup_stat_behavior_name
@@ -53,6 +53,8 @@ public class ItemPowerup : ItemGeneric
         powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Null;
         powerup_stat_value[(int)powerup_stat_name.Grav] = 1.0f;
         powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Null;
+        powerup_stat_value[(int)powerup_stat_name.Damage] = 0.0f;
+        powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Null;
 
         foreach (Transform child in transform)
         {
@@ -97,6 +99,14 @@ public class ItemPowerup : ItemGeneric
             case (int)powerup_type_name.LowGrav:
                 powerup_stat_value[(int)powerup_stat_name.Grav] = 0.25f;
                 powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
+                break;
+            case (int)powerup_type_name.PartialHeal:
+                powerup_stat_value[(int)powerup_stat_name.Damage] = 0.5f;
+                powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Multiply;
+                break;
+            case (int)powerup_type_name.FullHeal:
+                powerup_stat_value[(int)powerup_stat_name.Damage] = 0.0f;
+                powerup_stat_behavior[(int)powerup_stat_name.Damage] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             default:
                 break;
