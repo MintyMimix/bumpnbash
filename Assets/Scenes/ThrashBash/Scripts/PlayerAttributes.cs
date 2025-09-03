@@ -1,4 +1,5 @@
 ﻿
+using System;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
@@ -8,34 +9,60 @@ using VRC.Udon.Common.Interfaces;
 
 public enum player_state_name
 {
-    Inactive, Joined, Alive, Respawning, Dead, Spectator
+    Inactive, Joined, Alive, Respawning, Dead, Spectator, ENUM_LENGTH
 }
 
 public class PlayerAttributes : UdonSharpBehaviour
 {
 
-    [UdonSynced] public int ply_state;
-    [UdonSynced] public float ply_dp;
-    [UdonSynced] public float ply_dp_default;
-    [UdonSynced] public int ply_lives;
-    [UdonSynced] public float ply_respawn_duration;
-    public VRCPlayerApi last_hit_by_ply;
-    public int last_kill_ply = -1;
-    public float last_kill_duration = 4.0f;
-    public float last_kill_timer = 0.0f;
+    [NonSerialized][UdonSynced] public int ply_state;
+    [NonSerialized][UdonSynced] public float ply_dp;
+    [NonSerialized][UdonSynced] public float ply_dp_default;
+    [NonSerialized][UdonSynced] public int ply_lives;
+    // While we aren't syncing the stats below right now, we may want to in the future for UI purposes
+    [NonSerialized][UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced because it affects visuals
+    [NonSerialized] public float ply_speed = 1.0f;
+    [NonSerialized] public float ply_atk = 1.0f;
+    [NonSerialized] public float ply_def = 1.0f;
+    [NonSerialized] public float ply_grav = 1.0f;
+    [NonSerialized] public float ply_respawn_duration;
+    [NonSerialized] public int ply_team = -1; // -1: Spectator, all others are teams
+    [NonSerialized] public VRCPlayerApi last_hit_by_ply;
+    [NonSerialized] public int last_kill_ply = -1;
+    [NonSerialized] public float last_kill_duration = 4.0f;
+    [NonSerialized] public float last_kill_timer = 0.0f;
 
-    public GameController gameController;
-    public float ply_respawn_timer = 0.0f;
+    [NonSerialized] public float ply_eyeheight_default, ply_eyeheight_desired, ply_eyeheight_current;
+
+    [SerializeField] public GameController gameController;
+    [NonSerialized] public float ply_respawn_timer = 0.0f;
+
+    [NonSerialized] public int combo_receive, combo_send = 0;
+    [NonSerialized] public float combo_send_duration = 2.0f;
+    [NonSerialized] public float combo_send_timer = 0.0f;
+
+    [NonSerialized] public GameObject[] powerups_active;
+
+    [NonSerialized] public float plyEyeHeight_default, plyEyeHeight_desired;
+    [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
+    [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
+    [NonSerialized] public bool plyEyeHeight_change = false;
 
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
     void Start()
     {
-
+        powerups_active = new GameObject[0];
+        ResetDefaultEyeHeight();
     }
 
     private void Update()
     {
+
+        // Only the owner should run the following:
+        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+
+        // Handle player state
         if (ply_respawn_timer < ply_respawn_duration)
         {
             ply_respawn_timer += Time.deltaTime;
@@ -46,10 +73,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else if (ply_state == (int)player_state_name.Dead && gameController.round_state == (int)round_state_name.Ongoing)
         {
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "CheckAllPlayerLives");
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckAllPlayerLives");
             ply_respawn_timer = 0.0f;
         }
 
+        // Handle last kill
         if (last_kill_timer < last_kill_duration && last_kill_ply > -1)
         {
             last_kill_timer += Time.deltaTime;
@@ -58,42 +86,107 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             last_kill_ply = -1;
         }
+
+        // Handle send combos
+        if (combo_send_timer < combo_send_duration && combo_send > 0)
+        {
+            combo_send_timer += Time.deltaTime;
+        }
+        else if (combo_send_timer >= combo_send_duration && combo_send > 0)
+        {
+            combo_send = 0;
+        }
+
+        // Handle receive combos
+        if (Networking.LocalPlayer.IsPlayerGrounded()) { combo_receive = 0; }
+
+        // Handle player stats
+        // To-do: this more efficiently
+        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) { 
+            Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed);
+            Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed);
+            Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed);
+            Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav);
+        }
+        else
+        {
+            Networking.LocalPlayer.SetWalkSpeed(2.0f);
+            Networking.LocalPlayer.SetRunSpeed(4.0f);
+            Networking.LocalPlayer.SetStrafeSpeed(2.0f);
+            Networking.LocalPlayer.SetGravityStrength(1.0f);
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        // Update size
+        if (plyEyeHeight_change)
+        {
+            var plyCurrentEyeHeight = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+            var lerp_delta = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), plyEyeHeight_lerp_start_ms);
+            if (plyCurrentEyeHeight != plyEyeHeight_desired && lerp_delta < plyEyeHeight_lerp_duration)
+            {
+                Networking.LocalPlayer.SetAvatarEyeHeightByMeters(Mathf.Lerp(plyCurrentEyeHeight, plyEyeHeight_desired, (float)(lerp_delta / plyEyeHeight_lerp_duration)));
+            }
+            else if (plyCurrentEyeHeight != plyEyeHeight_desired && lerp_delta >= plyEyeHeight_lerp_duration)
+            {
+                Networking.LocalPlayer.SetAvatarEyeHeightByMeters(plyEyeHeight_desired);
+                plyEyeHeight_change = false;
+            }
+            else if (plyCurrentEyeHeight == plyEyeHeight_desired) 
+            { 
+                plyEyeHeight_change = false; 
+            }
+        }
+    }
+
+    public override void OnAvatarChanged(VRCPlayerApi player) {
+        if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        ResetDefaultEyeHeight();
+    }
+
+    public void ResetDefaultEyeHeight()
+    {
+        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        plyEyeHeight_default = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+        plyEyeHeight_desired = plyEyeHeight_default;
     }
 
     [NetworkCallable]
-    public void HitOtherPlayer(int attacker_id)
+    public void HitOtherPlayer(int attacker_id, int damage_type)
     {
         // Only the attacker should have a registered hit
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
-        gameController.snd_game_sfx_sources[(int)game_sfx_index.HitSend].Play();
+        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.HitSend], gameController.snd_game_sfx_clips[(int)game_sfx_index.HitSend], damage_type, 1 + 0.1f * (combo_send));
+        combo_send++;
+
     }
 
     [NetworkCallable]
-    public void ReceiveDamage(float damage, Vector3 forceDirection, int attacker_id)
+    public void ReceiveDamage(float damage, Vector3 forceDirection, int attacker_id, int damage_type)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
         if (ply_state != (int)player_state_name.Alive) { return; }
-        // To-Do: Add defense/offense stats
-        var calcDmg = damage;
-        var modForceDirection = forceDirection;
+        var calcDmg = damage; 
+        var modForceDirection = forceDirection; // To-do: make this into a slider, game setting, or serialized field
+
+        // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
+        calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor)); 
 
         if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, 1.0f, 0.0f); }
         else { modForceDirection += new Vector3(0.0f, 0.33f, 0.0f); }
         var calcForce = (modForceDirection + new Vector3(0.0f, 0.33f, 0.0f));
         calcForce *= Mathf.Pow((calcDmg + ply_dp) / 4.25f, 1.05f);
 
-        gameController.snd_game_sfx_sources[(int)game_sfx_index.HitReceive].Play();
-        //HitReceiveSound.transform.SetPositionAndRotation(Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation());
-        //HitReceiveSound.GetComponent<AudioSource>().Play();
-
         Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
-
         // To-Do: make last hit by a function scaled based on damage (i.e. whoever dealt the most damage prior to the player hitting the ground gets kill credit)
-        last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
         ply_dp += calcDmg;
 
+        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.HitReceive], gameController.snd_game_sfx_clips[(int)game_sfx_index.HitReceive], damage_type, 1 + 0.1f * (combo_receive));
+        combo_receive++;
+        last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
         if (attacker_id >= 0) {
-            SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id);
+            SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type);
         }
     }
 
@@ -101,15 +194,15 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void KillOtherPlayer(int attackerPlyId, int defenderPlyId)
     {
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
-        gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill].Play();
+        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_index.Kill]);
+
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
     }
 
-    [NetworkCallable]
     public void HandleLocalPlayerDeath()
     {
-        gameController.snd_game_sfx_sources[(int)game_sfx_index.Death].GetComponent<AudioSource>().Play();
+        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Death], gameController.snd_game_sfx_clips[(int)game_sfx_index.Death]);
         ply_respawn_timer = 0;
         if (ply_state == (int)player_state_name.Alive && gameController.round_state == (int)round_state_name.Ongoing)
         {
@@ -146,7 +239,118 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (last_hit_by_ply != null) { 
             SendCustomNetworkEvent(NetworkEventTarget.All, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId); 
         }
-        
+
+        ResetPowerups();
+
+    }
+
+    public void ProcessPowerUp(ItemPowerup powerup, bool is_add = false)
+    {
+        //powerups_active
+        if (powerup == null) { return; }
+
+        if (is_add) {
+            powerups_active = gameController.AddToGameObjectArray(powerup.gameObject, powerups_active);
+            for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
+            {
+                Debug.Log("PROCESSING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
+                switch (i)
+                {
+                    case (int)item_powerup_stat_name.Scale:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_scale = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_scale += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_scale *= powerup.powerup_stat_value[i]; }
+                        plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+                        plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+                        plyEyeHeight_change = true;
+                        break;
+                    case (int)item_powerup_stat_name.Speed:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_speed = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_speed += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_speed *= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Atk:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_atk = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_atk += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_atk *= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Def:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_def = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_def += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_def *= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Grav:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Set) { ply_grav = powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_grav += powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_grav *= powerup.powerup_stat_value[i]; }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        else
+        {
+            for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
+            {
+                switch (i)
+                {
+                    case (int)item_powerup_stat_name.Scale:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_scale -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_scale /= powerup.powerup_stat_value[i]; }
+                        plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+                        plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+                        plyEyeHeight_change = true;
+                        break;
+                    case (int)item_powerup_stat_name.Speed:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_speed -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_speed /= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Atk:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_atk -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_atk /= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Def:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_def -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_def /= powerup.powerup_stat_value[i]; }
+                        break;
+                    case (int)item_powerup_stat_name.Grav:
+                        if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Add) { ply_grav -= powerup.powerup_stat_value[i]; }
+                        else if (powerup.powerup_stat_behavior[i] == (int)item_powerup_stat_behavior.Multiply) { ply_grav /= powerup.powerup_stat_value[i]; }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            Debug.Log("Removing effects of active powerup of type " + powerup.powerup_type);
+            powerups_active = gameController.RemoveEntryFromGameObjectArray(powerup.gameObject, powerups_active);
+        }
+
+    }
+
+    public void ResetPowerups()
+    {
+        var index_iter = 0;
+        var powerup_count = powerups_active.Length;
+        // The issue is that this fails because the length is continously shortening. Instead, let's have it on a while loop with the iter++ until we reach the length of the initial
+        while (index_iter < powerup_count) {
+            if (powerups_active.Length <= 0) { break; }
+            if (powerups_active[0] != null && powerups_active[0].GetComponent<ItemPowerup>() != null)
+            {
+                var powerup = powerups_active[0].GetComponent<ItemPowerup>();
+                //Debug.Log("Found powerup at " + i + ": " + powerups_active[i - index_iter].name + "; type: " + powerups_active[i].GetComponent<ItemPowerup>().powerup_type + "; global index: " + powerups_active[i].GetComponent<ItemPowerup>().powerup_stored_global_index);
+                ProcessPowerUp(powerup, false); // this may remove entries from the list as it occurs, resulting in errors.
+                gameController.SendDestroyPowerup(powerup.powerup_stored_global_index, (int)item_powerup_destroy_reason_code.PowerupFade, true);
+            }
+            else
+            {
+                //Debug.Log("Found powerup at " + i + " index that does not exist; resetting in array");
+                powerups_active = gameController.RemoveIndexFromGameObjectArray(0, powerups_active);
+            }
+            index_iter++;
+        }
+
     }
 
 }

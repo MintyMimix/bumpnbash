@@ -6,7 +6,7 @@ using VRC.Udon;
 
 public class DeathZone : UdonSharpBehaviour
 {
-    public GameController gameController;
+    [SerializeField] public GameController gameController;
     public override void OnPlayerTriggerEnter(VRCPlayerApi player)
     {
         if (!player.isLocal) { return; }

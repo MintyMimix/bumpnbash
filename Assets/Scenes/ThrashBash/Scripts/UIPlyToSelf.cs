@@ -1,24 +1,51 @@
 ﻿
+using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.UIElements;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
-using static VRC.SDKBase.VRCPlayerApi;
 
 public class UIPlyToSelf : UdonSharpBehaviour
 {
-    public VRCPlayerApi owner;
-    public GameController gameController;
-    public TMP_Text PTSPrimaryInfo;
-    public TMP_Text PTSSecondaryInfo;
 
-    public PlayerAttributes playerAttributes;
+    [NonSerialized] public VRCPlayerApi owner;
+    [SerializeField] public GameController gameController;
+    [SerializeField] TMP_Text PTSPrimaryInfo;
+    [SerializeField] public TMP_Text PTSSecondaryInfo;
+    [SerializeField] public RectTransform PTSPowerupSprite_parent;
+    [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
+
+
+    [NonSerialized] public PlayerAttributes playerAttributes;
 
     void Start()
     {
-        
+        var item_index = 0;
+        var item_size = 0;
+        for (var i = 0; i < transform.childCount; i++)
+        {
+            var child = (RectTransform)transform.GetChild(i);
+            if (child.name.Contains("PTSPowerupPanel")) { PTSPowerupSprite_parent = child; break;  }
+        }
+
+        foreach (GameObject child in (Transform)PTSPowerupSprite_parent) 
+        {
+            if (child.name.Contains("PTSPowerupSprite")) { item_size++; }
+        }
+
+        PTSPowerupSprites = new UnityEngine.UI.Image[item_size];
+        foreach (Transform child in (Transform)PTSPowerupSprite_parent)
+        {
+            if (child.name.Contains("PTSPowerupSprite")) 
+            {
+                PTSPowerupSprites[item_index] = child.GetComponent<UnityEngine.UI.Image>();
+                item_index++;
+            }
+        }
+
     }
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
@@ -29,8 +56,16 @@ public class UIPlyToSelf : UdonSharpBehaviour
     private void Update()
     {
         if (owner != Networking.LocalPlayer || owner == null) { return; }
-        var showTextPrimary = "Damage: " + playerAttributes.ply_dp + "%\nLives: " + playerAttributes.ply_lives;
+
+        var showTextPrimary = "Damage: " + Mathf.RoundToInt(playerAttributes.ply_dp)
+            + "%\nLives: " + Mathf.RoundToInt(playerAttributes.ply_lives)
+            + "\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
+            + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
         var showTextSecondary = "";
+
+        if (gameController.option_teamplay) { showTextPrimary += "\nTeam: " + playerAttributes.ply_team; } //To-Do: have an array of team colors, and change the person's text color accordingly
+        if (playerAttributes.last_kill_ply > -1 && VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply) != null) { showTextSecondary += "You knocked out " + VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply).displayName + "!"; }
+    
         switch (playerAttributes.ply_state)
         {
             case (int)player_state_name.Inactive:
@@ -66,10 +101,26 @@ public class UIPlyToSelf : UdonSharpBehaviour
             default:
                 break;
         }
-        //if (playerAttributes.last_kill_ply != null) { showTextSecondary = "You knocked out " + playerAttributes.last_kill_ply.displayName + "!" + showTextSecondary; }
-        if (playerAttributes.last_kill_ply > -1) { showTextPrimary = "REPORT TO DEV IF THIS DISPLAYS";  }
         PTSPrimaryInfo.text = showTextPrimary;
         PTSSecondaryInfo.text = showTextSecondary;
+
+        // Handle powerup sprites
+        var powerup_len = (int)Mathf.Min(PTSPowerupSprites.Length, playerAttributes.powerups_active.Length);
+        for (int i = 0; i < PTSPowerupSprites.Length; i++)
+        {
+            PTSPowerupSprites[i].sprite = gameController.Sprite_None;
+            PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = "";
+
+            if (i < powerup_len)
+            {
+                if (playerAttributes.powerups_active[i] == null) { continue; }
+                var powerup = playerAttributes.powerups_active[i].GetComponent<ItemPowerup>();
+                if (powerup == null) { continue; }
+                PTSPowerupSprites[i].sprite = powerup.powerup_sprites[powerup.powerup_type];
+                PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = (Mathf.Floor((float)(powerup.powerup_duration - powerup.powerup_timer_network)*10.0f)/10.0f).ToString();
+            }
+
+        }
     }
 
     private void FixedUpdate()
@@ -77,7 +128,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (owner != Networking.LocalPlayer || owner == null) { return; }
         var scaleUI = (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
-        transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward * scaleUI);
-        transform.rotation = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation;
+        transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * scaleUI);
+        transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
     }
+
 }

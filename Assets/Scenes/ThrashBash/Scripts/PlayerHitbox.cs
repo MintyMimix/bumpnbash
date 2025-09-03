@@ -1,42 +1,47 @@
 ﻿
+using System;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
-using VRC.SDK3.UdonNetworkCalling;
 
 public enum hitbox_mat_name
 {
-    Default = 0, Respawning = 1, Invisible = 2
+    Default, Respawning, Invisible, ENUM_LENGTH
 }
 
 public class PlayerHitbox : UdonSharpBehaviour
 {
     //public int owner_id;
-    private VRCPlayerApi owner_ply;
-    public Material[] hitboxMats;
-    public int material_id;
-    public PlayerAttributes playerAttributes;
+    [SerializeField] public Material[] hitboxMats;
+    [SerializeField] public float default_hitbox_size = 2.0f;
+    [NonSerialized] public int material_id;
+    [NonSerialized] public VRCPlayerApi owner;
+    [NonSerialized] public PlayerAttributes playerAttributes;
 
     private void FixedUpdate()
     {
-        owner_ply = Networking.GetOwner(gameObject);
-        var scaleHitbox = 2.0f * (owner_ply.GetAvatarEyeHeightAsMeters() / 1.6f);
-        transform.localScale = new Vector3(1.0f, scaleHitbox, 1.0f);
-        transform.SetPositionAndRotation(owner_ply.GetPosition() + new Vector3(0.0f, scaleHitbox / 2.0f, 0.0f), owner_ply.GetRotation());
+        if (playerAttributes != null)
+        {
+            var scaleHitbox = playerAttributes.ply_scale;
+            transform.localScale = new Vector3(scaleHitbox, default_hitbox_size * scaleHitbox, scaleHitbox);
+            transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, scaleHitbox / default_hitbox_size, 0.0f), owner.GetRotation());
+        }
     }
 
     public void Update()
     {
-        if (playerAttributes != null) { 
-            if (playerAttributes.ply_state == (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Respawning)
+        if (playerAttributes != null) {
+            if (owner == Networking.LocalPlayer && material_id != (int)hitbox_mat_name.Invisible) { SetMaterial((int)hitbox_mat_name.Invisible); }
+            else if (owner != Networking.LocalPlayer && playerAttributes.ply_state == (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Respawning)
             {
                 SetMaterial((int)hitbox_mat_name.Respawning);
             }
-            else if (playerAttributes.ply_state != (int)player_state_name.Respawning && material_id == (int)hitbox_mat_name.Respawning)
+            // Could be more sophiscated, such as flashing the material whenever they're hit
+            else if (owner != Networking.LocalPlayer && playerAttributes.ply_state != (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Default)
             {
-                if (owner_ply == Networking.LocalPlayer) { SetMaterial((int)hitbox_mat_name.Invisible); }
-                else { SetMaterial((int)hitbox_mat_name.Default); }
+                SetMaterial((int)hitbox_mat_name.Default); 
             }
         }
     }

@@ -1,17 +1,18 @@
 ﻿
+using System;
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-using TMPro;
 
 public class UIPlyToOthers : UdonSharpBehaviour
 {
-    public VRCPlayerApi owner;
-    public GameController gameController;
-    public TMP_Text PTOInfo;
+    [NonSerialized] public VRCPlayerApi owner;
+    [SerializeField] public GameController gameController;
+    [SerializeField] public TMP_Text PTOInfo;
 
-    public PlayerAttributes playerAttributes;
+    [NonSerialized] public PlayerAttributes playerAttributes;
 
     void Start()
     {
@@ -27,7 +28,11 @@ public class UIPlyToOthers : UdonSharpBehaviour
     private void Update()
     {
         if (owner == Networking.LocalPlayer || owner == null) { return; }
-        var showText = "Damage: " + playerAttributes.ply_dp + "%\nLives: " + playerAttributes.ply_lives;
+        var showText = "Damage: " + playerAttributes.ply_dp
+            + "%\nLives: " + playerAttributes.ply_lives
+            + "%\n ATK: " + Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x"
+            + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
+        if (gameController.option_teamplay) { showText += "\nTeam: " + playerAttributes.ply_team; } //To-Do: have an array of team colors, and change the person's text color accordingly
         switch (playerAttributes.ply_state)
         {
             case (int)player_state_name.Inactive:
