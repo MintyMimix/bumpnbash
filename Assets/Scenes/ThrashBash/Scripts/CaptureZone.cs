@@ -13,18 +13,18 @@ public class CaptureZone : UdonSharpBehaviour
     [Tooltip("How often should this capture point perform a Physics check for player hitboxes?")]
     [SerializeField] public float check_players_impulse = 0.5f;
     [Tooltip("How long should the contestor be allowed to remain outside of the capture zone before their progress fades? (MUST be > check_players_impulse)")]
-    [SerializeField][UdonSynced] public float contest_pause_duration = 4.0f;
+    [SerializeField] [UdonSynced] public float contest_pause_duration = 4.0f;
     [SerializeField] public GameController gameController;
     [SerializeField] public Sprite child_sprite;
-    [NonSerialized][UdonSynced] public float check_players_timer = 0.0f;
-    [NonSerialized][UdonSynced] public float contest_pause_timer = 0.0f;
-    [NonSerialized][UdonSynced] public float initial_lock_timer = 0.0f;
-    [NonSerialized][UdonSynced] public float hold_timer = 0.0f;
-    [NonSerialized][UdonSynced] public bool is_locked = true;
-    [NonSerialized][UdonSynced] public int hold_id = -1;
-    [NonSerialized][UdonSynced] public int contest_id = -1;
-    [NonSerialized][UdonSynced] public float contest_progress = 0.0f;
-    [NonSerialized][UdonSynced] public bool overtime_enabled = false; // This will only be true if there is both a holder and a contestor.
+    [NonSerialized] [UdonSynced] public float check_players_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public float initial_lock_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public float hold_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public bool is_locked = true;
+    [NonSerialized] [UdonSynced] public int hold_id = -1;
+    [NonSerialized] [UdonSynced] public int contest_id = -1;
+    [NonSerialized] [UdonSynced] public float contest_progress = 0.0f;
+    [NonSerialized] [UdonSynced] public bool overtime_enabled = false; // This will only be true if there is both a holder and a contestor.
     [NonSerialized] public int[] players_on_point;
     [NonSerialized] public int global_index;
 

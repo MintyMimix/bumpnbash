@@ -200,9 +200,9 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateMusicVolume()
     {
-        music_volume = ui_uimusicslider.value / 10.0f;
+        music_volume = ui_uimusicslider.value;
 
-        ui_uimusictext.text = "Music Volume: " + (music_volume * 10.0f);
+        ui_uimusictext.text = "Music Volume: " + (music_volume * 10.0f) + "%";
         if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) { ui_uimusictext.color = Color.red; }
         else { ui_uimusictext.color = Color.white; }
 
@@ -213,9 +213,9 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateSoundVolume()
     {
-        sound_volume = ui_uisoundslider.value / 10.0f;
+        sound_volume = ui_uisoundslider.value;
 
-        ui_uisoundtext.text = "Sound Volume: " + (sound_volume * 10.0f);
+        ui_uisoundtext.text = "Sound Volume: " + (sound_volume * 10.0f) + "%";
         if ((sound_volume * 10.0f) <= ui_uisoundslider.minValue) { ui_uisoundtext.color = Color.red; }
         else { ui_uisoundtext.color = Color.white; }
 

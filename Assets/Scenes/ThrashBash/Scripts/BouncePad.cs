@@ -5,8 +5,10 @@ using VRC.SDKBase;
 using VRC.Udon;
 using System;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class BouncePad : UdonSharpBehaviour
 {
+    
     [SerializeField] public GameController gameController;
     [SerializeField] public bool should_draw = true;
     [SerializeField] public float minimum_magnitude = 10.0f;

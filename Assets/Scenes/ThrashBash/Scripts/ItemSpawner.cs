@@ -11,6 +11,7 @@ public enum item_spawn_state_name
     Disabled, Spawnable, InWorld, ENUM_LENGTH
 }
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class ItemSpawner : UdonSharpBehaviour
 {
     [Header("References")]
@@ -29,26 +30,27 @@ public class ItemSpawner : UdonSharpBehaviour
     [Tooltip("How long a powerup should last when picked up from this spawner, in seconds")]
     [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f;
     [Tooltip("Which team # should this be assigned to? (-1: all, -2: FFA-only)")]
-    [SerializeField][UdonSynced] public sbyte item_spawn_team = -1;
+    [SerializeField] [UdonSynced] public sbyte item_spawn_team = -1;
     [Tooltip("How many players must be in the game before this spawner is active? (Must be a positive value!)")]
-    [SerializeField][UdonSynced] public byte item_spawn_min_players = 0;
+    [SerializeField] [UdonSynced] public byte item_spawn_min_players = 0;
 
-    [NonSerialized][UdonSynced] public int item_spawn_global_index = -1;
-    [NonSerialized][UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
+    [NonSerialized] [UdonSynced] public int item_spawn_global_index = -1;
+    [NonSerialized] [UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
 
     [NonSerialized] public int[] item_spawn_chances; // This will be ints from 0 to 10000 for the purposes of syncing, representing a decimal of precision 2 (0.0 to 100.0)
     [Header("Spawn Chances")]
-    [NonSerialized][UdonSynced] public string item_spawn_chances_str;
+    [NonSerialized] [UdonSynced] public string item_spawn_chances_str;
     [Tooltip("The name of the item that has a chance of being spawned. MUST match keys in enumerator powerup_type_name or weapon_type_name.")]
     [SerializeField] public string[] item_spawn_chances_config_keys; // Assign in inspector. Must be equal to strings in the powerup_type_name and weapon_type_name enumerators respectively.
     [Tooltip("The chance an item has of being spawned. Will automatically normalize if odds add up above 100% for all items. MUST match length of item_spawn_chances_config_keys.")]
     [SerializeField] public float[] item_spawn_chances_config_values;
-    [NonSerialized][UdonSynced] public int item_spawn_index = 0;
+    [NonSerialized] [UdonSynced] public int item_spawn_index = 0;
 
     [NonSerialized] [UdonSynced] public double item_timer_start_ms;
     [NonSerialized] [UdonSynced] public double item_timer_duration = 0.0f;
-    [NonSerialized] public double item_timer_local = 0.0f;
     [NonSerialized] public double item_timer_network = 0.0f;
+
+    [NonSerialized] public bool wait_for_join_sync = false;
 
     private void Start()
     {
@@ -61,6 +63,25 @@ public class ItemSpawner : UdonSharpBehaviour
         item_spawn_chances_str = gameController.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization();
         StartTimer(item_spawn_impulse);
+    }
+
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+        if (player != Networking.LocalPlayer) { return; }
+        wait_for_join_sync = true;
+    }
+
+    public override void OnDeserialization()
+    {
+        if (wait_for_join_sync)
+        {
+            if (item_spawn_state == (int)item_spawn_state_name.InWorld)
+            {
+                DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+                SpawnItem(item_spawn_index);
+            }
+            wait_for_join_sync = false;
+        }
     }
 
     private void Update()
@@ -105,7 +126,7 @@ public class ItemSpawner : UdonSharpBehaviour
     public void StartTimer(double duration)
     {
         item_timer_start_ms = Networking.GetServerTimeInSeconds();
-        item_timer_local = 0.0f;
+        //item_timer_local = 0.0f;
         item_timer_network = 0.0f;
         item_timer_duration = duration;
         if (Networking.IsMaster) { RequestSerialization(); }
@@ -118,7 +139,8 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_index < (int)powerup_type_name.ENUM_LENGTH)
         {
             child_powerup.item_owner_id = -1;
-            child_powerup.item_team_id = item_spawn_team;
+            if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
+            else { child_powerup.item_team_id = -1; }
             child_powerup.SetTeamColor(item_spawn_team);
             child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_type = (int)item_type_name.Powerup;
@@ -137,7 +159,8 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_owner_id = -1;
-            child_weapon.item_team_id = item_spawn_team;
+            if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
+            else { child_weapon.item_team_id = -1; }
             child_weapon.SetTeamColor(item_spawn_team);
             child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
@@ -201,9 +224,8 @@ public class ItemSpawner : UdonSharpBehaviour
     // Process the spawn timer. Return true if an event should fire.
     internal bool ProcessTimer()
     {
-        item_timer_local += Time.deltaTime;
         item_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), item_timer_start_ms);
-        if (item_timer_duration > 0 && (item_timer_local >= item_timer_duration || item_timer_network >= item_timer_duration))
+        if (item_timer_duration > 0 && item_timer_network >= item_timer_duration)
         {
             return true;
         }

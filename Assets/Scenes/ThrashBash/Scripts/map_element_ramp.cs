@@ -5,6 +5,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class map_element_ramp : UdonSharpBehaviour
 {
     // To-do: Code is only working for in-air triggers rather than actual ramps

@@ -6,6 +6,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Common;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class map_element_magnetize : UdonSharpBehaviour
 {
     public void FixedUpdate()

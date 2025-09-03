@@ -38,6 +38,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public TMP_Text PTSPlacementText;
     [SerializeField] public UnityEngine.UI.Image PTSWeaponSprite;
     [SerializeField] public TMP_Text PTSWeaponText;
+    [SerializeField] public UnityEngine.UI.Image PTSChargeMeterFGSprite;
+    [SerializeField] public UnityEngine.UI.Image PTSChargeMeterBGSprite;
 
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
@@ -57,12 +59,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     [NonSerialized] public string text_queue_full_str = ""; // Queue system for local HUD messages, separated by the delineation character.
     [NonSerialized] public char text_queue_separator = '\r';
-    [SerializeField] public float text_queue_full_max_lines = 24; // What is the hardcap on queued messages?
+    [SerializeField] public int text_queue_full_max_lines = 24; // What is the hardcap on queued messages?
     [SerializeField] public int text_queue_limited_lines = 4; // Number of lines that will display at once from the text queue
     [SerializeField] public float text_queue_limited_duration = 5.0f; // How long should an active message be displayed?
     [SerializeField] public float text_queue_limited_fade_time_percent = 0.20f; // At what % of the the duration should the text begin fading? (i.e. if duration is 5.0f, 0.20f means fade at 4.0f)
     [SerializeField] public float text_queue_limited_extend = 0.5f; // How much longer should an active message be displayed if it is not the top message?
     [NonSerialized] public float[] text_queue_limited_timers;
+    [NonSerialized] public Color[] text_queue_full_colors;
 
     [SerializeField] public float ui_check_gamevars_impulse = 0.4f; // How often should we check for game variables (i.e. team lives, points, etc.)
     [NonSerialized] public float ui_check_gamevars_timer = 0.0f;
@@ -84,6 +87,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public byte gamevars_local_players_alive;
     [NonSerialized] public byte gamevars_local_teams_alive;
 
+
     void Start()
     {
         if (gameController == null)
@@ -100,20 +104,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
             text_queue_limited_timers[t] -= ((t - 1) * text_queue_limited_extend);
         }
 
-        RectTransform temp_parent = null;
-        for (int i = 0; i < PTSPowerupPanel.transform.childCount; i++)
+        text_queue_full_colors = new Color[text_queue_full_max_lines];
+        for (int t = 0; t < text_queue_full_colors.Length; t++)
         {
-            var child = (RectTransform)transform.GetChild(i);
-            if (child.name.Contains("PTSPowerupPanel")) { temp_parent = child; break;  }
+            text_queue_full_colors[t] = Color.white;
         }
 
-        foreach (GameObject child in (Transform)temp_parent) 
+        foreach (GameObject child in (Transform)PTSPowerupPanel) 
         {
             if (child.name.Contains("PTSPowerupSprite")) { item_size++; }
         }
 
         PTSPowerupSprites = new UnityEngine.UI.Image[item_size];
-        foreach (Transform child in (Transform)temp_parent)
+        foreach (Transform child in (Transform)PTSPowerupPanel)
         {
             if (child.name.Contains("PTSPowerupSprite")) 
             {
@@ -123,22 +126,21 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
         }
 
-        temp_parent = null;
+        /*temp_parent = null;
         for (int i = 0; i < PTSCapturePanel.transform.childCount; i++)
         {
             var child = (RectTransform)transform.GetChild(i);
             if (child.name.Contains("PTSCapturePanel")) { temp_parent = child; break; }
-        }
-
-        foreach (GameObject child in (Transform)temp_parent)
+        }*/
+        foreach (GameObject child in (Transform)PTSCapturePanel)
         {
+            if (child == null) { continue; }
             if (child.name.Contains("PTSCaptureSprite")) { item_size++; }
         }
-
         PTSCaptureSprites = new UnityEngine.UI.Image[item_size];
         PTSCaptureOverlays = new UnityEngine.UI.Image[item_size];
         PTSCaptureTexts = new TMP_Text[item_size];
-        foreach (Transform child in (Transform)temp_parent)
+        foreach (Transform child in (Transform)PTSCapturePanel)
         {
             if (child.name.Contains("PTSCaptureSprite"))
             {
@@ -152,6 +154,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 item_index++;
             }
         }
+
+        if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
+        if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
+        if (PTSChargeMeterBGSprite != null) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
+
 
         ui_show_intro_text = true;
         if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
@@ -173,7 +180,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         TransferOwner(newOwner);
     }
 
-    public void AddToTextQueue(string input)
+    // Overloaded method where no color = Color.white
+    public void AddToTextQueue(string input, Color color)
     {
         string[] queue_arr = text_queue_full_str.Split(text_queue_separator);
         if (queue_arr.Length > text_queue_full_max_lines)
@@ -181,10 +189,22 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If the queue is clogged, pop the next upcoming message 
             queue_arr[text_queue_limited_lines] = "";
             text_queue_full_str = String.Join(text_queue_separator, queue_arr, 0, queue_arr.Length - 1);
+            for (int j = text_queue_limited_lines; j < text_queue_full_max_lines - 1; j++)
+            {
+                text_queue_full_colors[j] = text_queue_full_colors[j + 1];
+            }
+            text_queue_full_colors[text_queue_full_max_lines - 1] = color;
         }
+        else if (text_queue_full_str.Length == 0) { text_queue_full_colors[0] = color; }
+        else if (text_queue_full_str.Length > 0) { text_queue_full_colors[queue_arr.Length] = color; }
+        //UnityEngine.Debug.Log("[COLOR_TEST] Adding " + color + " to colors at index " + queue_arr.Length);
 
         if (text_queue_full_str.Length > 0) { text_queue_full_str += text_queue_separator; }
         text_queue_full_str += input;
+    }
+    public void AddToTextQueue(string input)
+    {
+        AddToTextQueue(input, Color.white);
     }
 
     public void UpdateGameVariables()
@@ -308,7 +328,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 for (int k = iteration; k < splitStr.Length - 1; k++)
                 {
                     splitStr[k] = splitStr[k + 1];
+                    //UnityEngine.Debug.Log("[COLOR_TEST] Shifting " + text_queue_full_colors[k] + " at index " + k + " to " + text_queue_full_colors[k + 1]);
+                    text_queue_full_colors[k] = text_queue_full_colors[k + 1];
                 }
+                //UnityEngine.Debug.Log("[COLOR_TEST] Resetting " + text_queue_full_colors[splitStr.Length - 1] + " at index " + (splitStr.Length - 1));
+                text_queue_full_colors[splitStr.Length - 1] = Color.white;
                 splitStr[splitStr.Length - 1] = "";
                 new_queue_size--;
                 iteration--; // Now that entries are shifted up, we need to check again
@@ -340,6 +364,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         string[] splitStr = text_queue_full_str.Split(text_queue_separator);
         for (int i = 0; i < text_queue_limited_lines; i++)
         {
+            if (i < text_queue_full_colors.Length) { PTSTextStack[i].color = text_queue_full_colors[i]; } // Needs to happen first, because alpha is modified after
             if (i < splitStr.Length)
             {
                 PTSTextStack[i].text = splitStr[i].ToUpper();
@@ -360,9 +385,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             ui_demo_enabled = false;
             if (ui_show_intro_text) {
-                AddToTextQueue("Step in the square to join the game!");
-                AddToTextQueue(" -- PREVIEW BUILD VERSION 0.16.0 --");
-                AddToTextQueue("This game is in development; there may be major bugs or issues!");
+                AddToTextQueue("Step in the square to join the game!", Color.white);
+                AddToTextQueue(" -- ALPHA BUILD VERSION 0.16.1 --", Color.white);
+                AddToTextQueue("This game is in development; there may be major bugs or issues!", Color.red);
+
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
             }
             ui_show_intro_text = false;
@@ -467,12 +493,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
         }
 
+        if (gamevars_leaderboard_arr == null) { return; }
+
         string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
-        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0 
-            && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team) 
+        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0
+            && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team)
         {
-            
+
             int members_alive = 0; int team_total_lives = 0;
             if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gamevars_local_team_lives.Length) { members_alive = gamevars_local_team_members_alive; }
             int total_points = 0;
@@ -511,7 +539,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 FlagText = gamevars_local_team_lives[0].ToString() + " Alive";
             }
             // To-do: If this is King of the Hill, display the total capture time remaining
-            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
             {
                 PlacementText = rank_str;
                 if (local_rank == 0) { FlagText = ""; }
@@ -531,13 +559,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 }
             }
 
-                // If we are in points mode, display the team with the highest points, and highlight the text color based on who it is
-                /*FlagText = Mathf.Max(gamevars_local_team_points).ToString();
-                PTSTeamText.color = new Color32(
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].r)),
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].g)),
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].b)),
-                    (byte)gameController.team_colors[gamevars_local_highest_team].a);*/
+            // If we are in points mode, display the team with the highest points, and highlight the text color based on who it is
+            /*FlagText = Mathf.Max(gamevars_local_team_points).ToString();
+            PTSTeamText.color = new Color32(
+                (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].r)),
+                (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].g)),
+                (byte)Mathf.Min(255, (80 + gameController.team_colors[gamevars_local_highest_team].b)),
+                (byte)gameController.team_colors[gamevars_local_highest_team].a);*/
         }
         PTSTeamText.text = FlagText;
         PTSPlacementText.text = PlacementText;
@@ -578,7 +606,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSLivesImage.sprite = PTSDeathsSprite;
         }
         // If this is King of the Hill, display the total capture time remaining
-        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+        else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
         {
             float timeLeft;
             if (gameController.option_teamplay && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)gamevars_local_team_points[playerAttributes.ply_team] / gameController.koth_decimal_division)); }
@@ -608,7 +636,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSLivesImage.sprite = PTSPointsSprite;
         }
         PTSLives.text = LivesText;
-
+ 
 
         // Handle powerup sprites
         if (playerAttributes.powerups_active != null)
@@ -647,20 +675,22 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         // Handle weapon stats
-        if (gameController != null && gameController.local_plyweapon != null && PTSWeaponSprite != null && PTSWeaponText != null && gameController.local_plyweapon.weapon_type != gameController.local_plyweapon.weapon_type_default)
+        PlayerWeapon plyweapon = null;
+        if (gameController != null) { plyweapon = gameController.local_plyweapon; }
+        if (plyweapon != null && PTSWeaponSprite != null && PTSWeaponText != null && plyweapon.weapon_type != plyweapon.weapon_type_default)
         {
             string weaponTxt = "";
             PTSWeaponText.color = Color.white;
-            if (gameController.local_plyweapon.weapon_temp_ammo > -1) 
+            if (plyweapon.weapon_temp_ammo > -1) 
             { 
-                weaponTxt += gameController.local_plyweapon.weapon_temp_ammo.ToString();
-                if (gameController.local_plyweapon.weapon_temp_ammo < 3) { PTSWeaponText.color = new Color(1.0f, 0.8f, 0.4f, 1.0f); }
+                weaponTxt += plyweapon.weapon_temp_ammo.ToString();
+                if (plyweapon.weapon_temp_ammo < 3) { PTSWeaponText.color = new Color(1.0f, 0.8f, 0.4f, 1.0f); }
             }
-            if (gameController.local_plyweapon.weapon_temp_duration > -1) 
+            if (plyweapon.weapon_temp_duration > -1) 
             { 
                 if (weaponTxt.Length > 0) { weaponTxt += " (^)"; }
                 else { weaponTxt = "^"; }
-                float weapon_time_left = gameController.local_plyweapon.weapon_temp_duration - gameController.local_plyweapon.weapon_temp_timer;
+                float weapon_time_left = plyweapon.weapon_temp_duration - plyweapon.weapon_temp_timer;
                 if (weapon_time_left < 10.0f)
                 {
                     weaponTxt = weaponTxt.Replace("^", (Mathf.Floor(weapon_time_left * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'));
@@ -674,12 +704,23 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
             PTSWeaponText.text = weaponTxt;
             if (!PTSWeaponSprite.gameObject.activeInHierarchy) { PTSWeaponSprite.gameObject.SetActive(true); }
+
+            if (PTSChargeMeterFGSprite != null && PTSChargeMeterBGSprite != null)
+            {
+                PTSChargeMeterFGSprite.gameObject.SetActive(plyweapon.weapon_is_charging);
+                PTSChargeMeterBGSprite.gameObject.SetActive(plyweapon.weapon_is_charging);
+                float offsetMax = PTSChargeMeterBGSprite.rectTransform.rect.width;
+                float offsetPct = 0.0f;
+                if (plyweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(plyweapon.weapon_charge_timer / plyweapon.weapon_charge_duration);}
+                PTSChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSChargeMeterFGSprite.rectTransform.offsetMax.y);
+            }
         }
         else 
         {
             if (PTSWeaponText != null) { PTSWeaponText.text = ""; }
             if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
-
+            if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
+            if (PTSChargeMeterBGSprite != null) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
         }
     }
 
@@ -694,14 +735,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
             //gameController.local_ppp_options.ui_scale
         }
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
-        float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity() / Time.fixedDeltaTime, plyForward);
+        float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);
         Vector3 velAdd = Vector3.zero;
 
         if (playerAttributes != null && plyMagInForward > 0)
         {
-            //scaleUI * 0.003f * heightUI * 
-            //velAdd = playerAttributes.ply_speed * 0.003f * plyMagInForward * plyForward; //* 0.05f;\
-            //velAdd *= 2.0f;
+            velAdd = 0.0095f * plyMagInForward * plyForward;
+            if (playerAttributes.ply_scale < 1.0f && Networking.LocalPlayer.IsUserInVR()) { velAdd /= (playerAttributes.ply_scale / 0.9f); }
         }
         //if (Networking.LocalPlayer.IsUserInVR()) { velAdd *= 2.0f; }
 

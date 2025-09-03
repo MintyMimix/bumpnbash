@@ -5,6 +5,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class map_element_spawn : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;

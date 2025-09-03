@@ -5,6 +5,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class map_element_ice : UdonSharpBehaviour
 {
     [SerializeField] public float cooldown_duration = 0.4f;

@@ -51,7 +51,52 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             for (int i = 0; i < projectile_mdl.Length; i++)
             {
-                if (i == weapon_type) { projectile_mdl[i].SetActive(true); }
+                if (i == weapon_type) 
+                { 
+                    projectile_mdl[i].SetActive(true);
+                    // Recolor the model to team
+                    if (owner_id >= 0)
+                    {
+                        int owner_team = gameController.GetGlobalTeam(owner_id);
+                        if (owner_team < 0) { continue; }
+                        Renderer m_Renderer = projectile_mdl[i].GetComponent<Renderer>();
+                        if (m_Renderer != null && gameController.team_colors != null && owner_team >= 0)
+                        {
+                            Material mat = m_Renderer.material;
+                            if (weapon_type == (int)weapon_type_name.Bomb && m_Renderer.materials.Length > 1) { mat = m_Renderer.materials[1]; }
+                            if (gameController.option_teamplay)
+                            {
+                                mat.SetColor("_Color",
+                                    new Color32(
+                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].r)),
+                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].g)),
+                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].b)),
+                                    (byte)0));
+                                mat.EnableKeyword("_EMISSION");
+                                mat.SetColor("_EmissionColor",
+                                    new Color32(
+                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].r)),
+                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].g)),
+                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].b)),
+                                    (byte)gameController.team_colors[owner_team].a));
+                            }
+                            else
+                            {
+                                mat.SetColor("_Color", new Color32(255, 255, 255, 0));
+                                mat.EnableKeyword("_EMISSION");
+                                mat.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
+                            }
+                            Transform trail = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Trail");
+                            if (trail != null && trail.GetComponent<TrailRenderer>() != null){ trail.GetComponent<TrailRenderer>().startColor = mat.GetColor("_EmissionColor"); trail.GetComponent<TrailRenderer>().endColor = mat.GetColor("_EmissionColor"); }
+                            Transform particle = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Particle");
+                            if (particle != null && particle.GetComponent<ParticleSystem>() != null)
+                            {
+                                var particle_main = particle.GetComponent<ParticleSystem>().main;
+                                particle_main.startColor = m_Renderer.material.GetColor("_EmissionColor");
+                            }
+                        }
+                    }
+                }
                 else { projectile_mdl[i].SetActive(false); }
             }
         }
@@ -71,6 +116,10 @@ public class WeaponProjectile : UdonSharpBehaviour
                 if (keep_parent && weapon_parent != null) { pos_start = weapon_parent.transform.position; }
                 outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
                 break;
+            case (int)projectile_type_name.Laser:
+                if (keep_parent && weapon_parent != null) { pos_start = weapon_parent.transform.position; }
+                outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
+                break;
             default:
                 break;
         }
@@ -86,6 +135,11 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             rb.MovePosition(pos_end);
             OnProjectileHit(pos_end, contact_made);
+        }
+
+        if (weapon_type == (int)weapon_type_name.Bomb)
+        {
+            projectile_mdl[weapon_type].GetComponent<Animator>().SetFloat("AnimationTimer", (float)(projectile_timer_network / projectile_duration));
         }
     }
 
@@ -151,24 +205,31 @@ public class WeaponProjectile : UdonSharpBehaviour
 
             PlayerAttributes plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
             float damage = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
-            damage *= plyAttr.ply_atk * (plyAttr.ply_scale * gameController.scale_damage_factor);
-            float ply_scale = plyAttr.ply_scale;
+            damage *= plyAttr.ply_atk * (owner_scale * gameController.scale_damage_factor);
             float dist_scale = 1.0f;
             // For a Laser type projectile, we want to instead position the hurtbox at the midway point between start and current, and scale it according to that distance
             if (projectile_type == (int)projectile_type_name.Laser) 
             {
-                position = Vector3.Lerp(pos_start, rb.position, 0.5f);
-                dist_scale = Vector3.Distance(pos_start, position);
+                if (owner_scale <= 0) 
+                {
+                    dist_scale = Vector3.Distance(pos_start, position);
+                    position = Vector3.Lerp(pos_start, position, 0.5f * owner_scale);
+                }
+                else 
+                {
+                    dist_scale = Vector3.Distance(pos_start, position) / owner_scale;
+                    position = Vector3.Lerp(pos_start, position, 0.5f); 
+                }
             }
 
             gameController.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
                 , position
+                , rb.rotation
                 , damage
-                , Networking.GetServerTimeInSeconds()
                 , keep_parent
-                , ply_scale
+                , owner_scale
                 , owner_id
                 , weapon_type
                 , dist_scale

@@ -23,6 +23,7 @@ public enum powerup_stat_behavior_name
     Null, Set, Add, Multiply, ENUM_LENGTH
 }
 
+
 public class ItemPowerup : ItemGeneric
 {
     [NonSerialized] public int powerup_type;

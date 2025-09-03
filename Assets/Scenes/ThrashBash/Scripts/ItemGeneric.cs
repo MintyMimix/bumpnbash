@@ -26,6 +26,8 @@ public enum item_sfx_index
     OtherPickup, ItemExpire, PowerupFade, ENUM_LENGTH
 }
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
+
 public class ItemGeneric : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController; // Assign this in inspector

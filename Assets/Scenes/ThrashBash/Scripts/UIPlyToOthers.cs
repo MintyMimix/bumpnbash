@@ -150,7 +150,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
          }
-        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+        else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
         {
             float timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); 
             LivesText = timeLeft.ToString();

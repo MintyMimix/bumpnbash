@@ -1,6 +1,7 @@
 ﻿
 using System;
 using UdonSharp;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.ProBuilder;
 using VRC.SDK3.UdonNetworkCalling;
@@ -23,8 +24,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject[] hurtbox_meshes; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
     [SerializeField] public Collider[] hurtbox_colliders; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
+	[NonSerialized] public GameObject active_mesh;
+	[NonSerialized] public Collider active_collider;
 
-    [NonSerialized] public int hurtbox_state;
+	[NonSerialized] public int hurtbox_state;
     [NonSerialized] public float hurtbox_duration;
     [NonSerialized] public double hurtbox_start_ms;
     [NonSerialized] private double hurtbox_timer_local = 0.0f;
@@ -42,13 +45,68 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [NonSerialized] public PlayerAttributes owner_plyAttr;
     [NonSerialized] private Rigidbody rb;
     [NonSerialized] private Rigidbody weapon_rb;
-    [NonSerialized] public GameObject active_mesh;
+    [NonSerialized] private Transform particle;
 
     private void Start()
     {
         players_struck = new int[0];
         rb = gameObject.GetComponent<Rigidbody>();
+       
     }
+
+    public void SetMesh()
+    {
+		if (hurtbox_meshes != null)
+		{
+			for (int i = 0; i < hurtbox_meshes.Length; i++)
+			{
+				hurtbox_meshes[i].SetActive(false);
+				hurtbox_colliders[i].enabled = false;
+			}
+			if (damage_type == (int)damage_type_name.ForceExplosion)
+			{
+				hurtbox_meshes[(int)damage_mesh_type_name.Sphere].SetActive(true);
+				hurtbox_colliders[(int)damage_mesh_type_name.Sphere].enabled = true;
+				active_mesh = hurtbox_meshes[(int)damage_mesh_type_name.Sphere];
+				active_collider = hurtbox_colliders[(int)damage_mesh_type_name.Sphere];
+                particle = gameController.GetChildTransformByName(active_mesh.transform, "ParticleExplosion");
+                if (particle != null) 
+                { 
+                    particle.gameObject.SetActive(true);
+                    var main = particle.GetComponent<ParticleSystem>().main;
+                    main.startLifetime = hurtbox_duration;
+                    main.duration = hurtbox_duration;
+                    particle.gameObject.SetActive(true);
+                    particle.GetComponent<ParticleSystem>().Play();
+                    //Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
+                    //if (m_Renderer != null) { m_renderer.enabled = false; }
+                }
+            }
+			else
+			{
+				hurtbox_meshes[(int)damage_mesh_type_name.Cube].SetActive(true);
+				hurtbox_colliders[(int)damage_mesh_type_name.Cube].enabled = true;
+				active_mesh = hurtbox_meshes[(int)damage_mesh_type_name.Cube];
+				active_collider = hurtbox_colliders[(int)damage_mesh_type_name.Cube];
+                if (damage_type == (int)damage_type_name.Laser)
+                {
+                    particle = gameController.GetChildTransformByName(active_mesh.transform, "ParticleLaser");
+                    if (particle != null) 
+                    { 
+                        var main = particle.GetComponent<ParticleSystem>().main;
+                        main.startLifetime = hurtbox_duration;
+                        main.duration = hurtbox_duration;
+                        main.startSpeed = transform.localScale.x * 40.0f;
+                        particle.gameObject.SetActive(true);
+                        particle.GetComponent<ParticleSystem>().Play();
+                        //Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
+                        //if (m_Renderer != null) { m_renderer.enabled = false; }
+                    }
+                }
+            }
+		}
+		else { active_mesh = gameObject; }
+	}
 
     private void OnEnable()
     {
@@ -59,28 +117,9 @@ public class WeaponHurtbox : UdonSharpBehaviour
         }
         owner_plyAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(owner_id));
 
-        if (hurtbox_meshes != null)
-        {
-            for (int i = 0; i < hurtbox_meshes.Length; i++)
-            {
-                hurtbox_meshes[i].SetActive(false);
-                hurtbox_colliders[i].enabled = false;
-            }
-            if (damage_type == (int)damage_type_name.ForceExplosion)
-            {
-                hurtbox_meshes[(int)damage_mesh_type_name.Sphere].SetActive(true);
-                hurtbox_colliders[(int)damage_mesh_type_name.Sphere].enabled = true;
-                active_mesh = hurtbox_meshes[(int)damage_mesh_type_name.Sphere];
-            }
-            else
-            {
-                hurtbox_meshes[(int)damage_mesh_type_name.Cube].SetActive(true);
-                hurtbox_colliders[(int)damage_mesh_type_name.Sphere].enabled = true;
-                active_mesh = hurtbox_meshes[(int)damage_mesh_type_name.Cube];
-            }
-        }
-        else { active_mesh = gameObject; }
-    }
+        SetMesh();
+
+	}
 
     private void FixedUpdate()
     {
@@ -173,6 +212,11 @@ public class WeaponHurtbox : UdonSharpBehaviour
                 m_Renderer.material.EnableKeyword("_EMISSION");
                 m_Renderer.material.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
             }
+            if (particle != null && particle.GetComponent<ParticleSystemRenderer>() != null) 
+            {
+                var particle_main = particle.GetComponent<ParticleSystem>().main;
+                particle_main.startColor = m_Renderer.material.GetColor("_EmissionColor");
+            }
         }
     }
 
@@ -241,11 +285,14 @@ public class WeaponHurtbox : UdonSharpBehaviour
             && !hit_self
             ) { return; }
 
-        // Finally, calculate the force direction and tell the player they've been hit
-        var force_dir = Vector3.Normalize(colliderOwner.GetPosition() - rb.position);
-        force_dir = new Vector3(force_dir.x, 0, force_dir.z);
+		// Finally, calculate the force direction and tell the player they've been hit
+		//Vector3 force_dir = Vector3.Normalize(colliderOwner.GetPosition() - rb.position);
+		//force_dir = new Vector3(force_dir.x, 0, force_dir.z);
+		Vector3 force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPoint(colliderOwner.GetPosition())).normalized;
+		force_dir = new Vector3(force_dir.x, force_dir.y, force_dir.z);
+        //UnityEngine.Debug.Log("Force direction: " + force_dir.ToString() + " (old: " + Vector3.Normalize(colliderOwner.GetPosition() - rb.position) + ") ");
 
-        if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, owner_id, damage_type, false); }
+		if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, owner_id, damage_type, false); }
         else
         {
             gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, owner_id, damage_type, true);

@@ -9,7 +9,7 @@ public enum damage_mode_name
 {
     Constant, Linear, Series, Quadratic, ENUM_LENGTH
 }
-
+[UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
 public class map_element_hazard : BouncePad
 {
     [SerializeField] public float base_damage = 10.0f;

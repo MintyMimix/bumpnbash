@@ -16,25 +16,25 @@ public enum player_state_name
 public class PlayerAttributes : UdonSharpBehaviour
 {
 
-    [NonSerialized][UdonSynced] public byte ply_state;
-    [NonSerialized][UdonSynced] public float ply_dp;
-    [NonSerialized][UdonSynced] public float ply_dp_default;
-    [NonSerialized][UdonSynced] public ushort ply_lives;
-    [NonSerialized][UdonSynced] public ushort ply_points = 0;
-    [NonSerialized][UdonSynced] public ushort ply_deaths = 0;
-    [NonSerialized][UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
+    [NonSerialized] [UdonSynced] public byte ply_state;
+    [NonSerialized] [UdonSynced] public float ply_dp;
+    [NonSerialized] [UdonSynced] public float ply_dp_default;
+    [NonSerialized] [UdonSynced] public ushort ply_lives;
+    [NonSerialized] [UdonSynced] public ushort ply_points = 0;
+    [NonSerialized] [UdonSynced] public ushort ply_deaths = 0;
+    [NonSerialized] [UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
     [NonSerialized] public ushort ply_lives_local; // We create local versions of these variables for other clients to compare to. If there is a mismatch, we can have events fire off OnDeserialization().
     [NonSerialized] public ushort ply_points_local = 0;
     [NonSerialized] public ushort ply_deaths_local = 0;
     [NonSerialized] public int ply_team_local = 0;
 
     // While we aren't syncing the stats below right now, we may want to in the future for UI purposes
-    [NonSerialized][UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced most because it affects visuals
+    [NonSerialized] [UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced most because it affects visuals
     [NonSerialized] public float ply_speed = 1.0f;
-    [NonSerialized][UdonSynced] public float ply_atk = 1.0f;
-    [NonSerialized][UdonSynced] public float ply_def = 1.0f;
+    [NonSerialized] [UdonSynced] public float ply_atk = 1.0f;
+    [NonSerialized] [UdonSynced] public float ply_def = 1.0f;
     [NonSerialized] public float ply_grav = 1.0f;
-    [NonSerialized][UdonSynced] public int ply_jumps_add = 0;
+    [NonSerialized] [UdonSynced] public int ply_jumps_add = 0;
     [NonSerialized] public int ply_jumps_tracking = 0;
     [NonSerialized] public bool ply_jump_pressed = false;
     [NonSerialized] public float ply_firerate = 1.0f;
@@ -59,7 +59,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     [NonSerialized] public GameObject[] powerups_active;
 
-    [NonSerialized][UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
+    [NonSerialized] [UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
     [Tooltip("How long a size-changing animation should play on a player")]
     [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
@@ -258,29 +258,40 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (damage_type == (int)damage_type_name.HazardBurn && (hazard_timer < hazard_cooldown)) { return; } 
         else { hazard_timer = 0.0f; }
 
-        var calcDmg = damage; 
-        var modForceDirection = forceDirection; // To-do: make this into a slider, game setting, or serialized field
+        float calcDmg = damage; 
+        Vector3 modForceDirection = forceDirection; // To-do: make this into a slider, game setting, or serialized field
 
         // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
         calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
 
-        var baseLift = 0.66f; // 0.33f
-        if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
-        else { modForceDirection += new Vector3(0.0f, baseLift / 2.0f, 0.0f); }
-        if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
+        float baseLift = 0.66f; // 0.33f
 
-        var calcForce = modForceDirection; //(modForceDirection + new Vector3(0.0f, 0.33f, 0.0f));
-        var xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
-        var calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
-            // (100.0f + (xDmg / 3.0f))
-            // / (1 + Mathf.Exp(-0.02f * (xDmg - 100.0f)));
-        calcForce *= calcMagnitude;
+        /*if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
+        else { modForceDirection += new Vector3(0.0f, baseLift / 2.0f, 0.0f); }
+        if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }*/
+        if (!Networking.LocalPlayer.IsPlayerGrounded()) { baseLift *= 0.5f; }
+        modForceDirection = new Vector3(modForceDirection.x, Mathf.Max(Mathf.Abs(modForceDirection.y), baseLift), modForceDirection.z);
+        UnityEngine.Debug.Log("Resulting force direction: " + modForceDirection + " (input: " + forceDirection + ")");
+        if (modForceDirection.magnitude < baseLift) { modForceDirection *= baseLift/modForceDirection.magnitude; }
+        UnityEngine.Debug.Log("Resulting force direction after magnitude modification: " + modForceDirection);
+        float xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
+        float calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
+        // (100.0f + (xDmg / 3.0f))
+        // / (1 + Mathf.Exp(-0.02f * (xDmg - 100.0f)));
         UnityEngine.Debug.Log("Resulting force magnitude: " + calcMagnitude);
+        calcMagnitude = Mathf.Max(calcMagnitude, Vector3.Dot(modForceDirection, Networking.LocalPlayer.GetVelocity()), Vector3.Dot(modForceDirection, -Networking.LocalPlayer.GetVelocity()));
+        UnityEngine.Debug.Log("Resulting force magnitude after factoring velocity: " + calcMagnitude);
+
+        Vector3 calcForce = modForceDirection;
+        calcForce *= calcMagnitude;
+        
         //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
 
         // Don't apply additional force if this is a hazard
         if (damage_type != (int)damage_type_name.HazardBurn)
         {
+            //Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
+
             Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
         }
 
@@ -309,7 +320,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
-        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
+        if (gameController.option_gamemode != (int)gamemode_name.ENUM_LENGTH) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);

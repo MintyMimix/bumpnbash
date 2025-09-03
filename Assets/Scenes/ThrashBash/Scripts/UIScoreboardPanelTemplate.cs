@@ -45,11 +45,7 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
             {
                 flag_image.color = gameController.team_colors[plyAttr.ply_team];
                 cb_image.sprite = gameController.team_sprites[plyAttr.ply_team];
-                name_text.color = new Color32(
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[plyAttr.ply_team].r)),
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[plyAttr.ply_team].g)),
-                    (byte)Mathf.Min(255, (80 + gameController.team_colors[plyAttr.ply_team].b)),
-                    (byte)gameController.team_colors[plyAttr.ply_team].a);
+                if (gameController.team_colors_bright != null && plyAttr.ply_team < gameController.team_colors_bright.Length) { name_text.color = gameController.team_colors_bright[plyAttr.ply_team]; }
             }
             else
             {
