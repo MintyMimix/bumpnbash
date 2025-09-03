@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.IO.Pipes;
 using System.Linq;
 using TMPro;
 using UdonSharp;
@@ -100,7 +101,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public int gamevars_local_team_members_alive;
     [NonSerialized] public byte gamevars_local_players_alive;
     [NonSerialized] public byte gamevars_local_teams_alive;
-
 
     void Start()
     {
@@ -257,6 +257,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             int team_total_lives = 0;
             gameController.CheckRoundGoalProgress(out gamevars_leaderboard_arr, out gamevars_progress_arr, out gamevars_leader_name);
+
+            gamevars_local_highest_points = 0; gamevars_local_lowest_deaths = 0; gamevars_local_teams_alive = 0; gamevars_local_players_alive = 0;
+            gamevars_local_highest_team = -3; gamevars_local_lowest_team = -3; gamevars_local_highest_ply_id = -1; gamevars_local_lowest_ply_id = -1;
+
             gamevars_local_team_points = gameController.CheckAllTeamPoints(ref gamevars_local_highest_team, ref gamevars_local_highest_points, ref gamevars_local_highest_ply_id);
             gamevars_local_team_deaths = gameController.CheckAllTeamPoints(ref gamevars_local_lowest_team, ref gamevars_local_lowest_deaths, ref gamevars_local_lowest_ply_id, true);
             gamevars_local_team_lives = gameController.CheckAllTeamLives(ref gamevars_local_players_alive, ref gamevars_local_teams_alive);
@@ -306,8 +310,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
 
             // And if we still can't find anything, just find your individual rank in the array
-            if (gameController.option_teamplay && gamevars_leaderboard_arr[i] == inPlyAttr.ply_team) { rank = i; break; }
-            else if (!gameController.option_teamplay && gamevars_leaderboard_arr[i] == player_id) { rank = i; break; }
+            if (gamevars_leaderboard_arr == null) { rank = 0; break; }
+            else if (i >= gamevars_leaderboard_arr.Length) { rank = gamevars_leaderboard_arr.Length; break; }
+            else if (gameController.option_teamplay && gamevars_leaderboard_arr[i] == inPlyAttr.ply_team) { rank = i; break; }
+            else if (!gameController.option_teamplay && gamevars_leaderboard_arr[i] == player_id) { rank = i; break; } //
         }
         return rank;
     }
@@ -319,7 +325,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (rank < 1) 
         {
             PTSPlacementText.color = Color.white;
-            return "(Invalid)"; 
+            return "?"; 
         }
         else if (rank == 1) 
         {
@@ -436,7 +442,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 //AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.4 --", Color.white);
                 //AddToTextQueue("Step in the square to join the game!", Color.white);
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
-                if (gameController != null && Networking.IsMaster) { gameController.ResetGameOptionsToDefault(false); }
+                if (gameController != null && Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.ResetGameOptionsToDefault(false); }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
@@ -482,6 +488,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 //if (scaleAdd < 0.05f) { gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitReceive], gameController.snd_ready_sfx_clips, (int)ready_sfx_name.TimerTick, 0.5f); }
                 PTSTimerTransform.localScale = new Vector3(1.0f + scaleAdd, 1.0f + scaleAdd, 1.0f + scaleAdd);
             }
+            else if (TimerValue < 30.0) { PTSTimer.color = new Color(1.0f, 0.6f, 0.4f, 1.0f); }
             else { PTSTimer.color = Color.white; }
         }
         PTSTimer.text = TimerText;
@@ -584,7 +591,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If we are in Infection, display the Survivor's players alive count
             else if (gameController.option_gamemode == (int)gamemode_name.Infection)
             {
-                FlagText = gamevars_local_team_lives[0].ToString() + " Alive";
+                FlagText = Mathf.RoundToInt(gamevars_local_team_lives[0] / 2).ToString() + " Alive";
             }
             // To-do: If this is King of the Hill, display the total capture time remaining
             else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
@@ -603,7 +610,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 if (local_rank == 0) { FlagText = ""; }
                 else
                 {
-                    FlagText = "\n\n1st:\n" + gamevars_progress_arr[0].ToString() + " Falls";
+                    FlagText = "\n\n1st:\n" + (-gamevars_progress_arr[0]).ToString() + " Falls";
                 }
             }
 
@@ -672,7 +679,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If this is Fitting In, display the number of deaths
             else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
             {
-                if (gameController.option_teamplay && gamevars_local_team_deaths != null && gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) { LivesText = Mathf.RoundToInt(gamevars_local_team_deaths[playerAttributes.ply_team]).ToString(); }
+                if (gameController.option_teamplay && gamevars_local_team_deaths != null && gamevars_local_team_deaths.Length > playerAttributes.ply_team && playerAttributes.ply_team >= 0) 
+                { 
+                    LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString() + "\n" + Mathf.RoundToInt(gamevars_local_team_members_alive).ToString() + " Alive"; 
+                }
                 else { LivesText = Mathf.RoundToInt(playerAttributes.ply_deaths).ToString(); }
                 PTSLives.color = Color.white;
                 PTSLivesImage.color = Color.white;
@@ -884,7 +894,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     }
 
-    private void FixedUpdate()
+    public override void PostLateUpdate()
     {
         if (owner != Networking.LocalPlayer || owner == null) { return; }
         SetUIForward();
@@ -898,6 +908,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
+            useWrist = ppp_options.ui_wrist;
+
+            for (int i = 0; i < text_queue_limited_lines; i++)
+            {
+                PTSTextStack[i].gameObject.SetActive(useWrist > 0);
+            }
+
             scaleUI *= (ppp_options.ui_scale);
             //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
             PTSCanvas.sizeDelta = new Vector2(500, 300);
@@ -913,7 +930,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 , PTSDamageTransform.localPosition.z
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
-            PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
+            if (useWrist == 0) { PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation); }
+            else { PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300); }
             PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
 
             ((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
@@ -943,22 +961,24 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
             }
 
-            useWrist = ppp_options.ui_wrist;
+            
             //ppp_options.ui_separation * (5.0f / 3.0f)
             //ppp_options.ui_scale
         }
+
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
-        float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);
+        /*float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);
         Vector3 velAdd = Vector3.zero;
 
         if (playerAttributes != null && plyMagInForward > 0)
         {
             velAdd = 0.0095f * plyMagInForward * plyForward;
             if (playerAttributes.ply_scale < 1.0f && Networking.LocalPlayer.IsUserInVR()) { velAdd /= (playerAttributes.ply_scale / 0.9f); }
-        }
+            if (useWrist > 0) { velAdd *= 2.0f; } // When wrist hud is active, we want to increase the tracking speed
+        }*/
 
         Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI);
-        Vector3 posFinal = posOut + velAdd;
+        Vector3 posFinal = posOut; //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
             posFinal
@@ -969,8 +989,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             Vector3 wrist_pos;
             Quaternion wrist_rot;
-            Vector3 offset_pos = new Vector3(0.0f, 0.05f, 0.0f);
-            Quaternion offset_rot = Quaternion.Euler(180.0f, 0.0f, 0.0f);
+            float offset_height = 0.10f * playerAttributes.ply_scale;
+            if (gameController != null && gameController.local_ppp_options != null) { offset_height *= gameController.local_ppp_options.ui_separation; }
+            Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
+            Quaternion offset_rot = Quaternion.Euler(180.0f, -55.0f, 0.0f);
             if (useWrist == 1) 
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
@@ -980,6 +1002,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).position;
                 wrist_rot = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation;
+                offset_rot = Quaternion.Euler(0.0f, 55.0f, 0.0f);
             }
 
             transform.SetPositionAndRotation(

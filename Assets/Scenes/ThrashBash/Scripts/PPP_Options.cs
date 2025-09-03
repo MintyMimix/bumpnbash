@@ -10,6 +10,9 @@ using VRC.Udon;
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class PPP_Options : UdonSharpBehaviour
 {
+    [SerializeField] public float sync_impulse = 3.0f;
+    [NonSerialized] public float sync_timer = 0.0f;
+    [NonSerialized] public bool should_sync = false;
     [SerializeField] public GameController gameController;
     [NonSerialized] public GameObject harmTester;
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
@@ -18,6 +21,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_r;
     [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_particletoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_haptictoggle;
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
@@ -34,6 +38,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uisoundtext;
     [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
+    [NonSerialized] public bool haptics_on = true;
     [NonSerialized] public bool intend_to_be_spectator = false;
     [NonSerialized] public int ui_wrist = 0; // 0 = None, 1 = Left, 2 = Right
     [NonSerialized] public float ui_scale = 1.0f;
@@ -68,9 +73,19 @@ public class PPP_Options : UdonSharpBehaviour
         {
             ui_spectatortoggle.interactable = !(gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready);
         }
+
+        if (sync_timer < sync_impulse)
+        {
+            sync_timer += Time.deltaTime;
+        }
+        else
+        {
+            sync_timer = 0.0f;
+            if (should_sync) { SyncData(); }
+        }
     }
 
-    public override void OnPlayerRestored(VRCPlayerApi player)  
+    public override void OnPlayerRestored(VRCPlayerApi player)
     {
         if (!player.isLocal) { return; }
         //gameController.local_ppp_options = this;
@@ -95,8 +110,9 @@ public class PPP_Options : UdonSharpBehaviour
 
     public override void OnPlayerDataUpdated(VRCPlayerApi player, PlayerData.Info[] infos)
     {
-        if (player.isLocal) {
-            var should_refresh = false;
+        if (player.isLocal)
+        {
+            bool should_refresh = false;
             for (int i = 0; i < infos.Length; i++)
             {
                 if (!PlayerData.HasKey(player, "UIScale"))
@@ -155,14 +171,27 @@ public class PPP_Options : UdonSharpBehaviour
                 }
                 if (!PlayerData.HasKey(player, "ParticleShow"))
                 {
-                    if (gameController != null && gameController.flag_for_mobile_vr != null) {
+                    if (gameController != null && gameController.flag_for_mobile_vr != null)
+                    {
                         if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_particletoggle.isOn = true; }
-                        else { 
+                        else
+                        {
                             ui_particletoggle.isOn = false;
                             ui_particletoggle.interactable = false;
                         }
                     }
                     UpdateParticles();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "HapticsOn"))
+                {
+                    if (Networking.LocalPlayer.IsUserInVR()) { ui_haptictoggle.isOn = true; }
+                    else
+                    {
+                        ui_haptictoggle.isOn = false;
+                        ui_haptictoggle.interactable = false;
+                    }
+                    UpdateHaptics();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "UIWrist"))
@@ -172,10 +201,10 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIWrist();
                     continue;
                 }
-                if (infos[i].State == PlayerData.State.Restored || infos[i].State == PlayerData.State.Changed)
-                { 
-                    should_refresh = true; 
-                    break; 
+                if (infos[i].State == PlayerData.State.Restored) //|| infos[i].State == PlayerData.State.Changed
+                {
+                    should_refresh = true;
+                    break;
                 }
             }
             if (should_refresh) { RefreshComponents(); }
@@ -330,129 +359,115 @@ public class PPP_Options : UdonSharpBehaviour
                 ui_wristtoggle_r.isOn = false;
                 UpdateUIWrist();
             }
+
+            bool out_UIHaptics;
+            if (PlayerData.TryGetBool(Networking.LocalPlayer, "HapticsOn", out out_UIHaptics))
+            {
+                ui_haptictoggle.isOn = out_UIHaptics;
+            }
+            else
+            {
+                ui_haptictoggle.isOn = true;
+                UpdateHaptics();
+            }
         }
         else
         {
             ui_wristtoggle_l.isOn = false;
             ui_wristtoggle_r.isOn = false;
+            ui_haptictoggle.isOn = false;
             ui_wristtoggle_l.interactable = false;
             ui_wristtoggle_r.interactable = false;
+            ui_haptictoggle.interactable = false;
         }
 
     }
 
+    public void SyncData()
+    {
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetFloat("UIScale", ui_uiscaleslider.value);
+        PlayerData.SetFloat("UIVertical", ui_uiseparationslider.value);
+        PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
+        PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
+        PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
+        PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
+        PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
+        PlayerData.SetBool("Colorblind", ui_colorblindtoggle.isOn);
+        PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
+        if (!gameController.flag_for_mobile_vr.activeInHierarchy) { PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn); }
+        if (Networking.LocalPlayer.IsUserInVR()) { PlayerData.SetBool("HapticsOn", ui_haptictoggle.isOn); }
+        if (Networking.LocalPlayer.IsUserInVR()) { PlayerData.SetInt("UIWrist", ui_wrist); }
+        should_sync = false;
+        sync_timer = 0.0f;
+    }
+
+
     public void UpdateUIScale()
     {
         ui_scale = ui_uiscaleslider.value / 10.0f;
-        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        UIPlyToSelf ui_plyself_script = null;
-        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
-        if (ui_plyself_obj != null && ui_plyself_script != null)
-        {
-            if (!ui_plyself_script.ui_show_intro_text)
-            {
-                ui_plyself_script.ui_demo_timer = 0.0f;
-                ui_plyself_script.ui_demo_enabled = true;
-            }
-        }
+        ShowDemoUI();
         ui_uiscaletext.text = "UI Scale: " + (ui_scale * 100.0f) + "%";
-        if ((ui_scale * 10.0f) <= ui_uiscaleslider.minValue)  { ui_uiscaletext.color = Color.red; }
+        if ((ui_scale * 10.0f) <= ui_uiscaleslider.minValue) { ui_uiscaletext.color = Color.red; }
         else { ui_uiscaletext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UIScale", ui_uiscaleslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateUISeparation()
     {
         ui_separation = ui_uiseparationslider.value / 10.0f;
-        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        UIPlyToSelf ui_plyself_script = null;
-        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
-        if (ui_plyself_obj != null && ui_plyself_script != null)
-        {
-            if (!ui_plyself_script.ui_show_intro_text)
-            {
-                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
-                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
-            }
-        }
+        ShowDemoUI();
         ui_uiseparationtext.text = "UI Vertical: " + (ui_separation * 100.0f) + "%";
         if ((ui_separation * 10.0f) <= ui_uiseparationslider.minValue) { ui_uiseparationtext.color = Color.red; }
         else { ui_uiseparationtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UIVertical", ui_uiseparationslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateUIStretch()
     {
         ui_stretch = ui_uistretchslider.value / 10.0f;
-        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        UIPlyToSelf ui_plyself_script = null;
-        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
-        if (ui_plyself_obj != null && ui_plyself_script != null)
-        {
-            if (!ui_plyself_script.ui_show_intro_text)
-            {
-                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
-                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
-            }
-        }
+        ShowDemoUI();
         ui_uistretchtext.text = "UI Horizontal: " + (ui_stretch * 100.0f) + "%";
         if ((ui_stretch * 10.0f) <= ui_uistretchslider.minValue) { ui_uistretchtext.color = Color.red; }
         else { ui_uistretchtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
 
     public void UpdateUIOtherScale()
     {
         ui_other_scale = ui_uiotherscaleslider.value / 10.0f;
-        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        UIPlyToSelf ui_plyself_script = null;
-        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
-        if (ui_plyself_obj != null && ui_plyself_script != null)
-        {
-            if (!ui_plyself_script.ui_show_intro_text)
-            {
-                ui_plyself_script.ui_demo_timer = 0.0f;
-                ui_plyself_script.ui_demo_enabled = true;
-                ui_plyself_script.TestHarmNumber();
-            }
-        }
+        ShowDemoUI();
         ui_uiotherscaletext.text = "Overhead UI Scale: " + (ui_other_scale * 100.0f) + "%";
         if ((ui_other_scale * 10.0f) <= ui_uiotherscaleslider.minValue) { ui_uiotherscaletext.color = Color.red; }
         else { ui_uiotherscaletext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
 
     public void UpdateUIHarmScale()
     {
         ui_harm_scale = ui_uiharmscaleslider.value / 10.0f;
-        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        UIPlyToSelf ui_plyself_script = null;
-        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
-        if (ui_plyself_obj != null && ui_plyself_script != null)
-        {
-            if (!ui_plyself_script.ui_show_intro_text)
-            {
-                ui_plyself_script.ui_demo_timer = 0.0f;
-                ui_plyself_script.ui_demo_enabled = true;
-                ui_plyself_script.TestHarmNumber();
-            }
-        }
+        ShowDemoUI();
         ui_uiharmscaletext.text = "Damage Display UI Scale: " + (ui_harm_scale * 100.0f) + "%";
         if ((ui_harm_scale * 10.0f) <= ui_uiharmscaleslider.minValue) { ui_uiharmscaletext.color = Color.red; }
         else { ui_uiharmscaletext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateMusicVolume()
@@ -463,9 +478,11 @@ public class PPP_Options : UdonSharpBehaviour
         if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) { ui_uimusictext.color = Color.red; }
         else { ui_uimusictext.color = Color.white; }
 
-        if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         gameController.snd_game_music_source.volume = gameController.music_volume_default * music_volume;
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateSoundVolume()
@@ -477,16 +494,19 @@ public class PPP_Options : UdonSharpBehaviour
         else { ui_uisoundtext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateColorblind()
     {
         colorblind = ui_colorblindtoggle.isOn;
         gameController.RefreshSetupUI();
+        ShowDemoUI();
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetBool("Colorblind", ui_colorblindtoggle.isOn);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateHurtbox()
@@ -495,17 +515,31 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.RefreshSetupUI();
 
         if (waiting_on_playerdata) { return; }
-        PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateParticles()
     {
         particles_on = ui_particletoggle.isOn;
         gameController.RefreshSetupUI();
+        ShowDemoUI();
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+
+    }
+
+    public void UpdateHaptics()
+    {
+        haptics_on = ui_haptictoggle.isOn;
+        gameController.RefreshSetupUI();
+
+        if (haptics_on && gameController.local_plyAttr != null) { gameController.local_plyAttr.TryHapticEvent((int)game_sfx_name.ENUM_LENGTH); }
 
         if (waiting_on_playerdata) { return; }
-        if (gameController.flag_for_mobile_vr.activeInHierarchy) { return; }
-        PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn);
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateUIWrist()
@@ -525,8 +559,11 @@ public class PPP_Options : UdonSharpBehaviour
 
         gameController.RefreshSetupUI();
         lock_wrist = false;
-        if (waiting_on_playerdata || !Networking.LocalPlayer.IsUserInVR()) { return; }
-        PlayerData.SetInt("UIWrist", ui_wrist);
+        ShowDemoUI();
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateUIWristL()
@@ -554,6 +591,24 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.LocalDeclareSpectatorIntent(intend_to_be_spectator);
 
     }
+
+    public void ShowDemoUI()
+    {
+        if (gameController != null && gameController.local_uiplytoself != null)
+        {
+            if (!gameController.local_uiplytoself.ui_show_intro_text)
+            {
+                gameController.local_uiplytoself.ui_demo_timer = 0.0f;
+                gameController.local_uiplytoself.ui_demo_enabled = true;
+                gameController.local_uiplytoself.TestHarmNumber();
+                if (gameController.local_plyweapon != null)
+                {
+                    gameController.local_plyweapon.PlayHapticEvent((int)game_sfx_name.HitSend);
+                }
+            }
+        }
+    }
+
 
     // Spectator does not require persistence
     /*public void SpectateGame()

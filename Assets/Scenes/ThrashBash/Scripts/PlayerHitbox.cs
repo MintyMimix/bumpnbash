@@ -16,7 +16,7 @@ public class PlayerHitbox : UdonSharpBehaviour
     //public int owner_id;
     [SerializeField] public Material[] hitboxMats;
     [SerializeField] public float default_hitbox_size = 2.0f;
-
+    [NonSerialized] [UdonSynced] public bool network_active = false;
     [NonSerialized] public int material_id;
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
@@ -27,7 +27,12 @@ public class PlayerHitbox : UdonSharpBehaviour
         //rb = this.GetComponent<Rigidbody>();
     }
 
-    private void FixedUpdate()
+    public override void OnDeserialization()
+    {
+        gameObject.SetActive(network_active);
+    }
+
+    public override void PostLateUpdate()
     {
         if (playerAttributes != null && owner != null)
         {
@@ -45,16 +50,16 @@ public class PlayerHitbox : UdonSharpBehaviour
                 {
                     m_Renderer.material.SetColor("_Color",
                         new Color32(
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].r),
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].g),
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].b),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].r),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].g),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].b),
                         alpha));
                     m_Renderer.material.EnableKeyword("_EMISSION");
                     m_Renderer.material.SetColor("_EmissionColor",
                         new Color32(
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].r),
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].g),
-                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[team].b),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].r),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].g),
+                        (byte)Mathf.Min(255, playerAttributes.gameController.team_colors[team].b),
                         255));
                 }
                 else
@@ -89,6 +94,8 @@ public class PlayerHitbox : UdonSharpBehaviour
     public void ToggleHitbox(bool toggle)
     {
         gameObject.SetActive(toggle);
+        network_active = toggle;
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
     }
 
     public void SetMaterial(int index)

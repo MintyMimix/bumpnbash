@@ -47,14 +47,14 @@ public class MapSelectPanel : UdonSharpBehaviour
             panel_attr.array_id = i;
             panel_attr.Refresh();
 
-            if (Networking.IsMaster) 
+            if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer)  
             {
                 if (i > 0) { gameController.maps_active_str += ","; }
                 gameController.maps_active_str += "0";
             }
         }
         ArrangeMaps();
-        if (Networking.IsMaster)
+        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer)
         {
             gameController.RequestSerialization();
         }
@@ -70,7 +70,7 @@ public class MapSelectPanel : UdonSharpBehaviour
         {
             MapSelectTemplate panel_attr = map_obj_list[i].GetComponent<MapSelectTemplate>();
             panel_attr.Refresh();
-            if (!Networking.IsMaster) { map_obj_list[i].GetComponent<Toggle>().isOn = gameController.IntToBool(maps_active_arr[i]); }
+            if (Networking.GetOwner(gameController.gameObject) != Networking.LocalPlayer) { map_obj_list[i].GetComponent<Toggle>().isOn = gameController.IntToBool(maps_active_arr[i]); }
         }
     }
 

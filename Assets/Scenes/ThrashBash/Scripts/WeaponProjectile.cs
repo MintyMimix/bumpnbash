@@ -239,6 +239,8 @@ public class WeaponProjectile : UdonSharpBehaviour
 
             }
 
+            if (!keep_parent) { gameController.local_plyweapon.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); } // ENUM_LENGTH is used for weapon fire
+
             gameController.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
@@ -292,7 +294,7 @@ public class WeaponProjectile : UdonSharpBehaviour
             }
         }
         // Did we hit the environment?
-        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment") && !has_physics)
+        else if (other.gameObject.layer == LayerMask.NameToLayer("Environment")) // && !has_physics
         {
             return true;
         }

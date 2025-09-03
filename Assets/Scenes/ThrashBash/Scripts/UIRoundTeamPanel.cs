@@ -17,6 +17,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
     [SerializeField] public GridLayoutGroup UIScrollPanelGridLayoutGroup;
     [SerializeField] public GameObject template_UIAssignTeamPanel;
     [SerializeField] public GameObject UITeamCountPanel;
+    [SerializeField] public GameObject UIHostChangePanel;
     [SerializeField] public GridLayoutGroup UITeamCountPanelLayoutGroup;
     [SerializeField] public GameObject template_TeamCountDisplay;
 
@@ -25,6 +26,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
     [NonSerialized] public int[] team_count_arr;
 
     public int stored_team_count = 0;
+    public int new_host_proposed_id = 0;
 
     private void Start()
     {
@@ -39,6 +41,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         template_TeamCountDisplay.transform.SetParent(null, false);
         template_TeamCountDisplay.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
         template_TeamCountDisplay.SetActive(false);
+        UIHostChangePanel.SetActive(false);
 
         Debug.Log("UIScrollPanel is " + UIScrollPanel);
         if (UIScrollPanel == null)
@@ -78,9 +81,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         {
             CreateTeamCounters();
             stored_team_count = gameController.team_count;
-            //if (Networking.IsMaster) { gameController.RoundOptionAdjust(); }
         }
-
     }
 
 
@@ -303,4 +304,30 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         RedrawPlayerUIGroup();
     }
 
+    public void HostChangeRequest(int host_requested)
+    {
+        // Pop up a window to confirm if they want to change hosts to a chosen host
+        VRCPlayerApi player = VRCPlayerApi.GetPlayerById(host_requested);
+        if (player == null) { return; }
+
+        new_host_proposed_id = host_requested;
+        string display_text = "The Game Master will be changed to:\n$NAME\n\nAre you sure?";
+        display_text = display_text.Replace("$NAME", player.displayName);
+        gameController.GetChildTransformByName(UIHostChangePanel.transform, "UIHostText").GetComponent<TMP_Text>().text = display_text;
+        UIHostChangePanel.SetActive(true);
+    }
+
+    public void HostChangeAccept()
+    {
+        VRCPlayerApi player = VRCPlayerApi.GetPlayerById(new_host_proposed_id);
+        if (player == null) { HostChangeCancel(); }
+
+        gameController.ChangeHost(new_host_proposed_id);
+        UIHostChangePanel.SetActive(false);
+    }
+
+    public void HostChangeCancel()
+    {
+        UIHostChangePanel.SetActive(false);
+    }
 }

@@ -23,8 +23,6 @@ public class Mapscript : UdonSharpBehaviour
     [SerializeField] public Texture skybox_tex;
     [SerializeField] public Transform map_readyroom_center;
     [SerializeField] public AudioClip[] snd_game_music_clips;
-    [SerializeField] public AudioClip[] snd_boss_music_clips;
-    [SerializeField] public AudioClip[] snd_infection_music_clips;
     [SerializeField] public Transform map_spawnzones_parent;
     //[NonSerialized] public Collider[] map_spawnzones;
     [NonSerialized] public map_element_spawn[] map_spawnzones;

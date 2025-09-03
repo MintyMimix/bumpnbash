@@ -8,7 +8,6 @@ using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Common.Interfaces;
-using static VRC.SDKBase.VRCPlayerApi;
 
 public enum damage_type_name
 {
@@ -160,9 +159,11 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
 	}
 
-    private void FixedUpdate()
+    public override void PostLateUpdate()
     {
-        if (weapon_parent != null) {
+        // This was originally on FixedUpdate(). Move back if bugs occur.
+        if (weapon_parent != null)
+        {
             LayerMask layers_to_hit = LayerMask.GetMask("PlayerHitbox", "Environment");
             Transform point_end_tf = null;
             origin = weapon_rb.position;
@@ -194,7 +195,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
                         start_scale.z
                         )
                     );
-                    
+
                     if (Networking.GetOwner(weapon_parent) == Networking.LocalPlayer)
                     {
                         //UnityEngine.Debug.Log("Distance comparison: " + Vector3.Distance(weapon_rb.position, end_pos) + " vs " + (Vector3.Distance(weapon_rb.position, point_end_tf.position)));
@@ -211,7 +212,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
                     transform.localScale = Vector3.Lerp(start_scale, start_scale * Vector3.Distance(origin, end_pos), 1.0f - (float)(hurtbox_timer_local / hurtbox_duration));
                 }
             }
-            
         }
     }
 

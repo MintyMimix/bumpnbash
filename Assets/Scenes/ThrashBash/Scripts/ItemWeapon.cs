@@ -86,6 +86,10 @@ public class ItemWeapon : ItemGeneric
         {
             if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
         }
+        else if (item_state == (int)item_state_name.InWorld && !apply_after_spawn)
+        {
+            allow_effects_to_apply = true;
+        }
     }
 
     private void FixedUpdate()
@@ -102,7 +106,7 @@ public class ItemWeapon : ItemGeneric
     {
         // Check if the player colliding with this is valid
         if (!CheckValidCollisionEvent(other)) { return; }
-
+        allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
         bool player_is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1;

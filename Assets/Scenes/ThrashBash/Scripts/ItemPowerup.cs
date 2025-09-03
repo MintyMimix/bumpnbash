@@ -61,15 +61,20 @@ public class ItemPowerup : ItemGeneric
         powerup_stat_value[(int)powerup_stat_name.Jumps] = 0.0f;
         powerup_stat_behavior[(int)powerup_stat_name.Jumps] = (int)powerup_stat_behavior_name.Null;
 
-        foreach (Transform child in transform)
+        /*foreach (Transform child in transform)
         {
             if (child.name.Contains("ItemSprite"))
             {
                 var m_Renderer = child.GetComponent<Renderer>();
                 m_Renderer.material.SetTexture("_MainTex", powerup_sprites[pType].texture);
             }
+        }*/
+
+        if (spriteItem != null)
+        {
+            var m_Renderer = spriteItem.GetComponent<Renderer>();
+            m_Renderer.material.SetTexture("_MainTex", powerup_sprites[pType].texture);
         }
-        
 
         switch (pType)
         {
@@ -88,19 +93,19 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkUp:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 3.0f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 2.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.DefUp:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 3.0f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 2.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.AtkDown:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 0.33f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 0.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.DefDown:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 0.33f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 0.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.LowGrav:
@@ -188,6 +193,10 @@ public class ItemPowerup : ItemGeneric
         {
             if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
         }
+        else if (item_state == (int)item_state_name.InWorld && !apply_after_spawn)
+        {
+            allow_effects_to_apply = true;
+        }
     }
 
     private void FixedUpdate()
@@ -215,7 +224,7 @@ public class ItemPowerup : ItemGeneric
     {
         // Check if the player colliding with this is valid
         if (!CheckValidCollisionEvent(other)) { return; }
-
+        allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr != null)
@@ -234,7 +243,9 @@ public class ItemPowerup : ItemGeneric
             powerup_obj.transform.position = Networking.LocalPlayer.GetPosition();
             plyAttr.SendTutorialMessage(powerup_type);
             if (plyAttr.ply_training) { plyAttr.ResetTutorialMessage(powerup_type); }
+            powerup.allow_effects_to_apply = true;
             plyAttr.ProcessPowerUp(powerup_obj, true);
+            powerup.allow_effects_to_apply = false;
             item_is_template = false;
         }
 

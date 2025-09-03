@@ -137,8 +137,12 @@ public class UIArrowSpectator : UIArrow
                 if (players_to_spectate[1][current_value - camera_points.Length] >= 0) { caption.color = gameController.team_colors_bright[players_to_spectate[1][current_value - camera_points.Length]]; }
                 else { caption.color = Color.white; }
 
+
                 camera_main.transform.SetPositionAndRotation(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (player.GetRotation() * -Vector3.forward * 3.0f * (player.GetAvatarEyeHeightAsMeters() / 1.6f)) + (player.GetRotation() * Vector3.up * 0.5f * (player.GetAvatarEyeHeightAsMeters() / 1.6f))
-                    , player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
+                        , player.GetRotation());
+                // Old code which used head
+                //camera_main.transform.SetPositionAndRotation(player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (player.GetRotation() * -Vector3.forward * 3.0f * (player.GetAvatarEyeHeightAsMeters() / 1.6f)) + (player.GetRotation() * Vector3.up * 0.5f * (player.GetAvatarEyeHeightAsMeters() / 1.6f))
+                //    , player.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation);
             }
             else
             {

@@ -20,7 +20,7 @@ public class MapSelectTemplate : UdonSharpBehaviour
         UnityEngine.UI.Toggle getToggle = GetComponent<UnityEngine.UI.Toggle>();
         if (getToggle != null)
         {
-            bool toggle_should_be_on = Networking.IsMaster;
+            bool toggle_should_be_on = Networking.GetOwner(parent_mapselectpanel.gameController.gameObject) == Networking.LocalPlayer;
             if (parent_mapselectpanel != null && parent_mapselectpanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
 
             if (toggle_should_be_on && getToggle.interactable == false) { getToggle.interactable = true; }
@@ -43,7 +43,7 @@ public class MapSelectTemplate : UdonSharpBehaviour
 
     public void Press()
     {
-        if (parent_mapselectpanel == null || !Networking.IsMaster) { return; }
+        if (parent_mapselectpanel == null || Networking.GetOwner(parent_mapselectpanel.gameController.gameObject) != Networking.LocalPlayer) { return; }
         GameController gc = parent_mapselectpanel.gameController;
         if (gc == null || array_id < 0 || array_id >= gc.mapscript_list.Length) { return; }
         int[] maps_active_arr = gc.ConvertStrToIntArray(gc.maps_active_str);

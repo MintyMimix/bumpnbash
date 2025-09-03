@@ -1,5 +1,6 @@
 ﻿
 using System;
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDK3.UdonNetworkCalling;
@@ -20,6 +21,8 @@ public class ItemSpawner : UdonSharpBehaviour
     [SerializeField] public ItemPowerup child_powerup;
     [SerializeField] public ItemWeapon child_weapon;
     [SerializeField] public GameObject child_marker;
+    [SerializeField] public TMP_Text training_tutorial_name_txt; // ONLY used if training_spawner = true
+    [SerializeField] public TMP_Text training_tutorial_desc_text; // ONLY used if training_spawner = true
     [Header("Spawner Options")]
     [Tooltip("Should the marker object be visible?")]
     [SerializeField] public bool show_marker_in_game = true;
@@ -65,6 +68,8 @@ public class ItemSpawner : UdonSharpBehaviour
 
     [NonSerialized] public bool wait_for_join_sync = false;
 
+    [NonSerialized] public bool training_tutorial_ui_ready = false;
+
     private void Start()
     {
         if (gameController == null)
@@ -79,11 +84,28 @@ public class ItemSpawner : UdonSharpBehaviour
 
         SetSpawnChances();
         StartTimer(item_spawn_impulse * (1.0f/item_spawn_frequency_mul));
+
     }
 
     private void OnEnable()
     {
         SyncSpawns();
+    }
+
+    public void UpdateTrainingTutorialText()
+    {
+        if (training_spawner && !training_tutorial_ui_ready && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
+        {
+            int spawn_index = RollForItem(item_spawn_chances);
+            string full_desc = gameController.local_plyAttr.GetTutorialMessage(spawn_index);
+            string[] split_desc = full_desc.Split(": ");
+            if (split_desc.Length >= 2)
+            {
+                training_tutorial_name_txt.text = split_desc[0].Replace(": ", "");
+                training_tutorial_desc_text.text = split_desc[1].Replace(": ", "");
+                training_tutorial_ui_ready = true;
+            }
+        }
     }
 
     public void SetSpawnChances(byte gamemode)
@@ -96,8 +118,8 @@ public class ItemSpawner : UdonSharpBehaviour
             if (!item_spawn_powerups_enabled && i < (int)powerup_type_name.ENUM_LENGTH) { parsed_spawn_chances[i] = 0.0f; }
             // If weapons are disabled, set chances to zero
             if (!item_spawn_weapons_enabled && i >= (int)powerup_type_name.ENUM_LENGTH && i - (int)powerup_type_name.ENUM_LENGTH < (int)powerup_type_name.ENUM_LENGTH) { parsed_spawn_chances[i] = 0.0f; }
-            // If we're in Fitting In, disable size-changing powerups and half the chances of atk/def stat ups
-            if (gamemode == (int)gamemode_name.FittingIn)
+            // If we're in Fitting In or Infection, disable size-changing powerups and half the chances of atk/def stat ups
+            if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.Infection)
             {
                 if (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown) { parsed_spawn_chances[i] = 0.0f; }
                 else if (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp) { parsed_spawn_chances[i] *= 0.5f; }
@@ -115,7 +137,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { training_tutorial_ui_ready = false; UpdateTrainingTutorialText(); RequestSerialization(); }
         else if (player == Networking.LocalPlayer) { wait_for_join_sync = true; }
     }
     
@@ -124,6 +146,7 @@ public class ItemSpawner : UdonSharpBehaviour
         if (wait_for_join_sync)
         {
             SyncSpawns();
+            UpdateTrainingTutorialText();
             wait_for_join_sync = false;
         }
         if (gameController != null) { item_spawn_chances = gameController.ConvertStrToIntArray(item_spawn_chances_str); }
@@ -131,7 +154,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public override void OnPostSerialization(SerializationResult result)
     {
-        if (wait_for_join_sync && result.success) { wait_for_join_sync = false; }
+        if (wait_for_join_sync && result.success) { wait_for_join_sync = false; UpdateTrainingTutorialText(); }
     }
 
     public void SyncSpawns()
@@ -184,7 +207,15 @@ public class ItemSpawner : UdonSharpBehaviour
         }
     }
 
-     public void StartTimer(double duration)
+    private void LateUpdate()
+    {
+        if (training_spawner && !training_tutorial_ui_ready && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
+        {
+            UpdateTrainingTutorialText();
+        }
+    }
+
+    public void StartTimer(double duration)
     {
         item_timer_start_ms = Networking.GetServerTimeInSeconds();
         //item_timer_local = 0.0f;
@@ -202,15 +233,17 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_index < (int)powerup_type_name.ENUM_LENGTH)
         {
             child_powerup.item_owner_id = -1;
-            if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
+            child_powerup.allow_effects_to_apply = apply_after_spawn;
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.item_team_id = 0; } // On Infected, only Survivors may get powerups
+            else if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
             else { child_powerup.item_team_id = -1; }
-            child_powerup.SetTeamColor(item_spawn_team);
             child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_type = (int)item_type_name.Powerup;
             child_powerup.item_is_template = false;
             child_powerup.powerup_type = item_index;
             child_powerup.SetPowerupStats(item_index);
             child_powerup.powerup_duration = item_spawn_powerup_duration * item_spawn_duration_mul;
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.powerup_duration *= 0.5f; } // All pickups are halved duration during Infection 
             child_powerup.powerup_start_ms = Networking.GetServerTimeInSeconds();
             child_powerup.powerup_timer_local = 0.0f;
             child_powerup.powerup_timer_network = 0.0f;
@@ -224,9 +257,10 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_owner_id = -1;
-            if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
+            child_weapon.allow_effects_to_apply = apply_after_spawn;
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_weapon.item_team_id = 0; } // On Infected, only Survivors may get weapons
+            else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
             else { child_weapon.item_team_id = -1; }
-            child_weapon.SetTeamColor(item_spawn_team);
             child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
@@ -235,19 +269,28 @@ public class ItemSpawner : UdonSharpBehaviour
             // If the ammo or duration is -2, that means set the stat to the spawner's powerup duration
             if (child_weapon.iweapon_type >= 0)
             {
-                if (child_weapon.iweapon_type < child_weapon.iweapon_ammo_list.Length && child_weapon.iweapon_ammo_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_ammo = Mathf.RoundToInt(item_spawn_powerup_duration); }
-                if (child_weapon.iweapon_type < child_weapon.iweapon_duration_list.Length && child_weapon.iweapon_duration_list[child_weapon.iweapon_type] == -2) { child_weapon.iweapon_duration = item_spawn_powerup_duration; }
-                if (child_weapon.iweapon_type == (int)weapon_type_name.ThrowableItem) 
+                if (child_weapon.iweapon_type < child_weapon.iweapon_ammo_list.Length && child_weapon.iweapon_ammo_list[child_weapon.iweapon_type] == -2) 
                 { 
-                    child_weapon.iweapon_extra_data = (byte)UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH); 
-                    // If the random powerup rolls the boss glove, set it to be another throwable item for maximum chaos
-                    if (child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove
-                        || child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove
-                        ) { child_weapon.iweapon_extra_data = (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem; }
+                    child_weapon.iweapon_ammo = Mathf.RoundToInt(item_spawn_powerup_duration);
+                }
+                if (child_weapon.iweapon_type < child_weapon.iweapon_duration_list.Length && child_weapon.iweapon_duration_list[child_weapon.iweapon_type] == -2) 
+                { 
+                    child_weapon.iweapon_duration = item_spawn_powerup_duration;
+                }
+                if (child_weapon.iweapon_type == (int)weapon_type_name.ThrowableItem && gameController != null && gameController.local_plyweapon != null) 
+                {
+                    child_weapon.iweapon_extra_data = gameController.local_plyweapon.RollForPowerupBombExtraData();
                 }
             }
             child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * item_spawn_duration_mul);
             child_weapon.iweapon_duration *= item_spawn_duration_mul;
+            // All pickups are halved duration during Infection 
+            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
+            {
+                if ((child_weapon.iweapon_ammo * 0.5f) > 0.0f && (child_weapon.iweapon_ammo * 0.5f) < 1.0f) { child_weapon.iweapon_ammo = 1; }
+                else { child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * 0.5f); }
+                child_weapon.iweapon_duration *= 0.5f;
+            } 
             //child_weapon.allow_multiple_owners = false;
             child_weapon.apply_after_spawn = apply_after_spawn;
             child_weapon.gameObject.SetActive(true);

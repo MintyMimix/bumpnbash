@@ -8,6 +8,8 @@ using VRC.Udon;
 public class UIArrowTeamPanel : UIArrow
 {
     [SerializeField] public UIRoundTeamPanel parent_teampanel;
+    [SerializeField] public UnityEngine.UI.Button button_make_host;
+
     [NonSerialized] public VRCPlayerApi player;
     [NonSerialized] public bool is_template = true;
     [NonSerialized] public int array_id = -1;
@@ -22,7 +24,7 @@ public class UIArrowTeamPanel : UIArrow
     {
         if (button_increment != null && button_decrement != null)
         {
-            bool toggle_should_be_on = Networking.IsMaster;
+            bool toggle_should_be_on = Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer;
             if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
             else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
@@ -99,7 +101,7 @@ public class UIArrowTeamPanel : UIArrow
 
     public void UpdateOwnership()
     {
-        bool toggle_should_be_on = Networking.IsMaster;
+        bool toggle_should_be_on = Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer;
         if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
         else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
@@ -114,6 +116,12 @@ public class UIArrowTeamPanel : UIArrow
             button_increment.gameObject.SetActive(true);
             button_decrement.gameObject.SetActive(true);
         }
+
+        button_make_host.gameObject.SetActive(false);
+        if (parent_teampanel != null && parent_teampanel.gameController != null && Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer && player != null && player != Networking.LocalPlayer)
+        {
+            button_make_host.gameObject.SetActive(true);
+        }
     }
 
     public void SignalToUpdateFromPanel()
@@ -121,6 +129,14 @@ public class UIArrowTeamPanel : UIArrow
         if (player != null)
         {
             parent_teampanel.gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, current_value, false);
+        }
+    }
+
+    public void SignalToUpdateHost()
+    {
+        if (player != null)
+        {
+            parent_teampanel.HostChangeRequest(player.playerId);
         }
     }
 }

@@ -184,13 +184,18 @@ public class UIPlyToOthers : UdonSharpBehaviour
                 && gameController.option_gamemode != (int)gamemode_name.Infection
                 //&& gameController.round_state != (int)round_state_name.Start
                 ) { PTOVictoryStar.SetActive(true); }
+            else if (gameController.option_gamemode == (int)gamemode_name.Infection && playerAttributes.ply_team == 1 && playerAttributes.infection_special != 0)
+            {
+                // Special infected get a victory star
+                PTOVictoryStar.SetActive(true);
+            }
             //else if (gameController.option_teamplay && ref_uiplytoself.gamevars_leaderboard_arr[0] == playerAttributes.ply_team) { PTOVictoryStar.SetActive(true); }
             //else if (!gameController.option_teamplay && ref_uiplytoself.gamevars_leaderboard_arr[0] == owner.playerId) { PTOVictoryStar.SetActive(true); }
             else { PTOVictoryStar.SetActive(false); }
         }
     }
 
-    private void FixedUpdate()
+    public override void PostLateUpdate()
     {
         if (owner == Networking.LocalPlayer || owner == null) { return; }
         float scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);

@@ -1,8 +1,11 @@
 ﻿
 using System;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Xml.Linq;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Windows;
+using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -76,6 +79,8 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public string[] local_tutorial_message_str_desktop;
     [NonSerialized] public string[] local_tutorial_message_str_vr;
 
+    [NonSerialized] [UdonSynced] public byte infection_special = 0;
+
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
     void Start()
@@ -103,7 +108,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 ply_deaths_local = ply_deaths;
                 ply_team_local = ply_team;
                 gameController.RefreshGameUI();
-                if (Networking.IsMaster) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
+                if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
             }
         }
     }
@@ -175,11 +180,13 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         // Handle player stats
         // To-do: this more efficiently
-        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) { 
-            Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed);
-            Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed);
-            Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed);
-            Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav);
+        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) {
+            float koth_mod = 1.0f;
+            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training && ply_respawn_duration > gameController.plysettings_respawn_duration) { koth_mod = 0.01f; }
+            Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed * koth_mod);
+            Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed * koth_mod);
+            Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
+            Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav * (1.0f/koth_mod));
             Networking.LocalPlayer.SetJumpImpulse(4.0f + (1.0f - ply_grav)); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
@@ -192,7 +199,9 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         Networking.GetOwner(gameObject).SetManualAvatarScalingAllowed(true);
 
+        // Hnadle multi-jump
         if (Networking.LocalPlayer.IsPlayerGrounded()) { ply_jumps_tracking = 0; }
+
     }
 
     private void FixedUpdate()
@@ -241,10 +250,9 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public void TryHapticEvent(int haptic_event_type)
     {
-        GameObject weapon_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
-        PlayerWeapon weapon_script = null;
-        if (weapon_obj != null) { weapon_script = weapon_obj.GetComponent<PlayerWeapon>(); }
-        if (weapon_script != null) { weapon_script.PlayHapticEvent(haptic_event_type); } //Debug.Log("TRY HAPTIC: " + haptic_event_type); }
+        //GameObject weapon_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
+        //PlayerWeapon weapon_script = null; 
+        if (gameController.local_plyweapon != null) { gameController.local_plyweapon.PlayHapticEvent(haptic_event_type); } //Debug.Log("TRY HAPTIC: " + haptic_event_type); }
     }
 
     [NetworkCallable]
@@ -367,14 +375,34 @@ public class PlayerAttributes : UdonSharpBehaviour
         //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
-        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill && !defenderIsTraining && !ply_training) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
+        // Add points if we aren't on KOTH (which is capture time)
+        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill && !defenderIsTraining && !ply_training) 
+        { 
+            ply_points++; 
+            if (gameController.option_gamemode == (int)gamemode_name.Clash)
+            {
+                if (!gameController.option_teamplay && ply_points == gameController.option_gm_goal - 1) 
+                { 
+                    gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", Networking.LocalPlayer.displayName + " is close to winning!", Color.red, 7.5f);
+                }
+                else if (gameController.option_teamplay && ply_team >= 0 && ply_team < gameController.team_names.Length)
+                {
+                    int team_points = 0;
+                    gameController.CheckSingleTeamPoints(ply_team, ref team_points);
+                    if (team_points == gameController.option_gm_goal - 1)
+                    {
+                        gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.team_names[ply_team] + " are close to winning!", (Color)gameController.team_colors_bright[ply_team], 7.5f);
+                    }
+                }
+            }
+        } 
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
         gameController.AddToLocalTextQueue("You knocked out " + VRCPlayerApi.GetPlayerById(defenderPlyId).displayName + "!");
         TryHapticEvent((int)game_sfx_name.Kill);
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
-        if (Networking.IsMaster) { gameController.CheckForRoundGoal(); }
+        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
     }
 
     public void HandleLocalPlayerDeath()
@@ -396,6 +424,10 @@ public class PlayerAttributes : UdonSharpBehaviour
             if (gameController.option_gamemode == (int)gamemode_name.Survival || (ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
             { 
                 ply_lives--;
+            }
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training && ply_respawn_duration > gameController.plysettings_respawn_duration)
+            {
+                gameController.AddToLocalTextQueue("[Slowed during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)]", Color.white, ply_respawn_duration);
             }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
@@ -421,6 +453,11 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, 1, false);
             ply_team = 1;
             ply_points = 0;
+            InfectionStatReset();
+        }
+        else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1)
+        {
+            InfectionStatReset();
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)
         {
@@ -475,7 +512,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController != null && gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
-        if (Networking.IsMaster) { gameController.CheckForRoundGoal(); }
+        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
         else { gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal"); }
 
     }
@@ -665,7 +702,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = "Fire off projectiles that will explode in a radius! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox and is super fast! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox. Attack rate scales with # of players in-game! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
@@ -735,5 +772,127 @@ public class PlayerAttributes : UdonSharpBehaviour
             local_tutorial_message_bool[item_type] = true;
         }
     }
+
+    public string GetTutorialMessage(int item_type)
+    {
+        // Send a tutorial message
+        string display_str = "";
+        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        {
+            display_str = local_tutorial_message_str_desktop[item_type];
+            if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
+            if (display_str != "")
+            {
+                string[] split_str = display_str.Split(" (Power: ");
+                if (split_str != null && split_str.Length >= 2)
+                {
+                    display_str = split_str[0];
+                }
+                if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
+                {
+                    display_str = display_str.Replace("(Contains: $NAME)", "Contains a random powerup or weapon! ");
+                }
+            }
+
+            Color display_color = Color.cyan;
+            if (item_type >= (int)powerup_type_name.ENUM_LENGTH) { display_color = new Color(1.0f, 0.5f, 0.0f, 1.0f); }
+
+        }
+        return display_str;
+    }
+
+    [NetworkCallable]
+    public void BecomeZombig()
+    {
+        ResetToDefaultStats();
+        gameController.TeleportLocalPlayerToGameSpawnZone();
+        infection_special = 2;
+        ply_dp = ply_dp_default;
+        ply_scale *= 2.5f;
+        ply_speed *= 1.33f;
+
+        gameController.local_plyweapon.weapon_temp_ammo = -1;
+        gameController.local_plyweapon.weapon_temp_duration = -1;
+        gameController.local_plyweapon.weapon_temp_timer = 0.0f;
+        gameController.local_plyweapon.weapon_type = (int)weapon_type_name.MegaGlove;
+        gameController.local_plyweapon.weapon_extra_data = 0;
+
+        if (gameController.local_uiplytoself != null && gameController.template_ItemSpawner != null) 
+        {
+            ItemWeapon iweapon = gameController.template_ItemSpawner.GetComponent<ItemSpawner>().child_weapon;
+            gameController.local_uiplytoself.PTSWeaponSprite.sprite = iweapon.iweapon_sprites[(int)weapon_type_name.MegaGlove];
+            gameController.PlaySFXFromArray(gameController.local_plyweapon.snd_source_weaponcharge, iweapon.iweapon_snd_clips, iweapon.iweapon_type);
+        }
+        gameController.local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+        plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+        plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+        plyEyeHeight_change = true;
+
+        gameController.AddToLocalTextQueue("You are the ZomBig! Crush the Survivors into dust!", gameController.team_colors_bright[1]);
+    }
+
+    [NetworkCallable]
+    public void InfectionStatReset()
+    {
+        if (infection_special == 2)
+        {
+            // ZomBig
+            ResetToDefaultStats();
+            infection_special = 1; // We set this to 1 because GameController will automatically resolve it down to 0 if the player count condition is met
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForZombigs", Networking.LocalPlayer.playerId);
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "The ZomBig has been defeated!", Color.red, 5.0f);
+        }
+        else if (infection_special == 1)
+        {
+            // Patient Zero
+            ply_speed = gameController.plysettings_speed * 1.33f;
+            ply_def = gameController.plysettings_def * 0.6f;
+            ply_atk = gameController.plysettings_atk * 1.5f;
+        }
+        else if (infection_special == 0)
+        { 
+            // Normal Zombie
+            ply_speed = gameController.plysettings_speed * 0.9f;
+            ply_def = gameController.plysettings_def * 0.4f;
+            ply_atk = gameController.plysettings_atk * 0.5f;
+        }
+    }
+
+    [NetworkCallable]
+    public void ResetToDefaultStats()
+    {
+        ply_dp = ply_dp_default;
+        ply_lives = gameController.plysettings_lives;
+        ply_points = gameController.plysettings_points;
+        ply_respawn_duration = gameController.plysettings_respawn_duration;
+        ply_scale = gameController.plysettings_scale;
+        ply_speed = gameController.plysettings_speed;
+        ply_atk = gameController.plysettings_atk;
+        ply_def = gameController.plysettings_def;
+        ply_grav = gameController.plysettings_grav * gameController.mapscript_list[gameController.map_selected].map_gravity_scale;
+        if (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)
+        {
+            //playerData.ply_lives = option_goal_value_b;
+            ply_scale = gameController.plysettings_scale * gameController.plysettings_boss_scale_mod;
+            ply_atk = gameController.plysettings_atk + gameController.plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
+            ply_def = gameController.plysettings_def + gameController.plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
+            ply_speed = gameController.plysettings_speed + gameController.plysettings_boss_speed_mod;
+        }
+        else
+        {
+            gameController.local_plyweapon.weapon_type_default = gameController.plysettings_weapon;
+            gameController.local_plyweapon.weapon_type = gameController.local_plyweapon.weapon_type_default;
+            if (gameController.local_plyweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+            {
+                gameController.local_plyweapon.weapon_temp_ammo = -1;
+                gameController.local_plyweapon.weapon_temp_duration = -1;
+            }
+        }
+        gameController.local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+        plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
+        plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+        plyEyeHeight_change = true;
+    }
+
 
 }
