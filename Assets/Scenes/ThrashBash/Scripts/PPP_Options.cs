@@ -18,12 +18,14 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uiotherscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uisoundslider;
     [SerializeField] public TMP_Text ui_uiscaletext;
     [SerializeField] public TMP_Text ui_uiseparationtext;
     [SerializeField] public TMP_Text ui_uistretchtext;
+    [SerializeField] public TMP_Text ui_uiotherscaletext;
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
@@ -34,6 +36,7 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
     [NonSerialized] public float ui_harm_scale = 1.0f;
+    [NonSerialized] public float ui_other_scale = 1.0f;
     [NonSerialized] public bool waiting_on_playerdata = true;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
@@ -100,6 +103,12 @@ public class PPP_Options : UdonSharpBehaviour
                 {
                     ui_uistretchslider.value = 10.0f;
                     UpdateUIStretch();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UIOtherScale"))
+                {
+                    ui_uiotherscaleslider.value = 10.0f;
+                    UpdateUIHarmScale();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "UIHarmScale"))
@@ -195,6 +204,17 @@ public class PPP_Options : UdonSharpBehaviour
         {
             ui_uistretchslider.value = 10.0f;
             UpdateUIStretch();
+        }
+
+        float out_UIOtherScale;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIOtherScale", out out_UIOtherScale))
+        {
+            ui_uiotherscaleslider.value = out_UIOtherScale;
+        }
+        else
+        {
+            ui_uiotherscaleslider.value = 10.0f;
+            UpdateUIOtherScale();
         }
 
         float out_UIHarmScale;
@@ -340,6 +360,31 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
     }
 
+
+    public void UpdateUIOtherScale()
+    {
+        ui_other_scale = ui_uiotherscaleslider.value / 10.0f;
+        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+        UIPlyToSelf ui_plyself_script = null;
+        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
+        if (ui_plyself_obj != null && ui_plyself_script != null)
+        {
+            if (!ui_plyself_script.ui_show_intro_text)
+            {
+                ui_plyself_script.ui_demo_timer = 0.0f;
+                ui_plyself_script.ui_demo_enabled = true;
+                ui_plyself_script.TestHarmNumber();
+            }
+        }
+        ui_uiotherscaletext.text = "Overhead UI Scale: " + (ui_other_scale * 100.0f) + "%";
+        if ((ui_other_scale * 10.0f) <= ui_uiotherscaleslider.minValue) { ui_uiotherscaletext.color = Color.red; }
+        else { ui_uiotherscaletext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
+    }
+
+
     public void UpdateUIHarmScale()
     {
         ui_harm_scale = ui_uiharmscaleslider.value / 10.0f;
@@ -355,7 +400,7 @@ public class PPP_Options : UdonSharpBehaviour
                 ui_plyself_script.TestHarmNumber();
             }
         }
-        ui_uiharmscaletext.text = "Damage Indicator Scale: " + (ui_harm_scale * 100.0f) + "%";
+        ui_uiharmscaletext.text = "Damage Display UI Scale: " + (ui_harm_scale * 100.0f) + "%";
         if ((ui_harm_scale * 10.0f) <= ui_uiharmscaleslider.minValue) { ui_uiharmscaletext.color = Color.red; }
         else { ui_uiharmscaletext.color = Color.white; }
 

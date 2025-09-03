@@ -116,6 +116,8 @@ public class PlayerWeapon : UdonSharpBehaviour
     {
         if (gameController == null) { return; }
 
+        UnityEngine.Debug.Log("[" + transform.name + "]: Updating weapon stats based on type " + weapon_type);
+
         use_cooldown = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
         weapon_charge_duration = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.ChargeTime];
         
@@ -150,9 +152,10 @@ public class PlayerWeapon : UdonSharpBehaviour
             particle.GetComponent<ParticleSystem>().Play();
         }
 
-        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR());
+        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && weapon_type == (int)weapon_type_name.Bomb);
         GetComponent<Rigidbody>().useGravity = false;
         GetComponent<Rigidbody>().velocity = Vector3.zero;
+        GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
         local_weapon_type = weapon_type;
         return;
     }
@@ -241,7 +244,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (pickup_component == null) { pickup_component = gameObject.GetComponent<VRCPickup>(); }
 
-        if (weapon_charge_duration > 0.0f && weapon_charge_start_ms > 0.0f) { weapon_charge_timer = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), weapon_charge_start_ms); }
+        if (weapon_charge_duration > 0.0f && weapon_is_charging) { weapon_charge_timer = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), weapon_charge_start_ms); }
 
         // Make sure you can only fire when off cooldown
         if (use_timer < use_cooldown)
@@ -401,6 +404,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         // Handle weapon charging timer
         if (weapon_is_charging)
         {
+            //UnityEngine.Debug.Log("[WEAPON_TEST]: Charging: " + weapon_charge_timer + " / " + weapon_charge_duration + " (start: " + weapon_charge_start_ms + ")");
             if (weapon_charge_timer > weapon_charge_duration && weapon_charge_duration > 0.0f)
             {
                 FireWeapon();
@@ -513,9 +517,9 @@ public class PlayerWeapon : UdonSharpBehaviour
                     }
                 }
             }
-            return; 
+            return;
         }
-        if (weapon_type == (int)weapon_type_name.SuperLaser) 
+        else if (weapon_type == (int)weapon_type_name.SuperLaser) 
         {
             if (!weapon_is_charging)
             {
@@ -549,6 +553,11 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             TossWeapon();
         }
+    }
+
+    public override void OnPickup()
+    {
+        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && weapon_type == (int)weapon_type_name.Bomb);
     }
 
     private void TossWeapon()

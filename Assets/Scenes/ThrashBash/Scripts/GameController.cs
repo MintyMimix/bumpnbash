@@ -22,7 +22,7 @@ public enum ready_sfx_name
 }
 public enum announcement_sfx_name
 {
-    KOTH_Capture_Team, KOTH_Capture_Other, KOTH_Unlock, KOTH_Contest, ENUM_LENGTH 
+    KOTH_Capture_Team, KOTH_Capture_Other, KOTH_Unlock, KOTH_Contest_Progress, KOTH_Contest_Start_Team, KOTH_Contest_Start_Other, KOTH_Victory_Near, ENUM_LENGTH 
 }
 public enum round_state_name
 {
@@ -74,6 +74,7 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_round_teamplay_toggle;
     [SerializeField] public TMP_InputField ui_round_teamplay_count_input;
     [SerializeField] public UnityEngine.UI.Button ui_round_teamplay_sort_button;
+    [SerializeField] public UnityEngine.UI.Toggle ui_round_length_toggle;
     [SerializeField] public TMP_InputField ui_round_length_input;
     [SerializeField] public Transform ui_round_scoreboard_canvas;
     [SerializeField] public MapSelectPanel ui_round_mapselect;
@@ -143,6 +144,8 @@ public class GameController : UdonSharpBehaviour
     [Header("Game Settings")]
     [Tooltip("How long a round should last, in seconds")]
     [SerializeField] [UdonSynced] public float round_length = 300.0f;
+    [Tooltip("Should a round have a time limit at all?")]
+    [SerializeField][UdonSynced] public bool round_length_enabled = true;
     [Tooltip("How long players are on the 'Ready...' screen before a round begins. This time is needed so they can pick up their weapon.")]
     [SerializeField] [UdonSynced] public float ready_length = 5.0f;
     [Tooltip("How long a round should be in 'Game Over' state before someone can start a new round.")]
@@ -456,6 +459,7 @@ public class GameController : UdonSharpBehaviour
 
         // Master handling
         if (!Networking.IsMaster) { return; }
+
         if (round_state == (int)round_state_name.Ready && round_timer >= ready_length)
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
@@ -484,6 +488,10 @@ public class GameController : UdonSharpBehaviour
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "EnableReadyRoom");
             RequestSerialization();
             RefreshSetupUI();
+        }
+        else if (round_state == (int)round_state_name.Ongoing && !round_length_enabled)
+        {
+            round_timer = 0.0f;
         }
         else if (round_state == (int)round_state_name.Ongoing && round_timer >= round_length)
         {
@@ -671,6 +679,7 @@ public class GameController : UdonSharpBehaviour
         ui_round_start_button.GetComponentInChildren<TMP_Text>().text = room_ready_status_text;
         ui_round_start_button.interactable = enableRoundStartButton;
         ui_round_length_input.text = Mathf.FloorToInt(round_length).ToString();
+        ui_round_length_toggle.isOn = round_length_enabled;
 
         bool enableResetButton = false;
         if ((!option_start_from_master_only || (option_start_from_master_only && Networking.IsMaster)) && round_state == (int)round_state_name.Ongoing) { enableResetButton = true; }
@@ -682,7 +691,8 @@ public class GameController : UdonSharpBehaviour
             ui_round_teamplay_toggle.interactable = true && !option_force_teamplay;
             ui_round_option_dropdown.interactable = true;
             ui_round_option_default_button.interactable = true;
-            ui_round_length_input.interactable = true;
+            ui_round_length_toggle.interactable = option_gamemode != (int)gamemode_name.Infection; // Infection requires a time limit, so don't allow people to toggle it
+            ui_round_length_input.interactable = round_length_enabled;
             ui_round_option_goal_input_a.interactable = true;
             ui_round_option_goal_input_b.interactable = true;
             ui_round_teamplay_sort_button.interactable = option_teamplay;
@@ -712,6 +722,7 @@ public class GameController : UdonSharpBehaviour
             ui_round_teamplay_toggle.interactable = false;
             ui_round_option_dropdown.interactable = false;
             ui_round_option_default_button.interactable = false;
+            ui_round_length_toggle.interactable = false;
             ui_round_length_input.interactable = false;
             ui_round_option_goal_input_a.interactable = false;
             ui_round_option_goal_input_b.interactable = false;
@@ -838,6 +849,7 @@ public class GameController : UdonSharpBehaviour
         UnityEngine.Debug.Log("Players in game: " + ply_count);
         int goal_input_a = 0; int goal_input_b = 0;
         option_gamemode = (byte)ui_round_option_dropdown.value;
+
         
         if (option_gamemode == (int)gamemode_name.Survival)
         {
@@ -859,12 +871,14 @@ public class GameController : UdonSharpBehaviour
         {
             goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)5.0f);
             ui_round_length_input.text = "150";
+            ui_round_length_toggle.isOn = true;
         }
         else if (option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
             goal_input_a = 45;
             goal_input_b = 6;
             ui_round_length_input.text = "1200";
+            ui_round_length_toggle.isOn = false;
         }
         else if (option_gamemode == (int)gamemode_name.FittingIn)
         {
@@ -986,6 +1000,8 @@ public class GameController : UdonSharpBehaviour
         try_round_length_parse = Mathf.Min(Mathf.Max(try_round_length_parse, 20), 2147483647);
         //UnityEngine.Debug.Log("TIME TO CHANGE THE ROUND LENGTH FROM " + round_length + " TO " + try_round_length_parse);
         round_length = (float)try_round_length_parse;
+
+        round_length_enabled = ui_round_length_toggle.isOn;
 
         // Starting & Advanced Options Parsing
         int try_option_parse_dp = 0; Int32.TryParse(ui_ply_option_dp.text, out try_option_parse_dp); try_option_parse_dp = Mathf.Min(Mathf.Max(try_option_parse_dp, 0), 99999);
@@ -2840,12 +2856,6 @@ public class GameController : UdonSharpBehaviour
         //Quaternion.AngleAxis(-angleOffset, Vector3.up) * 
         Quaternion rotateTo = Quaternion.LookRotation(targetDir, Vector3.up);
         return rotateTo;
-    }
-
-    public void ThrowError()
-    {
-        int[] error_arr = null;
-        if (error_arr[0] == 1) { }
     }
 
 }

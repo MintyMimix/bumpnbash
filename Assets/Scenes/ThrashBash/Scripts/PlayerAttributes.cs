@@ -332,7 +332,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
-        if (gameController.option_gamemode != (int)gamemode_name.ENUM_LENGTH) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
+        if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { ply_points++; } // Add points if we aren't on KOTH (which is capture time)
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);

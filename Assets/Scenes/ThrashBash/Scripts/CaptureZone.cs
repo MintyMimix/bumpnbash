@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.IO.Pipes;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -15,8 +16,8 @@ public class CaptureZone : UdonSharpBehaviour
 
     [Tooltip("How long should this point be locked before it can be captured?")]
     [SerializeField] public float initial_lock_duration = 30.0f;
-    [Tooltip("How often should this capture point perform a Physics check for player hitboxes?")]
-    [SerializeField] public float check_players_impulse = 0.5f;
+    //[Tooltip("How often should this capture point perform a Physics check for player hitboxes?")]
+    //[SerializeField] public float check_players_impulse = 0.5f;
     [Tooltip("How long should the contestor be allowed to remain outside of the capture zone before their progress fades? (MUST be > check_players_impulse)")]
     [SerializeField] [UdonSynced] public float contest_pause_duration = 4.0f;
     [Tooltip("How often should a capture point grant points? (While there shouldn't be much reason for this to not be 1, it's good to be prepared.)")]
@@ -32,10 +33,9 @@ public class CaptureZone : UdonSharpBehaviour
     [SerializeField] public TMP_Text UITeamText;
 
     [NonSerialized] [UdonSynced] public double last_network_time = 0.0f;
-    [NonSerialized] [UdonSynced] public float check_players_timer = 0.0f;
     [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
     [NonSerialized] [UdonSynced] public float initial_lock_timer = 0.0f;
-    [NonSerialized] [UdonSynced] public float hold_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public int hold_points = 0;
     [NonSerialized] [UdonSynced] public float point_grant_timer = 0.0f;
     [NonSerialized] [UdonSynced] public bool is_locked = true;
     [NonSerialized] [UdonSynced] public int hold_id = -1;
@@ -62,6 +62,7 @@ public class CaptureZone : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
+        players_on_point = new int[0];
 
     }
 
@@ -74,13 +75,13 @@ public class CaptureZone : UdonSharpBehaviour
     public void ResetZone()
     {
         hold_id = -1;
-        hold_timer = 0.0f;
+        hold_points = 0;
         contest_id = -1;
         contest_progress = 0.0f;
-        check_players_timer = 0.0f;
         initial_lock_timer = 0.0f;
         contest_pause_timer = 0.0f;
         is_locked = true;
+        players_on_point = new int[0];
         if (captureDisplayArea != null) { captureDisplayArea.SetActive(false); }
         if (gameController == null)
         {
@@ -117,21 +118,26 @@ public class CaptureZone : UdonSharpBehaviour
                 int hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
                 if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
                 {
-                    if (dict_points_values_arr[hold_index] < gameController.option_gm_goal) { dict_points_values_arr[hold_index]++; } // Normal condition
+                    hold_points = dict_points_values_arr[hold_index];
+                    if (hold_points < gameController.option_gm_goal - 1) { dict_points_values_arr[hold_index]++; } // Normal condition
                     else if (!overtime_enabled) { dict_points_values_arr[hold_index]++; } // Victory condition
                     else { } // Overtime condition
                 }
-                // Play sound while contesting
-                if ((
-                    (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
-                    || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
-                    ))
-                {
-                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
-                }
 
                 if (!Networking.IsMaster) { LocalGrantPoints(); }
-                else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
+                else 
+                { 
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); 
+                    if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
+                    else if (hold_index >= 0 && hold_points == gameController.option_gm_goal - 1 && overtime_enabled)
+                    {
+                        // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
+                    }
+                    else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
+                    {
+                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
+                    }
+                }
             }
         }
         else
@@ -143,7 +149,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (is_locked && initial_lock_timer >= initial_lock_duration)
         {
             is_locked = false;
-            gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Unlock);
+            if (Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Unlock, -1); }
         }
         else if (is_locked && gameController.round_state == (int)round_state_name.Ongoing)
         {
@@ -156,21 +162,9 @@ public class CaptureZone : UdonSharpBehaviour
             dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
             return; 
         }
-        
+
         // -- Below will only occur if the point is unlocked and active --
-
-        // Impulse check for players on point
-        if (check_players_timer >= check_players_impulse)
-        {
-            players_on_point = CheckPlayersOnPoint();
-            CheckPointContest();
-            check_players_timer = 0.0f;
-        }
-        else if (check_players_timer < check_players_impulse)
-        {
-            check_players_timer += networkTimeDelta;
-        }
-
+        CheckPointContest(networkTimeDelta);
 
         // If the contestor exists but is not present on the point, drain contestor's progress.
         if (contest_id >= 0 && contest_progress >= 0.0f)
@@ -182,35 +176,26 @@ public class CaptureZone : UdonSharpBehaviour
         // If the contest_progress exceeds duration, then contestor becomes the new holder; reset contestor and contest_progress.
         if (contest_progress >= gameController.option_gm_config_a)
         {
-            hold_id = contest_id;
-            contest_id = -1;
+            UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
+
+            // Assign a penalty if a holder lost the point within the last 5 seconds
+            int hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
+            if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && (gameController.option_gm_goal - dict_points_values_arr[hold_index]) <= 5) {
+                dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6; 
+                if (!Networking.IsMaster) { LocalGrantPoints(); }
+                else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
+            }
+
             contest_progress = 0.0f;
             contest_pause_timer = 0.0f;
             point_grant_timer = 0.0f;
+            hold_id = contest_id;
+            contest_id = -1;
 
             // Play SFX based on whether it was the player's team that captured it or not
-            if (gameController.option_teamplay)
-            {
-                if (gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
-                {
-                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Team);
-                }
-                else
-                {
-                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Other);
-                }
-            }
-            else
-            {
-                if (hold_id == Networking.LocalPlayer.playerId)
-                {
-                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Team);
-                }
-                else
-                {
-                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Other);
-                }
-            }
+            if (Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Capture_Team, hold_id); }
+
+
         }
         else if (contest_progress < 0.0f && contest_id >= 0)
         {
@@ -223,35 +208,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         
     }
-
-    public int[] CheckPlayersOnPoint()
-    {
-        LayerMask layers_to_hit = LayerMask.GetMask("PlayerHitbox", "LocalPlayerHitbox");
-        Bounds BoxBounds = transform.GetComponent<Collider>().bounds;
-        Vector3 capsuleHeight = new Vector3(0.0f, (BoxBounds.max.y - BoxBounds.min.y) / 2.0f, 0.0f);
-        float capsuleRadius = ((BoxBounds.max.z - BoxBounds.min.z) + (BoxBounds.max.x - BoxBounds.min.x)) / 4.0f;
-        Collider[] hitColliders = Physics.OverlapCapsule(transform.position - capsuleHeight, transform.position + capsuleHeight, capsuleRadius, layers_to_hit, QueryTriggerInteraction.Collide);
-        //Collider[] hitColliders = Physics.OverlapBox(transform.position, new Vector3((BoxBounds.max.x - BoxBounds.min.x), (BoxBounds.max.y - BoxBounds.min.y), (BoxBounds.max.z - BoxBounds.min.z)) );
-
-        int[] players_temp = new int[hitColliders.Length]; ushort players_count = 0;
-        foreach (Collider collider in hitColliders)
-        {
-            if (CheckCollider(collider))
-            {
-                players_temp[players_count] = Networking.GetOwner(collider.gameObject).playerId;
-                players_count++;
-            }
-        }
-        int[] players = new int[players_count];
-        for (int i = 0; i < players_count; i++)
-        {
-            players[i] = players_temp[i];
-        }
-
-        return players;
-    }
-
-    public void CheckPointContest()
+    public void CheckPointContest(float deltaTime)
     {
         bool holder_on_point = false; bool contestor_on_point = false; int others_unique_count = 0; int other_id = 0;
         for (int i = 0; i < players_on_point.Length; i++)
@@ -269,28 +226,95 @@ public class CaptureZone : UdonSharpBehaviour
             else if (compare_id == other_id) { others_unique_count++; }
             else { others_unique_count++; other_id = compare_id; }
         }
-        //UnityEngine.Debug.Log("[KOTH_TEST]: Holder on point: " + holder_on_point + "; Contestor on point: " + contestor_on_point + "; Others on point: " + others_unique_count + "; other_id = " + other_id + "; Players on Point: " + gameController.ConvertIntArrayToString(players_on_point));
+        //UnityEngine.Debug.Log("[CAPTURE_TEST]: Holder on point: " + holder_on_point + "; Contestor on point: " + contestor_on_point + "; Others on point: " + others_unique_count + "; other_id = " + other_id + "; Players on Point: " + gameController.ConvertIntArrayToString(players_on_point));
 
         // If the holder is on the point, enable overtime if there are others trying to contest it. Otherwise, disable overtime.
         // Overtime prevents a win, but allows progress.
-        if (holder_on_point) { overtime_enabled = (contestor_on_point || others_unique_count > 0); }
+        if (holder_on_point) 
+        { 
+            overtime_enabled = (contestor_on_point || others_unique_count > 0);
+            if (contestor_on_point) { contest_pause_timer = 0.0f; }
+        }   
         // If no one other than the contestors are on point, give them progress.
-        else if (contestor_on_point && others_unique_count == 0) { contest_progress += check_players_impulse; contest_pause_timer = 0.0f; }
-
+        // We make this an if rather than an else-if because we do want to assign new contestors regardless of whether the holder is on point; all that matters is whether or not a contestor is or is not
+        if (!holder_on_point && contestor_on_point && others_unique_count == 0) { contest_progress += deltaTime; contest_pause_timer = 0.0f; }
         // If there is no contestor AND there is only one team/player on the point AND they are not the holder, assign the contestor to them.
-        if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f))) 
-        { contest_id = other_id; contest_progress = 0.0f; contest_pause_timer = 0.0f; }
+        else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        {
+            contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = other_id;
+            if (Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Start_Team, contest_id); }
+        }
+        // Even if there are too many people on the point, we can still display a generic "Contested by multiple people" message
+        else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        {
+            contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = -2;
+        }
     }
 
-    private bool CheckCollider(Collider other)
+    [NetworkCallable]
+    public void PlayGlobalSoundEvent(int event_id, int override_id)
     {
-        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return false; }
-        // Did we hit a hitbox?
-        if (other.gameObject.GetComponent<PlayerHitbox>() != null && Networking.GetOwner(other.gameObject) != null)
+        // Point capture SFX
+        if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Capture_Team)
         {
-            return true;
+            if ((
+                (gameController.option_teamplay && gameController.local_plyAttr != null && override_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
+                ))
+            {
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Team);
+            }
+            else if ((
+                (gameController.option_teamplay && gameController.local_plyAttr != null && override_id != gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && override_id != Networking.LocalPlayer.playerId)
+                ))
+            {
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Other);
+            }
         }
-        return false;
+        // Point contesting start SFX
+        else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Contest_Start_Team)
+        {
+            if ((
+                (gameController.option_teamplay && gameController.local_plyAttr != null && override_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
+                ))
+            {
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Start_Team);
+            }
+            else if ((
+                (gameController.option_teamplay && gameController.local_plyAttr != null && override_id != gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && override_id != Networking.LocalPlayer.playerId)
+                ))
+            {
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Start_Other);
+            }
+        }
+        // Point contesting progress SFX
+        else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Contest_Progress)
+        {
+            if ((
+                (gameController.option_teamplay && gameController.local_plyAttr != null && override_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
+                ))
+            {
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+            }
+            // If we are not the one contesting the point and we are near end goal, locally play the victory near sound instead
+            else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10)
+            {
+                PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
+            }
+        }
+        else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Victory_Near)
+        {
+            gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Victory_Near, Mathf.Lerp(1.0f, 1.5f, 1.0f - ((gameController.option_gm_goal - 11 - hold_points) / 10)));
+        }
+        else
+        {
+            gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], event_id);
+        }
+
     }
 
     public void HandleUI()
@@ -302,7 +326,28 @@ public class CaptureZone : UdonSharpBehaviour
         UITeamFlagCanvas.transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
 
         Vector3 initScale = new Vector3(0.000375f, 0.0006f, 0.000375f);
-        UITeamFlagCanvas.transform.localScale = initScale * Mathf.Min(1.0f, (Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position)) / 2.0f)); 
+        Vector3 ratio_desired = Vector3.zero;
+        if (gameController != null && gameController.local_uiplytoself != null)
+        {
+            // scale of template / distance to template
+            Vector3 calc_ui_pos = Vector3.zero;
+            float ply_scale = 1.0f;
+            if (gameController != null && gameController.local_plyAttr != null) {
+                ply_scale = gameController.local_plyAttr.ply_scale;
+            }
+            calc_ui_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position +
+                (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * (0.5f * (1 / ply_scale) * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f)));
+            ratio_desired =
+                initScale
+                /
+                Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), calc_ui_pos));
+        }
+        // (scale_init / ply_dist_init)  = (scale_dist / current_dist)
+        // scale_dist = current_dist * (scale_init / ply_dist_init)
+        float scaleOtherUI = 1.0f;
+        if (gameController != null && gameController.local_ppp_options != null) { scaleOtherUI = ((1.0f + gameController.local_ppp_options.ui_other_scale) / 2.0f); }
+        UITeamFlagCanvas.transform.localScale = scaleOtherUI * (1.0f / 4.0f) * ratio_desired * Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position));
+        //if (gameController.local_ppp_options != null) { UITeamFlagCanvas.transform.localScale *= gameController.local_ppp_options.ui_harm_scale; }
 
         UITeamLockImage.enabled = false;
         UITeamFlagImage.enabled = false;
@@ -353,16 +398,38 @@ public class CaptureZone : UdonSharpBehaviour
             }
             else
             {
-                activeImage.color = Color.white;
-                UITeamCBImage.sprite = gameController.team_sprites[0];
-                UITeamText.color = Color.white;
-                RecolorDisplayArea(Color.white);
+                // If this is FFA, we can make the symbols and colors based on Teams 0 (self) and 1 (other)
                 VRCPlayerApi hold_ply = VRCPlayerApi.GetPlayerById(hold_id);
-                if (hold_ply != null) { displayText += hold_ply.displayName; }
-                else { displayText += "(DISCONNECTED)"; }
+                if (hold_ply != null) 
+                {
+                    if (hold_ply.playerId == Networking.LocalPlayer.playerId) 
+                    {
+                        activeImage.color = gameController.team_colors[0];
+                        UITeamCBImage.sprite = gameController.team_sprites[0];
+                        UITeamText.color = gameController.team_colors_bright[0];
+                        RecolorDisplayArea(gameController.team_colors[0]);
+                    }
+                    else
+                    {
+                        activeImage.color = gameController.team_colors[1];
+                        UITeamCBImage.sprite = gameController.team_sprites[1];
+                        UITeamText.color = gameController.team_colors_bright[1];
+                        RecolorDisplayArea(gameController.team_colors[1]);
+                    }
+                    displayText += hold_ply.displayName; 
+                }
+                else 
+                {
+                    activeImage.color = Color.white;
+                    UITeamCBImage.sprite = gameController.team_sprites[3];
+                    UITeamText.color = Color.white;
+                    RecolorDisplayArea(Color.white);
+                    displayText += "(DISCONNECTED)"; 
+                }
             }
 
-            float timeLeft = (gameController.option_gm_goal - dict_points_values_arr[hold_index]);
+            float timeLeft = gameController.option_gm_goal;
+            if (hold_index >= 0) { timeLeft -= dict_points_values_arr[hold_index]; }
             displayText += "\n ";
             if (timeLeft < 0.0f) { displayText += (Mathf.Floor(timeLeft * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'); }
             else { displayText += timeLeft.ToString(); }
@@ -379,7 +446,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (contest_id >= 0)
         {
-            displayText += "\n [Contestor: ";
+            displayText += "\n[Contestor: ";
             float contest_pct = (contest_progress / gameController.option_gm_config_a);
             Color32 iColor = new Color32(255, 255, 0, 255);
             Color32 iColorB = new Color32(255, 255, 0, 255);
@@ -392,7 +459,20 @@ public class CaptureZone : UdonSharpBehaviour
             else
             {
                 VRCPlayerApi contest_ply = VRCPlayerApi.GetPlayerById(contest_id);
-                if (contest_ply != null) { displayText += contest_ply.displayName; }
+                if (contest_ply != null) 
+                { 
+                    if (contest_ply.playerId == Networking.LocalPlayer.playerId) 
+                    { 
+                        iColor = gameController.team_colors[0];
+                        iColorB = gameController.team_colors_bright[0];
+                    }
+                    else
+                    {
+                        iColor = gameController.team_colors[2]; // Yellow to indicate contestor is someone else
+                        iColorB = gameController.team_colors_bright[2];
+                    }
+                    displayText += contest_ply.displayName; 
+                }
                 else { displayText += "(DISCONNECTED)"; }
             }
             Color colorLerp = new Color(
@@ -402,18 +482,29 @@ public class CaptureZone : UdonSharpBehaviour
                 , Mathf.Lerp(activeImage.color.a, ((Color)iColor).a, contest_pct)
                 );
             Color colorLerpB = new Color(
-                Mathf.Lerp(activeImage.color.r, ((Color)iColorB).r, contest_pct)
-                , Mathf.Lerp(activeImage.color.g, ((Color)iColorB).g, contest_pct)
-                , Mathf.Lerp(activeImage.color.b, ((Color)iColorB).b, contest_pct)
-                , Mathf.Lerp(activeImage.color.a, ((Color)iColorB).a, contest_pct)
+                Mathf.Lerp(UITeamText.color.r, ((Color)iColorB).r, contest_pct)
+                , Mathf.Lerp(UITeamText.color.g, ((Color)iColorB).g, contest_pct)
+                , Mathf.Lerp(UITeamText.color.b, ((Color)iColorB).b, contest_pct)
+                , Mathf.Lerp(UITeamText.color.a, ((Color)iColorB).a, contest_pct)
                 );
             activeImage.color = colorLerp;
             UITeamText.color = colorLerpB;
             RecolorDisplayArea(colorLerp);
-            displayText += " | " + Mathf.Round(contest_pct * 100.0f) + "%]";
+            displayText += "]\n" + Mathf.Round(contest_pct * 100.0f) + "%";
         }
-        UITeamText.text = displayText;
+        else if (contest_id == -2)
+        {
+            displayText += "\n[Contested by multiple ";
+            if (gameController.option_teamplay) { displayText += "teams!]"; }
+            else { displayText += "players!]"; }
+        }
 
+        if (overtime_enabled && hold_points == gameController.option_gm_goal - 1)
+        {
+            displayText = displayText + "\n -- OVERTIME! --";
+        }
+
+        UITeamText.text = displayText;
     }
 
     public void RecolorDisplayArea(Color color)
@@ -422,7 +513,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (captureDisplayArea.GetComponent<Renderer>() != null)
         {
             captureDisplayArea.GetComponent<Renderer>().material.color = color;
-            captureDisplayArea.GetComponent<Renderer>().material.renderQueue = (int)RenderQueue.Overlay + 1;
+            //captureDisplayArea.GetComponent<Renderer>().material.renderQueue = (int)RenderQueue.Overlay + 1;
         }
 
         foreach (Transform t in captureDisplayArea.GetComponentInChildren<Transform>())
@@ -442,13 +533,13 @@ public class CaptureZone : UdonSharpBehaviour
     public void SetRenderOrder()
     {
 
-        foreach (Transform t in captureDisplayArea.GetComponentInChildren<Transform>())
+        /*foreach (Transform t in captureDisplayArea.GetComponentInChildren<Transform>())
         {
             if (t.GetComponent<Renderer>() != null)
             {
                 t.GetComponent<Renderer>().material.renderQueue = (int)RenderQueue.Overlay + 1;
             }
-        }
+        }*/
 
     }
 
@@ -469,6 +560,84 @@ public class CaptureZone : UdonSharpBehaviour
         if (reward_ply_points >= 0) { gameController.local_plyAttr.ply_points = (ushort)reward_ply_points; }
 
         if (Networking.IsMaster) { gameController.CheckForRoundGoal(); }
+    }
+
+    public void AddPlayerOnPoint(int player_id)
+    {
+        // Check the array for the ID, and if it does not exist, add it
+        if (players_on_point == null) { players_on_point = new int[0]; }
+        int[] add_players = new int[players_on_point.Length + 1];
+        for (int i = 0; i < players_on_point.Length; i++)
+        {
+            if (players_on_point[i] == player_id) { return; } // We do not need to proceed any further if the ID is already in the array
+            add_players[i] = players_on_point[i];
+        }
+        add_players[players_on_point.Length] = player_id;
+        players_on_point = add_players;
+    }
+
+    public void RemovePlayerOnPoint(int player_id)
+    {
+        // Check the array for the ID, and if it exists, remove it
+        if (players_on_point == null) { players_on_point = new int[0]; return; }
+        int[] remove_players;
+        if (players_on_point.Length == 0) { remove_players = new int[1]; }
+        else { remove_players = new int[players_on_point.Length - 1]; }
+        int remove_index = -1;
+        for (int i = 0; i < players_on_point.Length; i++)
+        {
+            if (players_on_point[i] == player_id) { remove_index = i; continue; } 
+
+            if (remove_index < 0)
+            {
+                if (i == remove_players.Length) { return; } // If we're at the end of the array and no player was found, we do not need to proceed
+                else { remove_players[i] = players_on_point[i]; }
+            }
+            else
+            {
+                if (i < remove_index) { remove_players[i] = players_on_point[i]; }
+                else if (i > remove_index) { remove_players[i - 1] = players_on_point[i]; }
+            }
+        }
+        players_on_point = remove_players;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return; }
+        VRCPlayerApi player = Networking.GetOwner(other.gameObject);
+        if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
+        
+        // If we are not the master, signal to them that we entered the trigger
+        if (!Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerEnter", player.playerId); }
+        // Regardless of whether or not we are the master, try manipulate the array just so we have a local copy
+        AddPlayerOnPoint(player.playerId);
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other == null || other.gameObject == null || !other.gameObject.activeInHierarchy) { return; }
+        VRCPlayerApi player = Networking.GetOwner(other.gameObject);
+        if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
+        // If we are not the master, signal to them that we entered the trigger
+        if (!Networking.IsMaster) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerExit", player.playerId); }
+        // Regardless of whether or not we are the master, try manipulate the array just so we have a local copy
+        RemovePlayerOnPoint(player.playerId);
+    }
+
+    [NetworkCallable]
+    public void SignalTriggerEnter(int player_id)
+    {
+        // Function to signal to the master that a player has entered the trigger, even if the master's client doesn't see it yet
+        AddPlayerOnPoint(player_id);
+
+    }
+
+    [NetworkCallable]
+    public void SignalTriggerExit(int player_id)
+    {
+        // Function to signal to the master that a player has exited the trigger, even if the master's client doesn't see it yet
+        RemovePlayerOnPoint(player_id);
     }
 
 }
