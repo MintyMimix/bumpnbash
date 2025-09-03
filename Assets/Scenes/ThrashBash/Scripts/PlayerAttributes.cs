@@ -33,8 +33,6 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float last_kill_duration = 4.0f;
     [NonSerialized] public float last_kill_timer = 0.0f;
 
-    [NonSerialized] public float ply_eyeheight_default, ply_eyeheight_desired, ply_eyeheight_current;
-
     [SerializeField] public GameController gameController;
     [NonSerialized] public float ply_respawn_timer = 0.0f;
 
@@ -190,18 +188,24 @@ public class PlayerAttributes : UdonSharpBehaviour
         combo_receive++;
         last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
         if (attacker_id >= 0) {
-            SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type);
+            var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
+            plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type);
         }
     }
 
+    // This is failing BECAUSE IT'S BEING RAN ON THE OTHER PLAYER'S ATTRIBUTE
     [NetworkCallable]
     public void KillOtherPlayer(int attackerPlyId, int defenderPlyId)
     {
+        Debug.Log("Is owner? " + Networking.IsOwner(gameObject));
+        Debug.Log("LocalPlayer.playerId: " + Networking.LocalPlayer.playerId);
+        Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
-        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_index.Kill]);
+        Debug.Log("We killed Defender ID: " + defenderPlyId);
         ply_points++;
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
+        gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_index.Kill]);
     }
 
     public void HandleLocalPlayerDeath()
@@ -211,7 +215,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (ply_state == (int)player_state_name.Alive && gameController.round_state == (int)round_state_name.Ongoing)
         {
             ply_state = (int)player_state_name.Respawning;
-            ply_lives--;
+            // Check if we are in lives mode, and if so, if we are on the team that tracks lives
+            if (!gameController.option_goal_points_a || (!gameController.option_goal_points_b && ply_team == 1) ) { ply_lives--; }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
         {
@@ -225,7 +230,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             //UnityEngine.Debug.Log("Whoa, you died in an unusual way! Contact a developer!");
         }
-        // To-Do: Manage behavior based on GameHandler.LivesMode
+
+        // To-Do: Manage behavior based on gamemode
         if (ply_lives > 0)
         {
             ply_dp = ply_dp_default;
@@ -237,9 +243,13 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_state = (int)player_state_name.Dead;
 
         }
-        if (last_hit_by_ply != null) { 
-            SendCustomNetworkEvent(NetworkEventTarget.All, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId); 
+
+        if (last_hit_by_ply != null) {
+            var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
+            plyAttr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId); 
         }
+
+        if (gameController.option_gamemode == (int)round_mode_name.Infection && ply_team != 1) { ply_team = 1; }
 
         ResetPowerups();
 

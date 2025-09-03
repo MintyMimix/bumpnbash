@@ -47,21 +47,25 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         var LivesText = "";
         if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points)
+        else if (gameController.option_goal_points_a && !(playerAttributes.ply_team == 1 && !gameController.option_goal_points_b))
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
             PTOLivesImage.sprite = PTOPointsSprite;
+            PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
         }
         else
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTOLivesImage.sprite = PTOLivesSprite;
+            PTOLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
         }
         PTOLives.text = LivesText;
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
+        PTODamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 255), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
+
 
         var InvulText = Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start || playerAttributes.ply_state != (int)player_state_name.Respawning)
@@ -124,7 +128,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
     private void FixedUpdate()
     {
         if (owner == Networking.LocalPlayer || owner == null) { return; }
-        var scaleUI = (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        var scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);
         transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * scaleUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
     }

@@ -136,10 +136,10 @@ public class PlayerWeapon : UdonSharpBehaviour
                     break;
             }
 
-            TrackingDataType handdt;
+            /*TrackingDataType handdt;
             if (transform.GetComponent<VRCPickup>().currentHand == VRC_Pickup.PickupHand.Right) { handdt = TrackingDataType.RightHand;  }
             else if (transform.GetComponent<VRCPickup>().currentHand == VRC_Pickup.PickupHand.Left) { handdt = TrackingDataType.LeftHand; }
-            else { handdt = TrackingDataType.Head; }
+            else { handdt = TrackingDataType.Head; }*/
 
             var distance = 0.0f;
             if (keep_parent) { distance = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Distance];  }

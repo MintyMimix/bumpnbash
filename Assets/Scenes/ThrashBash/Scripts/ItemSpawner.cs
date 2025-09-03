@@ -27,7 +27,9 @@ public class ItemSpawner : UdonSharpBehaviour
     [Tooltip("The odds of an item being spawned every impulse, measured between 0.0 and 1.0")]
     [SerializeField] [UdonSynced] public float item_spawn_chance = 1.0f; 
     [Tooltip("How long a powerup should last when picked up from this spawner, in seconds")]
-    [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f; 
+    [SerializeField] [UdonSynced] public float item_spawn_powerup_duration = 10.0f;
+    [Tooltip("Which team # should this be assigned to? (-1: all, -2: FFA-only)")]
+    [SerializeField][UdonSynced] public sbyte item_spawn_team = -1;
 
     [NonSerialized][UdonSynced] public int item_spawn_global_index = -1;
     [NonSerialized][UdonSynced] public int item_spawn_state = (int)item_spawn_state_name.Disabled; // See: item_spawn_state_name
@@ -65,6 +67,7 @@ public class ItemSpawner : UdonSharpBehaviour
         // Events which only run when the timer ticks to zero below
         if (!ProcessTimer()) { return; }
 
+        // Only spawn the item if it's in a spawnable state
         if (item_spawn_state == (int)item_spawn_state_name.Spawnable)
         {
             // Spawn the item
@@ -99,6 +102,7 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_index < (int)powerup_type_name.ENUM_LENGTH)
         {
             child_powerup.item_owner_id = -1;
+            child_powerup.item_team_id = item_spawn_team;
             child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_state = (int)item_state_name.InWorld;
             child_powerup.item_type = (int)item_type_name.Powerup;
@@ -115,6 +119,7 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_owner_id = -1;
+            child_powerup.item_team_id = item_spawn_team;
             child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;

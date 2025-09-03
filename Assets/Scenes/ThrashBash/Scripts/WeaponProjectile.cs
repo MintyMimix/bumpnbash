@@ -67,7 +67,9 @@ public class WeaponProjectile : UdonSharpBehaviour
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
         if (projectile_timer_local >= projectile_duration || projectile_timer_network >= projectile_duration)
         {
-            OnProjectileHit(transform.position);
+            var rb = this.GetComponent<Rigidbody>();
+            rb.MovePosition(CalcPosAtTime(projectile_duration));
+            OnProjectileHit(CalcPosAtTime(projectile_duration));
         }
     }
 

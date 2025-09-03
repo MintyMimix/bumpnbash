@@ -163,18 +163,8 @@ public class ItemPowerup : ItemGeneric
 
     private void OnTriggerEnter(Collider other)
     {
-        // If this item is not in the world, don't bother checking collisions
-        if (item_state != (int)item_state_name.InWorld || item_is_template) { return; }
-
-        // We also only care if a playerHitbox is colliding with this (layers should make this impossible, but just in case)
-        if (other.GetComponent<PlayerHitbox>() == null) { return; }
-
-        // We only care if someone else got this if this is a free-floating non-template item (i.e. neither handled by a spawner nor created by a player)
-        if (Networking.GetOwner(other.gameObject) != Networking.LocalPlayer)
-        {
-            if (spawner_parent == null) { Destroy(gameObject); }
-            else { return;  }
-        }
+        // Check if the player colliding with this is valid
+        if (!CheckValidCollisionEvent(other)) { return; }
 
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         var plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);

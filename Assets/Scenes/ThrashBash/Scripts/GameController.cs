@@ -1,6 +1,9 @@
 ﻿
+using BestHTTP.SecureProtocol.Org.BouncyCastle.Utilities.IO;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Sockets;
 using TMPro;
 using UdonSharp;
@@ -10,6 +13,9 @@ using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
 using VRC.Udon.Common.Interfaces;
+using static UnityEngine.InputSystem.LowLevel.InputStateHistory;
+using static UnityEngine.UIElements.UxmlAttributeDescription;
+using static VRC.Core.ApiPendingTransaction;
 
 // A note on ENUM_LENGTH: this must ALWAYS BE LAST since we are using it as a shorthand for the length of an enumerator! (The typical method of typeof() is not supported in U#)
 public enum game_sfx_index
@@ -32,6 +38,11 @@ public enum weapon_stats_name
     Cooldown, Projectile_Distance, Projectile_Duration, Projectile_Type, Hurtbox_Damage, Hurtbox_Size, Hurtbox_Duration, Hurtbox_Damage_Type, ENUM_LENGTH
 }
 
+public enum round_mode_name
+{
+    Survival, Clash, BossBash, Infection, ENUM_LENGTH
+}
+
 // shorts and unsigneds
 public class GameController : UdonSharpBehaviour
 {
@@ -45,11 +56,17 @@ public class GameController : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Button ui_round_start_button;
     [SerializeField] public UnityEngine.UI.Toggle ui_round_master_only_toggle;
     [SerializeField] public TextMeshProUGUI ui_round_master_text;
+    [SerializeField] public UIRoundTeamPanel ui_round_team_panel;
     [SerializeField] public UnityEngine.UI.Toggle ui_round_teamplay_toggle;
     [SerializeField] public TMP_InputField ui_round_teamplay_count_input;
+    [SerializeField] public UnityEngine.UI.Button ui_round_teamplay_sort_button;
+    [SerializeField] public TMP_InputField ui_round_length_input;
+
     [SerializeField] public TMP_Dropdown ui_round_option_dropdown;
-    [SerializeField] public TextMeshProUGUI ui_round_option_goal_text;
-    [SerializeField] public TMP_InputField ui_round_option_goal_input;
+    [SerializeField] public TextMeshProUGUI ui_round_option_goal_text_a;
+    [SerializeField] public TextMeshProUGUI ui_round_option_goal_text_b;
+    [SerializeField] public TMP_InputField ui_round_option_goal_input_a;
+    [SerializeField] public TMP_InputField ui_round_option_goal_input_b;
 
     [SerializeField] public GameObject room_ready_spawn;
     [SerializeField] public Collider[] room_game_spawnzones;
@@ -109,16 +126,28 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public string ply_in_game_str = "";
     [NonSerialized] public int[] ply_in_game_arr;
 
-    [UdonSynced] public bool option_teamplay = false; 
+    [UdonSynced] public bool option_teamplay = false;
     [UdonSynced] public byte team_count = 1;
     [SerializeField] public Color32[] team_colors; // Assign in inspector
-    [NonSerialized] public int[][] ply_teams_arr;
+    [NonSerialized][UdonSynced] public string teams_assigned_synced_str = "";
+    [NonSerialized] public int[] teams_assigned_synced_arr;
 
-    [UdonSynced] public bool option_goal_points = false; // If true, points are used instead of lives
-    [UdonSynced] public ushort option_goal_value = 10;
+    //[NonSerialized] public int[][] ply_teams_arr;
+
+
+    [UdonSynced] public byte option_gamemode = 0;
+    [NonSerialized][UdonSynced] public bool option_goal_points_a = false; // If true, points are used instead of lives
+    [NonSerialized][UdonSynced] public ushort option_goal_value_a = 10;
+    [NonSerialized][UdonSynced] public bool option_goal_points_b = false; // If true, points are used instead of lives
+    [NonSerialized][UdonSynced] public ushort option_goal_value_b = 3;
+    [NonSerialized][UdonSynced] public bool option_force_teams = false; // Should team limits be enforced? If so
+    [NonSerialized][UdonSynced] public string option_team_limits_str = "0,1"; // What is the max # of players per team? Size must match team_count
+    [NonSerialized] public int[] option_team_limits_arr;
     [NonSerialized][UdonSynced] public bool option_start_from_master_only = false;
 
     [NonSerialized] [UdonSynced] int ply_master_id = 0;
+
+    [NonSerialized] string room_ready_status_text = "";
 
     // -- Initialization --
     private void Start()
@@ -126,7 +155,9 @@ public class GameController : UdonSharpBehaviour
         item_spawns = new ItemSpawner[0];
         ply_ready_arr = new int[0];
         ply_in_game_arr = new int[0];
-        ply_teams_arr = new int[0][];
+        option_team_limits_arr = new int[0];
+        teams_assigned_synced_arr = new int[0];
+        //ply_teams_arr = new int[0][];
 
         ply_master_id = Networking.LocalPlayer.playerId;
 
@@ -161,7 +192,7 @@ public class GameController : UdonSharpBehaviour
             case (int)weapon_type_name.PunchingGlove:
                 weapon_stats[(int)weapon_stats_name.Cooldown] = 1.1f;
                 weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.8f;
-                weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.1f;
+                weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.001f;
                 weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 10.0f;
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 0.8f;
@@ -187,13 +218,14 @@ public class GameController : UdonSharpBehaviour
     {
         // Local handling
         round_timer = (float)Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), round_start_ms);
-        room_ready_txt.text =
-            "Game State: " + round_state.ToString()
+        room_ready_txt.text = "Game State: " + round_state.ToString()
             + "\nPlayers Ready: " + ply_ready_arr.Length.ToString() + "\n {" + ply_ready_str + "}"
             + "\n Players In-Game: " + ply_in_game_arr.Length.ToString() + "\n {" + ply_in_game_str + "}"
+            + room_ready_status_text
+            + "\n Teams: " + teams_assigned_synced_str
+            ;
 
-        ;
-
+        /*
         if (round_state == (int)round_state_name.Ready || round_state == (int)round_state_name.Ongoing) { ply_teams_arr = DebugTeamArray(ply_in_game_arr); }
         else { ply_teams_arr = DebugTeamArray(ply_ready_arr); }
         if (ply_teams_arr != null)
@@ -211,7 +243,7 @@ public class GameController : UdonSharpBehaviour
                     if (j == ply_teams_arr[i].Length - 1) { room_ready_txt.text += "}"; }
                 }
             }
-        }
+        }*/
 
         // Master handling
         if (!Networking.LocalPlayer.isMaster) { return; }
@@ -222,7 +254,9 @@ public class GameController : UdonSharpBehaviour
 
             for (int j = 0; j < item_spawns.Length; j++)
             {
-                item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Spawnable;
+                // Don't spawn the item if it is FFA-only and we are in teamplay mode
+                if (option_teamplay && item_spawns[j].item_spawn_team == -2) { item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Disabled; }
+                else { item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Spawnable; }
             }
 
             RequestSerialization();
@@ -237,6 +271,7 @@ public class GameController : UdonSharpBehaviour
         {
             round_start_ms = Networking.GetServerTimeInSeconds();
             round_state = (int)round_state_name.Start;
+            RoundRefreshUI();
             RequestSerialization();
         }
     }
@@ -253,11 +288,44 @@ public class GameController : UdonSharpBehaviour
     {
         ui_round_teamplay_toggle.isOn = option_teamplay;
         ui_round_master_only_toggle.isOn = option_start_from_master_only;
+        ui_round_team_panel.UpdateFlags();
 
         bool enableRoundStartButton = true;
-        if (!Networking.LocalPlayer.isMaster && option_start_from_master_only) { enableRoundStartButton = false; }
-        else if (round_state != (int)round_state_name.Start) { enableRoundStartButton = false; }
+        room_ready_status_text = "";
+        if (!Networking.LocalPlayer.isMaster && option_start_from_master_only) { enableRoundStartButton = false; room_ready_status_text = "\n (Cannot start round; user is not instance owner!)"; }
+        else if (round_state != (int)round_state_name.Start) { enableRoundStartButton = false; room_ready_status_text = "\n (Cannon start new round; a game is already ongoing!)"; }
+        else if (option_gamemode == (int)round_mode_name.BossBash || option_gamemode == (int)round_mode_name.Infection)
+        {
+            if (ui_round_team_panel.team_count_arr.Length < 2 || option_team_limits_arr.Length < 2) { enableRoundStartButton = false; room_ready_status_text = "\n (Cannot start game; there are fewer than 2 teams!)"; }
+            else if (ui_round_team_panel.team_count_arr[1] > option_team_limits_arr[1]) { enableRoundStartButton = false; room_ready_status_text = "\n (Cannot start game; there are too many players on the 2nd team!)"; }
+            else if (ui_round_team_panel.team_count_arr[1] <= 0) { enableRoundStartButton = false; room_ready_status_text = "\n (Cannot start game; there are not enough players on the 2nd team!)"; }
+        }
+
         ui_round_start_button.enabled = enableRoundStartButton;
+        ui_round_length_input.text = Mathf.FloorToInt(round_length).ToString();
+
+        if (Networking.LocalPlayer.isMaster)
+        {
+            ui_round_master_only_toggle.enabled = true;
+            ui_round_teamplay_toggle.enabled = true;
+            ui_round_option_dropdown.enabled = true;
+            ui_round_length_input.enabled = true;
+            ui_round_option_goal_input_a.enabled = true;
+            ui_round_option_goal_input_b.enabled = true;
+            ui_round_teamplay_sort_button.enabled = option_teamplay && !option_force_teams;
+            ui_round_teamplay_count_input.enabled = option_teamplay && !option_force_teams;
+        }
+        else
+        {
+            ui_round_master_only_toggle.enabled = false;
+            ui_round_teamplay_toggle.enabled = false;
+            ui_round_option_dropdown.enabled = false;
+            ui_round_length_input.enabled = false;
+            ui_round_option_goal_input_a.enabled = false;
+            ui_round_option_goal_input_b.enabled = false;
+            ui_round_teamplay_sort_button.enabled = false;
+            ui_round_teamplay_count_input.enabled = false;
+        }
 
         if (VRCPlayerApi.GetPlayerById(ply_master_id) != null)
         {
@@ -265,33 +333,38 @@ public class GameController : UdonSharpBehaviour
         }
 
         ui_round_teamplay_count_input.text = team_count.ToString();
-        if (option_goal_points)
+        ui_round_option_dropdown.value = option_gamemode;
+        if (option_gamemode == (int)round_mode_name.Survival)
         {
-            ui_round_option_goal_text.text = "Points to Win";
-            ui_round_option_goal_input.text = option_goal_value.ToString();
-            ui_round_option_dropdown.value = 1;
-        }
-        else
-        {
-            ui_round_option_goal_text.text = "Lives";
-            ui_round_option_goal_input.text = plysettings_lives.ToString();
-            ui_round_option_dropdown.value = 0;
-        }
+            ui_round_option_goal_text_a.text = "Lives";
+            ui_round_option_goal_input_a.text = plysettings_lives.ToString();
+            ui_round_option_goal_text_b.gameObject.SetActive(false);
+            ui_round_option_goal_input_b.gameObject.SetActive(false);
 
-        if (Networking.LocalPlayer.isMaster) {
-            ui_round_master_only_toggle.enabled = true;
-            ui_round_teamplay_toggle.enabled = true;
-            ui_round_option_dropdown.enabled = true;
-            ui_round_option_goal_input.enabled = true;
-            ui_round_teamplay_count_input.enabled = true;
         }
-        else
+        else if (option_gamemode == (int)round_mode_name.Clash)
         {
-            ui_round_master_only_toggle.enabled = false;
-            ui_round_teamplay_toggle.enabled = false;
-            ui_round_option_dropdown.enabled = false;
-            ui_round_option_goal_input.enabled = false;
-            ui_round_teamplay_count_input.enabled = false;
+            ui_round_option_goal_text_a.text = "Points to Win";
+            ui_round_option_goal_input_a.text = option_goal_value_a.ToString();
+            ui_round_option_goal_text_b.gameObject.SetActive(false);
+            ui_round_option_goal_input_b.gameObject.SetActive(false);
+        }
+        else if (option_gamemode == (int)round_mode_name.BossBash)
+        {
+            ui_round_option_goal_text_a.text = "Boss Eliminations";
+            ui_round_option_goal_input_a.text = option_goal_value_a.ToString();
+            ui_round_option_goal_text_b.text = "Boss Lives";
+            ui_round_option_goal_input_b.text = option_goal_value_b.ToString();
+            ui_round_option_goal_text_b.gameObject.SetActive(true);
+            ui_round_option_goal_input_b.gameObject.SetActive(true);
+
+        }
+        else if (option_gamemode == (int)round_mode_name.Infection)
+        {
+            ui_round_option_goal_text_a.text = "Starting Infected";
+            ui_round_option_goal_input_a.text = option_goal_value_a.ToString();
+            ui_round_option_goal_text_b.gameObject.SetActive(false);
+            ui_round_option_goal_input_b.gameObject.SetActive(false);
         }
 
     }
@@ -299,34 +372,72 @@ public class GameController : UdonSharpBehaviour
     public void RoundOptionAdjust()
     {
         if (!Networking.LocalPlayer.isMaster) { return; }
+
+        option_gamemode = (byte)ui_round_option_dropdown.value;
+
+        int try_goal_parse = 1;
+        if (option_gamemode == (int)round_mode_name.Survival)
+        {
+            option_goal_points_a = false;
+            option_goal_points_b = true;
+            Int32.TryParse(ui_round_option_goal_input_a.text, out try_goal_parse);
+            try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 1), 65535);
+            plysettings_lives = (ushort)try_goal_parse;
+        }
+        else 
+        {
+            plysettings_lives = 1; // Just set lives to 1 if we're in points mode
+            option_goal_points_a = true;
+            option_goal_points_b = true;
+            Int32.TryParse(ui_round_option_goal_input_a.text, out try_goal_parse);
+            try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 1), 65535);
+            option_goal_value_a = (ushort)try_goal_parse;
+            if (option_gamemode == (int)round_mode_name.Infection)
+            {
+                ui_round_teamplay_toggle.isOn = true;
+                ui_round_teamplay_count_input.text = "2";
+                option_force_teams = true;
+                option_team_limits_str = "80," + option_goal_value_a;
+                option_team_limits_arr = ConvertStrToIntArray(option_team_limits_str);
+            }
+            else if (option_gamemode == (int)round_mode_name.BossBash)
+            {
+                ui_round_teamplay_toggle.isOn = true;
+                ui_round_teamplay_count_input.text = "2";
+                option_force_teams = true;
+                option_team_limits_str = "80,1";
+                option_team_limits_arr = ConvertStrToIntArray(option_team_limits_str);
+
+                option_goal_points_b = false;
+                Int32.TryParse(ui_round_option_goal_input_b.text, out try_goal_parse);
+                try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 1), 65535);
+                option_goal_value_b = (ushort)try_goal_parse;
+            }
+        }
+
         option_teamplay = ui_round_teamplay_toggle.isOn;
         option_start_from_master_only = ui_round_master_only_toggle.isOn;
+        option_force_teams = false;
 
         int team_input_parse = 1;
         Int32.TryParse(ui_round_teamplay_count_input.text, out team_input_parse);
-        team_input_parse = Mathf.Min(Mathf.Max(team_input_parse, 0), team_colors.Length - 1, 255);
+        team_input_parse = Mathf.Min(Mathf.Max(team_input_parse, 1), team_colors.Length - 1, 255);
         if (option_teamplay) { team_count = (byte)team_input_parse; }
         else { team_count = 1; }
 
-        int try_goal_parse = 1;
-        if (ui_round_option_dropdown.value == 1)
+        
+        int try_round_length_parse = Mathf.FloorToInt(round_length);
+        Int32.TryParse(ui_round_length_input.text, out try_round_length_parse);
+        try_round_length_parse = Mathf.Min(Mathf.Max(try_round_length_parse, 60), 2147483647);
+        round_length = (float)try_round_length_parse;
+
+        if (round_state == (int)round_state_name.Start) 
         {
-            option_goal_points = true;
-            Int32.TryParse(ui_round_option_goal_input.text, out try_goal_parse);
-            try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 0), 65535);
-
-            option_goal_value = (ushort)try_goal_parse;
-
-        }
-        else
-        {
-            option_goal_points = false;
-            Int32.TryParse(ui_round_option_goal_input.text, out try_goal_parse);
-            try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 0), 65535);
-
-            plysettings_lives = (ushort)try_goal_parse;
+            teams_assigned_synced_arr = ui_round_team_panel.player_team_list_arr;
+            teams_assigned_synced_str = ui_round_team_panel.player_team_list_str;
         }
 
+        ui_round_team_panel.UpdateFlags();
         RequestSerialization();
         RoundRefreshUI();
     }
@@ -390,7 +501,7 @@ public class GameController : UdonSharpBehaviour
         }
     }
 
-    public int[][] DebugTeamArray(int[] trackingArr)
+    /*public int[][] DebugTeamArray(int[] trackingArr)
     {
         if (!Networking.LocalPlayer.isMaster) { return new int[0][]; }
         if (team_count <= 0) { UnityEngine.Debug.LogError("Team count is <= 0!"); return new int[0][]; } // This should never happen
@@ -409,12 +520,13 @@ public class GameController : UdonSharpBehaviour
             ply_teams[j] = ply_team;
         }
         return ply_teams;
-    }
+    }*/
 
     // -- Round Management --
     [NetworkCallable]
     public void NetworkRoundStart()
     {
+        // To-do: add gamemode variables
         for (var i = 0; i < ply_ready_arr.Length; i++)
         {
             var player = VRCPlayerApi.GetPlayerById(ply_ready_arr[i]);
@@ -430,7 +542,6 @@ public class GameController : UdonSharpBehaviour
             TeleportLocalPlayerToGameSpawnZone(i % room_game_spawnzones.Length);
             playerData.ply_dp = plysettings_dp;
             playerData.ply_dp_default = plysettings_dp;
-            playerData.ply_lives = plysettings_lives;
             playerData.ply_points = plysettings_points;
             playerData.ply_respawn_duration = plysettings_respawn_duration;
             playerData.ply_scale = plysettings_scale;
@@ -440,10 +551,16 @@ public class GameController : UdonSharpBehaviour
             playerData.ply_grav = plysettings_grav;
             playerData.ply_state = (int)player_state_name.Alive;
             if (!option_teamplay) { playerData.ply_team = 0; }
-            // To-Do: Function to validate spawn zones
+            else { playerData.ply_team = teams_assigned_synced_arr[i]; }
+            if (ui_round_option_dropdown.value == (int)round_mode_name.BossBash && playerData.ply_team == 1) { playerData.ply_lives = option_goal_value_b; }
+            else { playerData.ply_lives = plysettings_lives; }
 
-
-
+            if (ui_round_option_dropdown.value == (int)round_mode_name.BossBash && playerData.ply_team == 1) 
+            {
+                playerData.ply_scale = plysettings_scale * 3.0f;
+                playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * 3.0f;
+                playerData.plyEyeHeight_change = true;
+            }
         }
 
         snd_ready_music_source.Stop();
@@ -478,6 +595,7 @@ public class GameController : UdonSharpBehaviour
             {
                 if (plyAttributes.ply_team > team_count) { UnityEngine.Debug.LogError("Player is on team " + plyAttributes.ply_team.ToString() + ", but the game only has " + team_count.ToString() + " teams!"); continue; }
                 if (plyAttributes.ply_team >= 0) { plyAlivePerTeam[plyAttributes.ply_team]++; } // Should only ever error out in ClientSim, but just in case, let's make sure it's not index < 0
+                total_players_alive++;
             }
         }
         return plyAlivePerTeam;
@@ -538,8 +656,20 @@ public class GameController : UdonSharpBehaviour
         bool teamplayOver = false;
         bool freeForAllOver = false;
 
-        // Lives mode
-        if (!option_goal_points) { 
+        // Points Check
+        // Right now, all gamemodes use option_goal_value_a for points, but this may need support for future modes
+        if (option_goal_points_a)
+        {
+            var plyPointsPerTeam = new int[team_count];
+            plyPointsPerTeam = CheckAllTeamPoints();
+            for (int j = 0; j < team_count; j++)
+            {
+                if (plyPointsPerTeam[j] > option_goal_value_a) { teamplayOver = true; break; }
+            }
+        }
+
+        // Lives check
+        if (!teamplayOver && (!option_goal_points_a || !option_goal_points_b)) { 
             var plyAlivePerTeam = new int[team_count];
             var teams_alive = 0;
             var total_players_alive = 0;
@@ -562,17 +692,7 @@ public class GameController : UdonSharpBehaviour
                     (ply_in_game_arr.Length == 0)
                 );
         }
-        // Points mode
-        else
-        {
-            var plyPointsPerTeam = new int[team_count];
-            plyPointsPerTeam = CheckAllTeamPoints();
-            for (int j = 0; j < team_count; j++)
-            {
-                if (plyPointsPerTeam[j] > option_goal_value) { teamplayOver = true; break; }
-            }
-        }
-
+ 
         if (teamplayOver || freeForAllOver)
         {
             round_state = (int)round_state_name.Over;
@@ -597,6 +717,9 @@ public class GameController : UdonSharpBehaviour
                 if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
                 if (plyAttributes.ply_state != (int)player_state_name.Spectator) { plyAttributes.ply_state = (int)player_state_name.Inactive; }
                 plyAttributes.ResetPowerups();
+                plyAttributes.ply_scale = 1.0f;
+                plyAttributes.plyEyeHeight_desired = plyAttributes.plyEyeHeight_default;
+                plyAttributes.plyEyeHeight_change = true;
                 TeleportLocalPlayerToReadyRoom();
 
             }
@@ -723,9 +846,16 @@ public class GameController : UdonSharpBehaviour
     [NetworkCallable]
     public void ManipulatePlyTrackingArray(int player_id, int ply_tracking_arr_id, bool op_add)
     {
-        //Debug.Log("WE ARE MANIPULATING ARRAY " + ply_tracking_arr_id + " AND WILL " + op_add + " ADD TO IT");
-        if (op_add) { AddPlyToTrackingArray(player_id, ply_tracking_arr_id); }
-        else { RemovePlyFromTrackingArray(player_id, ply_tracking_arr_id); }
+        if (op_add) 
+        { 
+            AddPlyToTrackingArray(player_id, ply_tracking_arr_id);
+            if (ply_tracking_arr_id == (int)ply_tracking_arr_name.Ready) { ui_round_team_panel.ManipulateTeamArray(player_id, op_add); }
+        }
+        else 
+        {
+            if (ply_tracking_arr_id == (int)ply_tracking_arr_name.Ready) { ui_round_team_panel.ManipulateTeamArray(player_id, op_add); }
+            RemovePlyFromTrackingArray(player_id, ply_tracking_arr_id); 
+        }
         RequestSerialization();
     }
 
@@ -781,6 +911,55 @@ public class GameController : UdonSharpBehaviour
             arrOut[j] = valid_indices[j];
         }
         return arrOut;
+    }
+
+    [NetworkCallable]
+    public void PlayerAutoSortTeams()
+    {
+        if (!Networking.LocalPlayer.isMaster) { return; }
+        if (round_state == (int)round_state_name.Start)
+        {
+            teams_assigned_synced_arr = ui_round_team_panel.player_team_list_arr;
+            teams_assigned_synced_str = ui_round_team_panel.player_team_list_str;
+        }
+        var team_list_sorted = teams_assigned_synced_arr;
+        var counts_per_team = new int[team_count];
+
+        var iterate_index = 0;
+        var player_count_to_sort = teams_assigned_synced_arr.Length;
+        var shrinking_index_array = new int[teams_assigned_synced_arr.Length];
+        for (int i = 0; i < team_list_sorted.Length; i++)
+        {
+            shrinking_index_array[i] = i;
+        }
+
+        while (iterate_index < player_count_to_sort)
+        {
+            var randIndex = shrinking_index_array[UnityEngine.Random.Range((int)0, (int)shrinking_index_array.Length)];
+
+            // If we are enforcing team limits, only distribute up to the limit for each team, in reverse order. Otherwise, distribute evenly.
+            // To-do: Why this fails: if I have 4 players, wanting to distribute to 3 teams, it will assign the first 3, but never assign the 4th due to exceeding limit, thus failing.
+            UnityEngine.Debug.Log("max_team_size calc: " + player_count_to_sort / team_count);
+            var max_team_size = Mathf.Min(1,Mathf.Ceil(player_count_to_sort / team_count));
+            UnityEngine.Debug.Log("max_team_size: " + max_team_size);
+            for (int j = counts_per_team.Length - 1; j >= 0; j--)
+            {
+                if (option_force_teams) { max_team_size = option_team_limits_arr[j]; }
+
+                if (counts_per_team[j] < max_team_size) {
+                    team_list_sorted[randIndex] = j;
+                    counts_per_team[j]++;
+                    iterate_index++;
+                    shrinking_index_array = RemoveIndexFromIntArray(randIndex, shrinking_index_array);
+                    break;
+                }
+            }
+        }
+
+        teams_assigned_synced_arr = team_list_sorted;
+        teams_assigned_synced_str = ConvertIntArrayToString(team_list_sorted);
+        ui_round_team_panel.RequestSerialization();
+        RequestSerialization();
     }
 
     // -- Player Helper Functions --
@@ -875,6 +1054,20 @@ public class GameController : UdonSharpBehaviour
             arrOut[i] = inArr[i];
         }
         arrOut[inArr.Length] = inValue;
+        return arrOut;
+    }
+
+    public int[] RemoveIndexFromIntArray(int inIndex, int[] inArr)
+    {
+        // If we are removing the last entry or there are no entries, just return empty array
+        if (inArr.Length <= 1) { return new int[0]; }
+        var arrOut = new int[inArr.Length - 1];
+        for (var i = 0; i < inArr.Length; i++)
+        {
+            if (inIndex == i) { continue; }
+            if (i > inIndex) { arrOut[i - 1] = inArr[i]; }
+            else if (i < arrOut.Length) { arrOut[i] = inArr[i]; }
+        }
         return arrOut;
     }
 

@@ -78,7 +78,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             + " | DEF: " + Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f + "x";
         var showTextSecondary = "";
 
-        if (gameController.option_teamplay) { showTextPrimary += "\nTeam: " + playerAttributes.ply_team; } //To-Do: have an array of team colors, and change the person's text color accordingly
+        if (gameController.option_teamplay) { showTextPrimary += "\nTeam: " + playerAttributes.ply_team; }
         if (playerAttributes.last_kill_ply > -1 && VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply) != null) { showTextSecondary += "You knocked out " + VRCPlayerApi.GetPlayerById(playerAttributes.last_kill_ply).displayName + "!"; }
 
         switch (playerAttributes.ply_state)
@@ -131,21 +131,24 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         var LivesText = "";
         if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points)
+        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
             PTSLivesImage.sprite = PTSPointsSprite;
+            PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
         }
         else
         {
             LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
             PTSLivesImage.sprite = PTSLivesSprite;
+            PTSLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f); 
         }
         PTSLives.text = LivesText;
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTSDamage.text = DamageText;
+        PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp/100)), 255), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 255);
 
         var InvulText = Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start || playerAttributes.ply_state != (int)player_state_name.Respawning)
