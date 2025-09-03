@@ -18,7 +18,7 @@ public class PPP_Pickup : UdonSharpBehaviour
 
     public override void PostLateUpdate()
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
 
         if (Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.F))
         {
@@ -36,7 +36,7 @@ public class PPP_Pickup : UdonSharpBehaviour
 
     public override void OnPickup()
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
 
         ppp_options = ppp_options.gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PPPCanvas").GetComponent<PPP_Options>();
 

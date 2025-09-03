@@ -42,7 +42,7 @@ public enum player_tracking_name
 
 public enum weapon_stats_name
 {
-    Cooldown, Projectile_Distance, Projectile_Duration, Projectile_Type, Hurtbox_Damage, Hurtbox_Size, Hurtbox_Duration, Hurtbox_Damage_Type, Projectile_Size, ChargeTime, ENUM_LENGTH
+    Cooldown, Projectile_Distance, Projectile_Duration, Projectile_Type, Hurtbox_Damage, Hurtbox_Size, Hurtbox_Duration, Hurtbox_Damage_Type, Projectile_Size, ChargeTime, IsMelee, ENUM_LENGTH
 }
 
 public enum gamemode_name
@@ -64,12 +64,10 @@ public enum GLOBAL_CONST
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class GameController : UdonSharpBehaviour
+public class GameController : GlobalHelperFunctions
 {
     // Note to self: Keep an eye out for getplayerbyids returning null from disconnecting players, especially when getting .displayname
     [Header("References")]
-    [SerializeField] public GameObject template_WeaponProjectile;
-    [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameObject template_ItemSpawner; // Note: this will be overriden by the player-owned instance of the object, but we need to have the template available for early reference
     [SerializeField] public Sprite Sprite_None;
     [SerializeField] public Material skybox;
@@ -265,7 +263,11 @@ public class GameController : UdonSharpBehaviour
     [UdonSynced] public byte team_count = 1;
     [UdonSynced] public bool option_personal_teams = true;
     [SerializeField] public Color32[] team_colors; // Assign in inspector
+    [SerializeField] public Color32[] team_colors_protanopia; // Can't distinguish reds
+    [SerializeField] public Color32[] team_colors_deuteranopia; // Can't distinguish greens
+    [SerializeField] public Color32[] team_colors_tritanopia; // Can't distinguish blues
     [NonSerialized] public Color32[] team_colors_bright;
+
     [SerializeField] public string[] team_names; // MUST MATCH SIZE OF team_colors
     [SerializeField] public Sprite[] team_sprites; // MUST MATCH SIZE OF team_colors
 
@@ -278,6 +280,12 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized][UdonSynced] public string ply_tracking_dict_keys_str = "";
     [NonSerialized] public int[] ply_tracking_dict_values_arr;
     [NonSerialized][UdonSynced] public string ply_tracking_dict_values_str = "";
+
+    [NonSerialized] public int[] ply_object_owners;
+    [NonSerialized] public int ply_owners_cnt = 0;
+    [NonSerialized] public PlayerAttributes[] ply_object_plyattr;
+    [NonSerialized] public PlayerHitbox[] ply_object_plyhitbox;
+    [NonSerialized] public PlayerWeapon[] ply_object_plyweapon;
 
     [NonSerialized] public int[][] ply_in_game_auto_dict;
 
@@ -332,10 +340,10 @@ public class GameController : UdonSharpBehaviour
     [NonSerialized] public int[] global_projectile_refs;
     [NonSerialized] public int global_projectile_cnt = 0;
     [NonSerialized] public int global_lowest_available_projectile_index = 0;
-    [NonSerialized] public WeaponHurtbox[] global_hurtbox_arr;
-    [NonSerialized] public int[] global_hurtbox_refs;
-    [NonSerialized] public int global_hurtbox_cnt = 0;
-    [NonSerialized] public int global_lowest_available_hurtbox_index = 0;
+    //[NonSerialized] public WeaponHurtbox[] global_hurtbox_arr;
+    //[NonSerialized] public int[] global_hurtbox_refs;
+    //[NonSerialized] public int global_hurtbox_cnt = 0;
+    //[NonSerialized] public int global_lowest_available_hurtbox_index = 0;
     [NonSerialized] public ItemPowerup[] global_powerup_arr;
     [NonSerialized] public int[] global_powerup_refs;
     [NonSerialized] public int global_powerup_cnt = 0;
@@ -365,7 +373,12 @@ public class GameController : UdonSharpBehaviour
         highlight_cameras_snapped = new bool[highlightCameras.Length];
         highlight_cameras_ms = new double[highlightCameras.Length];
 
-        ply_master_id = Networking.LocalPlayer.playerId;
+        ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+
+        ply_master_id = Networking.LocalPlayer.playerId; // To-do: should this be here?
 
         AdjustVoiceRange();
 
@@ -387,7 +400,7 @@ public class GameController : UdonSharpBehaviour
                         (byte)team_colors[j].a);
         }
 
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             ResetPlyDicts();
             ResetGameOptionsToDefault(false);
@@ -411,10 +424,10 @@ public class GameController : UdonSharpBehaviour
         global_projectile_refs = new int[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
         for (int i = 0; i < global_projectile_refs.Length; i++) { global_projectile_refs[i] = -1; }
         PreallocGlobalObj((int)prealloc_obj_name.WeaponProjectile);
-        global_hurtbox_arr = new WeaponHurtbox[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        /*global_hurtbox_arr = new WeaponHurtbox[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
         global_hurtbox_refs = new int[(int)GLOBAL_CONST.PROJECTILE_LIMIT_PER_PLAYER * (int)GLOBAL_CONST.UDON_MAX_PLAYERS];
         for (int i = 0; i < global_hurtbox_refs.Length; i++) { global_hurtbox_refs[i] = -1; }
-        PreallocGlobalObj((int)prealloc_obj_name.WeaponHurtbox);
+        PreallocGlobalObj((int)prealloc_obj_name.WeaponHurtbox);*/
         global_powerup_arr = new ItemPowerup[(int)GLOBAL_CONST.POWERUP_LIMIT_PER_PLAYER];
         global_powerup_refs = new int[(int)GLOBAL_CONST.POWERUP_LIMIT_PER_PLAYER];
         for (int i = 0; i < global_powerup_refs.Length; i++) { global_powerup_refs[i] = -1; }
@@ -440,140 +453,11 @@ public class GameController : UdonSharpBehaviour
         ui_initialized = true;
     }
 
-    public float[] GetStatsFromWeaponType(int weapon_type)
-    {
-        float[] weapon_stats = new float[(int)weapon_stats_name.ENUM_LENGTH];
-        if (weapon_type == (int)weapon_type_name.PunchingGlove || weapon_type == (int)weapon_type_name.BossGlove || weapon_type == (int)weapon_type_name.HyperGlove || weapon_type == (int)weapon_type_name.MegaGlove)
-        {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.1f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.8f * 0.8f * 0.9f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 10.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 0.33f * 0.6f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 0.4f; //0.4f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-            if (weapon_type == (int)weapon_type_name.BossGlove)
-            {
-                //weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] *= 2.5f; //2.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
-            }
-            else if (weapon_type == (int)weapon_type_name.HyperGlove)
-            {
-                weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 0.4f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-            }
-            else if (weapon_type == (int)weapon_type_name.MegaGlove)
-            {
-                weapon_stats[(int)weapon_stats_name.Cooldown] *= 1.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 2.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
-            }
-        }
-        else if (weapon_type == (int)weapon_type_name.Rocket)
-        {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            float projectile_speed = 14.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 10.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = projectile_speed * weapon_stats[(int)weapon_stats_name.Projectile_Duration];
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.0f; // 2.85
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
-        }
-        else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
-        {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.5f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 100.0f;
-            if (weapon_type == (int)weapon_type_name.Bomb)
-            {
-                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
-                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
-            }
-            else if (weapon_type == (int)weapon_type_name.ThrowableItem)
-            {
-                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.ItemProjectile;
-                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 0.0f; 
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ItemHit;
-            }
-        }
-        else if (weapon_type == (int)weapon_type_name.SuperLaser)
-        {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 2.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 200.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Laser;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0f
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.5f; // 2.0
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Laser;
-        }
-        else
-        {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-        }
-        return weapon_stats;
-    }
-
     public int PreallocGlobalObj(int prealloc_obj_type)
     {
         int return_index = -1;
         // Preallocate a batch of a specific object type so we can have them ready for future use
-        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile && template_WeaponProjectile != null)
-        {
-            for (int i = global_projectile_cnt; i < Mathf.Min(global_projectile_refs.Length, global_projectile_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
-            {
-                global_projectile_arr[i] = Instantiate(template_WeaponProjectile, transform).GetComponent<WeaponProjectile>();
-                global_projectile_arr[i].gameObject.SetActive(false);
-                global_projectile_arr[i].ResetProjectile();
-                global_projectile_arr[i].global_index = i;
-                global_projectile_refs[i] = -1;
-            }
-            return_index = global_projectile_refs[global_projectile_cnt];
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox && template_WeaponHurtbox != null)
-        {
-            for (int i = global_hurtbox_cnt; i < Mathf.Min(global_hurtbox_refs.Length, global_hurtbox_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
-            {
-                global_hurtbox_arr[i] = Instantiate(template_WeaponHurtbox, transform).GetComponent<WeaponHurtbox>();
-                global_hurtbox_arr[i].gameObject.SetActive(false);
-                global_hurtbox_arr[i].ResetHurtbox();
-                global_hurtbox_arr[i].global_index = i;
-                global_hurtbox_refs[i] = -1;
-            }
-            return_index = global_hurtbox_refs[global_hurtbox_cnt];
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup && template_ItemSpawner != null)
+        if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup && template_ItemSpawner != null)
         {
             for (int i = global_powerup_cnt; i < Mathf.Min(global_powerup_refs.Length, global_powerup_cnt + (int)GLOBAL_CONST.PREALLOC_BATCH_SIZE); i++)
             {
@@ -654,7 +538,7 @@ public class GameController : UdonSharpBehaviour
         }
 
         // Master handling
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
 
         if (round_state == (int)round_state_name.Ready && round_timer >= ready_length)
         {
@@ -880,7 +764,7 @@ public class GameController : UdonSharpBehaviour
             }
 
             // -- Master only below --
-            if (Networking.GetOwner(gameObject).playerId == Networking.LocalPlayer.playerId)
+            if (Networking.IsOwner(gameObject))
             {
                 // If we hit a certain threshold of players and timer is met and we have not yet spawned X number of zombigs, spawn one
                 if (!infection_zombig_active && ((TimeLeft <= (round_length / 2.0f) && infection_zombigs_spawned < 1) || (TimeLeft < 30.0f && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
@@ -908,7 +792,7 @@ public class GameController : UdonSharpBehaviour
     public void CheckForZombigs(int exclude_player_id)
     {
         // Only the game master should have this function return a value
-        if (Networking.GetOwner(gameObject).playerId != Networking.LocalPlayer.playerId) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         
         int[][] infected = GetPlayersOnTeam(1);
         bool found_zombig = false;
@@ -1036,7 +920,7 @@ public class GameController : UdonSharpBehaviour
         ui_round_mapselect.RefreshMapList();
 
         // This variable never updates if you aren't the master (updated in RoundOptionAdjust()), so let's update it for clients here
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer)
+        if (!Networking.IsOwner(gameObject))
         {
             option_team_limits_arr = ConvertStrToIntArray(option_team_limits_str);
         }
@@ -1111,7 +995,7 @@ public class GameController : UdonSharpBehaviour
         }
 
         // No matter what, if we aren't the master and master-only is toggled, do not allow them to start it
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer && option_start_from_master_only)
+        if (!Networking.IsOwner(gameObject) && option_start_from_master_only)
         {
             enableRoundStartButton = false;
             if (room_ready_status_text == "START") { room_ready_status_text = "(MASTER ONLY)"; }
@@ -1123,10 +1007,10 @@ public class GameController : UdonSharpBehaviour
         ui_round_length_toggle.isOn = round_length_enabled;
 
         bool enableResetButton = false;
-        if ((!option_start_from_master_only || (option_start_from_master_only && Networking.GetOwner(gameObject) == Networking.LocalPlayer)) && round_state == (int)round_state_name.Ongoing) { enableResetButton = true; }
+        if ((!option_start_from_master_only || (option_start_from_master_only && Networking.IsOwner(gameObject))) && round_state == (int)round_state_name.Ongoing) { enableResetButton = true; }
         ui_round_reset_button.interactable = enableResetButton;
 
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && round_state == (int)round_state_name.Start)
+        if (Networking.IsOwner(gameObject) && round_state == (int)round_state_name.Start)
         {
             ui_round_master_only_toggle.interactable = true;
             ui_round_teamplay_toggle.interactable = true && !option_force_teamplay;
@@ -1291,7 +1175,7 @@ public class GameController : UdonSharpBehaviour
     public void ChangeHost(int new_owner_id)
     {
         // Note: This function needs to be updated we add any scripts that would ordinarily use Networking.IsMaster
-        if (Networking.LocalPlayer != Networking.GetOwner(gameObject)) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         RequestSerialization();
         VRCPlayerApi new_owner = VRCPlayerApi.GetPlayerById(new_owner_id);
         Networking.SetOwner(new_owner, ui_round_mapselect.gameObject);
@@ -1314,7 +1198,7 @@ public class GameController : UdonSharpBehaviour
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
         ply_master_id = Networking.GetOwner(gameObject).playerId;
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             ply_tracking_dict_keys_str = ConvertIntArrayToString(ply_tracking_dict_keys_arr);
             ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
@@ -1382,7 +1266,7 @@ public class GameController : UdonSharpBehaviour
     public void ResetGameOptionsToDefault()
     {
 
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
 
         ui_updating = true;
 
@@ -1412,7 +1296,7 @@ public class GameController : UdonSharpBehaviour
 
     public void RoundOptionAdjust()
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         if (round_state != (int)round_state_name.Start) { return; }
         if (!ui_initialized || ui_updating) { return; }
 
@@ -1540,7 +1424,16 @@ public class GameController : UdonSharpBehaviour
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        //base.OnPlayerJoined(player);
+        if (ply_object_owners == null) { ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS]; }
+        bool found_player_in_owner_arr = false;
+        for (int i = 0; i < ply_object_owners.Length; i++)
+        {
+            if (ply_object_owners[i] == player.playerId) { found_player_in_owner_arr = true; break; }
+        }
+        if (!found_player_in_owner_arr)
+        {
+            ply_object_owners[ply_owners_cnt] = player.playerId;
+        }
 
         var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
         var plyAttributesObj = FindPlayerOwnedObject(player, "PlayerAttributes");
@@ -1553,11 +1446,14 @@ public class GameController : UdonSharpBehaviour
         var plyLandingCircleObj = FindPlayerOwnedObject(player, "PlayerLandingCircle");
 
         Networking.SetOwner(player, plyAttributesObj);
+        ply_object_plyattr[ply_owners_cnt] = plyAttributesComponent;
         Networking.SetOwner(player, plyWeaponObj);
-        plyWeaponObj.GetComponent<PlayerWeapon>().owner_attributes = plyAttributesComponent;
+        ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>();
+        ply_object_plyweapon[ply_owners_cnt].owner_attributes = plyAttributesComponent;
         Networking.SetOwner(player, plyHitboxObj);
-        plyHitboxObj.GetComponent<PlayerHitbox>().owner = player;
-        plyHitboxObj.GetComponent<PlayerHitbox>().playerAttributes = plyAttributesComponent;
+        ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>();
+        ply_object_plyhitbox[ply_owners_cnt].owner = player;
+        ply_object_plyhitbox[ply_owners_cnt].playerAttributes = plyAttributesComponent;
         Networking.SetOwner(player, plyUIToOthers);
         plyUIToOthers.GetComponent<UIPlyToOthers>().owner = player;
         plyUIToOthers.GetComponent<UIPlyToOthers>().playerAttributes = plyAttributesComponent;
@@ -1577,18 +1473,22 @@ public class GameController : UdonSharpBehaviour
             PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
             local_uiplytoself.local_uimessagestoself = plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>();
             local_plyAttr = plyAttributesComponent;
-            local_plyweapon = plyWeaponObj.GetComponent<PlayerWeapon>();
-            if (local_plyweapon != null) { local_plyweapon.OnDrop(); }
-            local_plyhitbox = plyHitboxObj.GetComponent<PlayerHitbox>();
+            local_plyweapon = ply_object_plyweapon[ply_owners_cnt];
+            if (local_plyweapon != null) 
+            { 
+                local_plyweapon.OnDrop(); 
+                local_plyweapon.pickup_component.pickupable = true;
+            }
+            local_plyhitbox = ply_object_plyhitbox[ply_owners_cnt];
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
             local_ppp_options.RefreshAllOptions();
 
             template_ItemSpawner = FindPlayerOwnedObject(player, "ItemSpawnerTemplate");
 
-            if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { ui_round_mapselect.BuildMapList(); SetupMap(); }
+            if (Networking.IsOwner(gameObject)) { ui_round_mapselect.BuildMapList(); SetupMap(); }
         }
 
-        //plyAttributesComponent.SendCustomNetworkEvent(NetworkEventTarget.Owner, "ResetDefaultEyeHeight");
+        plyAttributesComponent.SetupTutorialMessages();
 
         plyWeaponObj.SetActive(false);
         plyHitboxObj.SetActive(false);
@@ -1601,8 +1501,8 @@ public class GameController : UdonSharpBehaviour
         }
         else
         {
-            plyHitboxObj.SetActive(plyHitboxObj.GetComponent<PlayerHitbox>().network_active);
-            plyWeaponObj.SetActive(plyWeaponObj.GetComponent<PlayerWeapon>().network_active);
+            plyHitboxObj.SetActive(ply_object_plyhitbox[ply_owners_cnt].network_active);
+            plyWeaponObj.SetActive(ply_object_plyweapon[ply_owners_cnt].network_active);
             plyUIToOthers.SetActive(true);
             plyUIToSelf.SetActive(false);
             plyLandingCircleObj.SetActive(false);
@@ -1610,14 +1510,14 @@ public class GameController : UdonSharpBehaviour
         }
 
 
-        if (!(player == Networking.LocalPlayer && Networking.GetOwner(gameObject) == Networking.LocalPlayer) && DictIndexFromKey(player.playerId, ply_tracking_dict_keys_arr) < 0)
+        if (!(player == Networking.LocalPlayer && Networking.IsOwner(gameObject)) && DictIndexFromKey(player.playerId, ply_tracking_dict_keys_arr) < 0)
         { DictAddEntry(player.playerId, (int)player_tracking_name.Unassigned, ref ply_tracking_dict_keys_arr, ref ply_tracking_dict_values_arr); }
         else
         {
             UnityEngine.Debug.Log("New player (" + player.playerId + ") just dropped! Let's add them to the dictionary!" + ply_tracking_dict_keys_str);
         }
 
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             ply_tracking_dict_keys_str = ConvertIntArrayToString(ply_tracking_dict_keys_arr);
             ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
@@ -1633,10 +1533,13 @@ public class GameController : UdonSharpBehaviour
         }
         UnityEngine.Debug.Log("New player (" + player.playerId + ") is now in the dictionary! " + ply_tracking_dict_keys_str);
         if (Networking.LocalPlayer == player) { wait_for_sync_for_player_join = true; }
+
+        ply_owners_cnt++;
     }
 
     public override void OnPlayerLeft(VRCPlayerApi player)
     {
+        RemovePlayerFromObjOwners(player.playerId);
         var objects = Networking.GetPlayerObjects(player);
         for (int i = 0; i < objects.Length; i++)
         {
@@ -1646,7 +1549,7 @@ public class GameController : UdonSharpBehaviour
                 Destroy(objects[i]);
             }
         }
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             //ui_round_team_panel.RemovePanel(DictIndexFromKey(player.playerId, ply_tracking_dict_keys_arr));
             DictRemoveEntry(player.playerId, ref ply_tracking_dict_keys_arr, ref ply_tracking_dict_values_arr);
@@ -1719,7 +1622,7 @@ public class GameController : UdonSharpBehaviour
     {
         if (map_selected < 0) { RefreshSetupUI(); return; }
 
-        if ((round_state == (int)round_state_name.Queued && Networking.GetOwner(gameObject) != Networking.LocalPlayer) || round_state == (int)round_state_name.Loading) 
+        if ((round_state == (int)round_state_name.Queued && !Networking.IsOwner(gameObject)) || round_state == (int)round_state_name.Loading) 
         {
             Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
             AddToLocalTextQueue("You're Going To:", Color.white, load_length); 
@@ -1949,7 +1852,7 @@ public class GameController : UdonSharpBehaviour
                 if (capturezone == null || capturezone.gameObject == null) { continue; }
                 capturezone.gameObject.SetActive(ply_parent_arr[0].Length >= capturezone.min_players);
 
-                if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { continue; }
+                if (!Networking.IsOwner(gameObject)) { continue; }
                 if (option_teamplay)
                 {
                     // If we have teams on, the leaderboard will be a list of team IDs
@@ -1987,7 +1890,7 @@ public class GameController : UdonSharpBehaviour
         ui_spectatorcanvas.SetActive(true);
 
         // -- Master Handling Below --
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         round_state = (int)round_state_name.Ready;
         round_start_ms = Networking.GetServerTimeInSeconds();
         largest_ply_scale = plysettings_scale;
@@ -2002,7 +1905,7 @@ public class GameController : UdonSharpBehaviour
     {
         room_ready_script.gameObject.GetComponent<Collider>().enabled = false; // We need to make sure player arrays don't get messed up while transferring over to the match
         //Networking.LocalPlayer.Immobilize(true); <-- this forces the player to 0,0,0(!)
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             if (map_selected >= mapscript_list.Length) { map_selected = 0; }
             LocalRoundStart();
@@ -2018,7 +1921,7 @@ public class GameController : UdonSharpBehaviour
         local_queue_timer = 0.0f;
         local_every_second_timer = 0.0f;
         PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.QueueStart);
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             if (ui_round_mapselect != null) { map_selected = (sbyte)ui_round_mapselect.SelectRandomActiveMap(); }
             RequestSerialization();
@@ -2041,7 +1944,7 @@ public class GameController : UdonSharpBehaviour
         local_every_second_timer = 0.0f;
         PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.QueueCancel);
         RefreshSetupUI();
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
+        if (Networking.IsOwner(gameObject)) { RequestSerialization(); }
     }
 
     public void SendRoundStart()
@@ -2483,7 +2386,7 @@ public class GameController : UdonSharpBehaviour
         bool declare_victor = CheckRoundGoalProgress(out int[] leaderboard_arr, out int[] progress_arr, out string leader_name);
         int winning_team = -1;
         if (option_teamplay && leaderboard_arr != null && leaderboard_arr.Length > 0) { winning_team = Mathf.Max(0, leaderboard_arr[0]); }
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         if (declare_victor && round_state == (int)round_state_name.Ongoing)
         {
             //round_state = (int)round_state_name.Over;
@@ -2575,7 +2478,7 @@ public class GameController : UdonSharpBehaviour
             }
         }
 
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameObject))
         {
             round_state = (int)round_state_name.Over;
             round_start_ms = Networking.GetServerTimeInSeconds();
@@ -2590,7 +2493,7 @@ public class GameController : UdonSharpBehaviour
             foreach (CaptureZone capturezone in mapscript_list[map_selected].map_capturezones)
             {
                 if (capturezone == null || capturezone.gameObject == null) { continue; }
-                if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+                if (Networking.IsOwner(gameObject))
                 {
                     capturezone.dict_points_keys_arr = new int[0];
                     capturezone.dict_points_keys_str = "";
@@ -2694,7 +2597,7 @@ public class GameController : UdonSharpBehaviour
         if (local_plyAttr != null)
         {
             int global_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
-            should_teleport = (local_plyAttr.ply_training || Networking.GetOwner(gameObject) == Networking.LocalPlayer) && (local_plyAttr.ply_team >= 0 || global_team >= 0);
+            should_teleport = (local_plyAttr.ply_training || Networking.IsOwner(gameObject)) && (local_plyAttr.ply_team >= 0 || global_team >= 0);
             should_teleport = should_teleport || (local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby || global_team == (int)player_tracking_name.WaitingForLobby);
             should_teleport = should_teleport || local_plyAttr.in_spectator_area;
             if (should_teleport) { TeleportLocalPlayerToReadyRoom(); }
@@ -2840,198 +2743,6 @@ public class GameController : UdonSharpBehaviour
 
     }
 
-    // -- Weapon Handling --
-    [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id)
-    {
-        float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
-
-        float distance = float_in.x;
-        float player_scale = float_in.y;
-        byte extra_data = (byte)float_in.z;
-
-        if (global_projectile_cnt >= global_projectile_arr.Length || global_lowest_available_projectile_index >= global_projectile_arr.Length || global_lowest_available_projectile_index == -1)
-        {
-            UnityEngine.Debug.LogWarning("Exceeded maximum projectiles possible!");
-            return;
-        }
-        
-        if (global_projectile_arr[global_lowest_available_projectile_index] == null)
-        {
-            PreallocGlobalObj((int)prealloc_obj_name.WeaponProjectile);
-        }
-
-        //var newProjectileObj = Instantiate(template_WeaponProjectile, transform);
-        GameObject newProjectileObj = PreallocAddSlot((int)prealloc_obj_name.WeaponProjectile);
-        if (newProjectileObj == null) { return; }
-
-        WeaponProjectile projectile = newProjectileObj.GetComponent<WeaponProjectile>();
-        projectile.ResetProjectile();
-
-        newProjectileObj.transform.parent = null;
-        newProjectileObj.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f) * stats_from_weapon[(int)weapon_stats_name.Projectile_Size] * player_scale;
-        newProjectileObj.transform.SetPositionAndRotation(fire_start_pos, fire_angle);
-        if (projectile.rb != null) 
-        { 
-            projectile.rb.position = fire_start_pos;
-            projectile.rb.rotation = fire_angle;
-            projectile.previousPosition = projectile.rb.position; 
-            projectile.rb.velocity = Vector3.zero;
-            projectile.rb.angularVelocity = Vector3.zero;
-        }
-        else { projectile.previousPosition = newProjectileObj.transform.position; }
-        projectile.weapon_type = weapon_type;
-
-        projectile.projectile_type = (int)stats_from_weapon[(int)weapon_stats_name.Projectile_Type];
-        projectile.projectile_duration = stats_from_weapon[(int)weapon_stats_name.Projectile_Duration];
-        projectile.projectile_start_ms = Networking.GetServerTimeInSeconds();
-        projectile.pos_start = fire_start_pos;
-        projectile.projectile_distance = distance;
-        projectile.owner_id = player_id;
-        projectile.owner_scale = player_scale;
-        projectile.template_WeaponHurtbox = template_WeaponHurtbox;
-        projectile.gameController = this;
-        projectile.extra_data = extra_data;
-        /*if (keep_parent_ext <= 0) { projectile.keep_parent = false; }
-        else { projectile.keep_parent = true; }*/
-        projectile.keep_parent = keep_parent;
-        if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem) { projectile.GetComponent<Rigidbody>().velocity = Vector3.zero; }
-
-        VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
-        if (player != null)
-        {
-            GameObject weaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
-            PlayerWeapon weaponScript = null;
-            if (weaponObj != null) { weaponScript = weaponObj.GetComponent<PlayerWeapon>(); }
-            if (weaponScript != null)
-            {
-                if (keep_parent)
-                {
-                    //UnityEngine.Debug.Log("Found script, parenting");
-                    newProjectileObj.transform.parent = weaponObj.transform;
-                    projectile.weapon_parent = weaponObj;
-                    projectile.pos_start = weaponObj.transform.position;
-                }
-                else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
-                {
-                    projectile.GetComponent<Rigidbody>().velocity = fire_velocity;
-                    //if (!player.IsUserInVR()) { projectile.GetComponent<Rigidbody>().AddForce(Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 15.0f); }
-                    projectile.has_physics = true;
-                    projectile.GetComponent<Rigidbody>().useGravity = true;
-                    projectile.GetComponent<Collider>().isTrigger = false;
-                    //if (weaponScript.pickup_rb != null) { weaponScript.pickup_rb.isKinematic = true; }
-                    weaponObj.GetComponent<Rigidbody>().useGravity = false;
-                    weaponObj.GetComponent<Rigidbody>().velocity = Vector3.zero;
-                }
-            }
-        }
-
-        // Boss secondary weapon
-        /*else if (keep_parent_ext == 2)
-        {
-            var player = VRCPlayerApi.GetPlayerById(gamemode_boss_id);
-            if (player != null && boss_weapon != null)
-            {
-                UnityEngine.Debug.Log("Found script, parenting");
-                newProjectileObj.transform.parent = boss_weapon.transform;
-                projectile.weapon_parent = boss_weapon.gameObject;
-                projectile.pos_start = boss_weapon.transform.position;
-            }
-        }*/
-        //UnityEngine.Debug.Log("[WEAPON_TEST] Projectile at " + fire_start_pos.ToString() + " needs to cross " + distance + " units in " + projectile.projectile_duration + " time (speed = " + (float)distance/projectile.projectile_duration + ")");
-        projectile.UpdateProjectileModel();
-        newProjectileObj.SetActive(true);
-
-
-    }
-
-    [NetworkCallable]
-    public void NetworkCreateHurtBox(Vector3 position, Vector3 origin, Quaternion rotation, Vector4 float_in, bool keep_parent, int player_id, int weapon_type)
-    {
-        float damage = float_in.x;
-        float player_scale = float_in.y;
-        float dist_scale = float_in.z;
-        byte extra_data = (byte)float_in.w;
-
-        if (global_hurtbox_cnt >= global_hurtbox_arr.Length || global_lowest_available_hurtbox_index >= global_hurtbox_arr.Length || global_lowest_available_hurtbox_index == -1)
-        {
-            UnityEngine.Debug.LogWarning("Exceeded maximum hurtboxes possible!");
-            return;
-        }
-
-        if (global_hurtbox_arr[global_lowest_available_hurtbox_index] == null)
-        {
-            PreallocGlobalObj((int)prealloc_obj_name.WeaponHurtbox);
-        }
-
-        GameObject newHurtboxObj = PreallocAddSlot((int)prealloc_obj_name.WeaponHurtbox);
-        if (newHurtboxObj == null) { return; }
-        WeaponHurtbox hurtbox = newHurtboxObj.GetComponent<WeaponHurtbox>();
-        hurtbox.ResetHurtbox();
-
-        newHurtboxObj.transform.parent = null;
-
-        float scaleBias = 1.0f;
-        // Explosive type weapons should not be resized as harshly as other hurtbox types
-        if (weapon_type == (int)weapon_type_name.Rocket)
-        {
-            scaleBias = 0.5f;
-        }
-        else if (weapon_type == (int)weapon_type_name.Bomb)
-        {
-            scaleBias = 0.75f;
-        }
-
-        newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * Mathf.Lerp(1.0f, player_scale, scaleBias) * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
-        newHurtboxObj.transform.position = position;
-        newHurtboxObj.transform.rotation = rotation;
-
-        VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
-        if (keep_parent)
-        {
-            if (player != null)
-            {
-                var weaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
-                if (weaponObj != null && weaponObj.GetComponent<PlayerWeapon>() != null)
-                {
-                    newHurtboxObj.transform.SetParent(weaponObj.transform);
-                    hurtbox.weapon_parent = weaponObj;
-                }
-            }
-        }
-        /*else if (keep_parent_ext == 2)
-        {
-            player = VRCPlayerApi.GetPlayerById(gamemode_boss_id);
-            if (player != null && boss_weapon != null)
-            {
-                UnityEngine.Debug.Log("Found script, parenting");
-                newHurtboxObj.transform.parent = boss_weapon.transform;
-                hurtbox.weapon_parent = boss_weapon.gameObject;
-            }
-        }*/
-
-        // If the player is the boss and is a desktop user, double the damage dealt to compensate for the lack of a secondary
-        if (option_gamemode == (int)gamemode_name.BossBash && GetGlobalTeam(player_id) == 1) //&& !player.IsUserInVR()
-        {
-            damage *= 2.0f;
-        }
-
-        hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
-        hurtbox.hurtbox_damage = damage;
-        hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
-        //hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
-        hurtbox.hurtbox_timer_local = 0.0f;
-        hurtbox.damage_type = (int)GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage_Type];
-        hurtbox.owner_id = player_id;
-        hurtbox.gameController = this;
-        hurtbox.weapon_type = weapon_type;
-        hurtbox.origin = origin;
-        hurtbox.extra_data = extra_data;
-        hurtbox.SetMesh();
-        //hurtbox.local_offset = actual_distance;
-        newHurtboxObj.SetActive(true);
-    }
-
     public void LocalDeclareSpectatorIntent(bool spectator_desired)
     {
         // Handle spectator intent
@@ -3082,14 +2793,14 @@ public class GameController : UdonSharpBehaviour
     [NetworkCallable]
     public void ChangeTeam(int player_id, int new_team, bool from_ready_room_enter)
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
-        UnityEngine.Debug.Log("Change team request received :" + player_id + " -> " + new_team + " (" + from_ready_room_enter + ")");
+        if (!Networking.IsOwner(gameObject)) { return; }
+        //UnityEngine.Debug.Log("Change team request received :" + player_id + " -> " + new_team + " (" + from_ready_room_enter + ")");
         int change_index = DictIndexFromKey(player_id, ply_tracking_dict_keys_arr);
         if (change_index < 0) { UnityEngine.Debug.LogWarning("Couldn't find player to change teams for: " + player_id); return; }
         if (from_ready_room_enter && ply_tracking_dict_values_arr[change_index] >= 0) { return; } // Don't assign to 0 from ready room if they're already in-game
         ply_tracking_dict_values_arr[change_index] = new_team;
         ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
-        UnityEngine.Debug.Log("[DICT_TEST]: Changing player " + player_id + " to team " + new_team + " (" + ply_tracking_dict_keys_str + " | " + ply_tracking_dict_values_str + ")");
+        //UnityEngine.Debug.Log("[DICT_TEST]: Changing player " + player_id + " to team " + new_team + " (" + ply_tracking_dict_keys_str + " | " + ply_tracking_dict_values_str + ")");
 
         if (player_id == Networking.LocalPlayer.playerId) 
         {
@@ -3113,12 +2824,16 @@ public class GameController : UdonSharpBehaviour
                 if (plyAttr != null && !plyAttr.ply_training) { plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "TeleportLocalPlayerToGameSpawnZone"); }
             }
         }
+
+        PlayerHitbox plyHitbox = GetPlayerHitboxFromID(player_id);
+        if (plyHitbox != null) { plyHitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetTeamColor"); }
+
     }
 
     // This is a last resort method used if we lose so much synchronization that we need to rebuild the player dictionaries entirely.
     public void ResetPlyDicts()
     {
-        //if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        //if (!Networking.IsOwner(gameObject)) { return; }
         var players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
         VRCPlayerApi.GetPlayers(players);
         ply_tracking_dict_keys_arr = new int[players.Length];
@@ -3139,7 +2854,7 @@ public class GameController : UdonSharpBehaviour
     [NetworkCallable]
     public void PlayerAutoSortTeams()
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         int[][] players_in_game_dict = GetPlayersInGame();
         UnityEngine.Debug.Log("[DICT_TEST]: TEAM SORTING - " + ConvertIntArrayToString(players_in_game_dict[0]) + " | " + ConvertIntArrayToString(players_in_game_dict[1]));
         int[] team_list_sorted = ply_tracking_dict_values_arr;
@@ -3262,7 +2977,7 @@ public class GameController : UdonSharpBehaviour
         return null;
     }
 
-    public PlayerAttributes FindPlayerAttributes(VRCPlayerApi player)
+    /*public PlayerAttributes FindPlayerAttributes(VRCPlayerApi player)
     {
         var objects = Networking.GetPlayerObjects(player);
         for (int i = 0; i < objects.Length; i++)
@@ -3276,7 +2991,7 @@ public class GameController : UdonSharpBehaviour
             }
         }
         return null;
-    }
+    }*/
 
     public int GetGlobalTeam(int player_id)
     {
@@ -3418,463 +3133,6 @@ public class GameController : UdonSharpBehaviour
     }
 
     // -- Internal Helper Functions --
-    public int StringToInt(string str)
-    {
-        int result = -404;
-        int.TryParse(str, out result); // UdonSharp supports TryParse
-        return result;
-    }
-
-    public int[] ConvertStrToIntArray(string str)
-    {
-        if (str == "" || str == null) { return null; }
-        string[] splitStr = str.Split(',');
-        if (splitStr == null) { return null; }
-        int[] arrOut = new int[splitStr.Length];
-
-        for (int i = 0; i < splitStr.Length; i++)
-        {
-            var intAttempt = StringToInt(splitStr[i]);
-            if (intAttempt != 404) { arrOut[i] = intAttempt; }
-        }
-        return arrOut;
-    }
-
-    // To-do: replace all references of this with a String.Join() [or alternatively, just make that what internally happens here]
-    public string ConvertIntArrayToString(int[] arrIn)
-    {
-        if (arrIn == null || arrIn.Length == 0) return "";
-
-        string result = arrIn[0].ToString();
-        for (int i = 1; i < arrIn.Length; i++)
-        {
-            result += ',';
-            result += arrIn[i].ToString();
-        }
-        return result;
-    }
-
-    public int[] AddToIntArray(int inValue, int[] inArr)
-    {
-        var arrOut = new int[inArr.Length + 1];
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            arrOut[i] = inArr[i];
-        }
-        arrOut[inArr.Length] = inValue;
-        return arrOut;
-    }
-
-    public int[] RemoveIndexFromIntArray(int inIndex, int[] inArr)
-    {
-        // If we are removing the last entry or there are no entries, just return empty array
-        if (inArr.Length <= 1) { return new int[0]; }
-        var arrOut = new int[inArr.Length - 1];
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            if (inIndex == i) { continue; }
-            if (i > inIndex) { arrOut[i - 1] = inArr[i]; }
-            else if (i < arrOut.Length) { arrOut[i] = inArr[i]; }
-        }
-        return arrOut;
-    }
-
-    public int[] RemoveValueFromIntArray(int inValue, int[] inArr)
-    {
-        // If we are removing the last entry or there are no entries, just return empty array
-        if (inArr.Length <= 1) { return new int[0]; }
-        var arrOut = new int[inArr.Length - 1];
-        var found_value = false;
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            if (inValue == inArr[i]) { found_value = true; continue; }
-            if (found_value) { arrOut[i - 1] = inArr[i]; }
-            else if (i < arrOut.Length) { arrOut[i] = inArr[i]; }
-        }
-        return arrOut;
-    }
-
-    public int DictIndexFromKey(int key, int[] keys)
-    {
-        if (keys == null || keys.Length <= 0) { UnityEngine.Debug.Log("Invalid dictionary!"); return -999; }
-        int key_index = -999;
-        for (int i = 0; i < keys.Length; i++)
-        {
-            if (key == keys[i]) { key_index = i; break; }
-        }
-        return key_index;
-    }
-
-    public int DictValueFromKey(int key, int[] keys, int[] values)
-    {
-        if (keys == null || keys.Length <= 0 || values == null || values.Length <= 0 || keys.Length != values.Length) { UnityEngine.Debug.Log("Invalid dictionary!"); return -999; }
-        int key_index = DictIndexFromKey(key, keys);
-        if (key_index < 0) { return -999; }
-        return values[key_index];
-    }
-
-    public void DictAddEntry(int key, int value, ref int[] keys, ref int[] values)
-    {
-        if (keys == null || keys.Length <= 0 || values == null || values.Length <= 0 || keys.Length != values.Length) { UnityEngine.Debug.Log("Invalid dictionary!"); return; }
-        keys = AddToIntArray(key, keys);
-        values = AddToIntArray(value, values);
-    }
-
-    public void DictRemoveEntry(int key, ref int[] keys, ref int[] values)
-    {
-        if (keys == null || keys.Length <= 0 || values == null || values.Length <= 0 || keys.Length != values.Length) { UnityEngine.Debug.Log("Invalid dictionary!"); return; }
-        int key_index = DictIndexFromKey(key, keys);
-        keys = RemoveIndexFromIntArray(key_index, keys);
-        values = RemoveIndexFromIntArray(key_index, values);
-    }
-
-    public int[][] DictFindAllWithValue(int value, int[] keys, int[] values, int compare_op = 0)
-    {
-        if (keys == null || keys.Length <= 0 || values == null || values.Length <= 0 || keys.Length != values.Length) { UnityEngine.Debug.Log("Invalid dictionary!"); return null; }
-        int out_arr_size = 0;
-        for (int i = 0; i < values.Length; i++)
-        {
-            if ((compare_op == (int)dict_compare_name.Equals && values[i] == value) 
-            || (compare_op == (int)dict_compare_name.GreaterThan && values[i] > value) 
-            || (compare_op == (int)dict_compare_name.LessThan && values[i] < value) 
-            || (compare_op == (int)dict_compare_name.GreaterThanOrEqualsTo && values[i] >= value) 
-            || (compare_op == (int)dict_compare_name.LessThanOrEqualsTo && values[i] <= value))
-            {
-                out_arr_size++;
-            }
-        }
-        int[] keys_out = new int[out_arr_size];
-        int[] values_out = new int[out_arr_size];
-        int index_iter = 0;
-        for (int j = 0; j < values.Length; j++)
-        {
-            if ((compare_op == (int)dict_compare_name.Equals && values[j] == value)
-            || (compare_op == (int)dict_compare_name.GreaterThan && values[j] > value)
-            || (compare_op == (int)dict_compare_name.LessThan && values[j] < value)
-            || (compare_op == (int)dict_compare_name.GreaterThanOrEqualsTo && values[j] >= value)
-            || (compare_op == (int)dict_compare_name.LessThanOrEqualsTo && values[j] <= value))
-            {
-                keys_out[index_iter] = keys[j];
-                values_out[index_iter] = values[j];
-                index_iter++;
-            }
-        }
-        int[][] dict_out = new int[2][];
-        dict_out[0] = keys_out; dict_out[1] = values_out;
-        //UnityEngine.Debug.Log("Dictionary output: " + ConvertIntArrayToString(keys_out) + " | " + ConvertIntArrayToString(values_out));
-        return dict_out;
-    }
-
-    public GameObject[] AddToGameObjectArray(GameObject inValue, GameObject[] inArr)
-    {
-        var arrOut = new GameObject[inArr.Length + 1];
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            arrOut[i] = inArr[i];
-        }
-        arrOut[inArr.Length] = inValue;
-        return arrOut;
-    }
-
-    public GameObject[] RemoveEntryFromGameObjectArray(GameObject inValue, GameObject[] inArr)
-    {
-        // If we are removing the last entry or there are no entries, just return empty array
-        if (inArr.Length <= 1) { return new GameObject[0]; }
-        var arrOut = new GameObject[inArr.Length - 1];
-        var found_value = false;
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            if (inValue == inArr[i]) { found_value = true; continue; }
-            if (found_value) { arrOut[i - 1] = inArr[i]; }
-            else if (i < arrOut.Length) { arrOut[i] = inArr[i]; }
-        }
-        return arrOut;
-    }
-
-    public GameObject[] RemoveIndexFromGameObjectArray(int index, GameObject[] inArr)
-    {
-        // If we are removing the last entry or there are no entries, just return empty array
-        if (inArr.Length <= 1) { return new GameObject[0]; }
-        var arrOut = new GameObject[inArr.Length - 1];
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            if (i == index) { continue; }
-            else if (i > index) { arrOut[i - 1] = inArr[i]; }
-            else if (i < index) { arrOut[i] = inArr[i]; }
-        }
-        return arrOut;
-    }
-
-    public GameObject[] AddToStaticGameObjectArray(GameObject inValue, GameObject[] inArr, out int useIndex)
-    {
-        var arrOut = inArr;
-        useIndex = -1;
-        for (var i = 0; i < inArr.Length; i++)
-        {
-            if (inArr[i] == null) { 
-                useIndex = i; 
-                arrOut[i] = inValue;
-                break; 
-            }
-        }
-        return arrOut;
-    }
-
-    // Enum replacement helper
-    public int KeyToPowerupType(string enum_str_name)
-    {
-        var cleanStr = enum_str_name.Trim().ToLower();
-        //var output = (int)powerup_type_name.Fallback;
-        var output = 0;
-        if (cleanStr == "sizeup") { output = (int)powerup_type_name.SizeUp; }
-        else if (cleanStr == "sizedown") { output = (int)powerup_type_name.SizeDown; }
-        else if (cleanStr == "speedup") { output = (int)powerup_type_name.SpeedUp; }
-        else if (cleanStr == "atkup") { output = (int)powerup_type_name.AtkUp; }
-        else if (cleanStr == "defup") { output = (int)powerup_type_name.DefUp; }
-        else if (cleanStr == "atkdown") { output = (int)powerup_type_name.AtkDown; }
-        else if (cleanStr == "defdown") { output = (int)powerup_type_name.DefDown; }
-        else if (cleanStr == "lowgrav") { output = (int)powerup_type_name.LowGrav; }
-        else if (cleanStr == "partialheal") { output = (int)powerup_type_name.PartialHeal; }
-        else if (cleanStr == "fullheal") { output = (int)powerup_type_name.FullHeal; }
-        else if (cleanStr == "multijump") { output = (int)powerup_type_name.Multijump; }
-        else if (cleanStr == "highgrav") { output = (int)powerup_type_name.HighGrav; }
-        //UnityEngine.Debug.Log("Attempted to match key '" + cleanStr + "' to value: " + output);
-        return output;
-    }
-    public int KeyToWeaponType(string enum_str_name)
-    {
-        string cleanStr = enum_str_name.Trim().ToLower();
-        int output = 0;
-        if (cleanStr == "punchingglove") { output = (int)weapon_type_name.PunchingGlove; }
-        else if (cleanStr == "bomb") { output = (int)weapon_type_name.Bomb; }
-        else if (cleanStr == "rocket") { output = (int)weapon_type_name.Rocket; }
-        else if (cleanStr == "bossglove") { output = (int)weapon_type_name.BossGlove; }
-        else if (cleanStr == "hyperglove") { output = (int)weapon_type_name.HyperGlove; }
-        else if (cleanStr == "megaglove") { output = (int)weapon_type_name.MegaGlove; }
-        else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
-        else if (cleanStr == "throwableitem") { output = (int)weapon_type_name.ThrowableItem; }
-        return output;
-    }
-
-
-    public string PowerupTypeToStr(int in_powerup_type)
-    {
-        string output = "";
-        if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = "Size Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = "Size Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.SpeedUp) { output = "Speed Boost"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkUp) { output = "Attack Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkDown) { output = "Attack Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefUp) { output = "Defense Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefDown) { output = "Defense Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.LowGrav) { output = "Low Gravity"; }
-        else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = "Heal (50%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = "Heal (100%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = "Multi-Jump"; }
-        else if (in_powerup_type == (int)powerup_type_name.HighGrav) { output = "High Gravity"; }
-        else { output = "(PLACEHOLDER)"; }
-        return output;
-    }
-
-    public string WeaponTypeToStr(int in_weapon_type)
-    {
-        string output = "";
-        if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = "Punching Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = "Bomb"; }
-        else if (in_weapon_type == (int)weapon_type_name.Rocket) { output = "Rocket Launcher"; }
-        else if (in_weapon_type == (int)weapon_type_name.BossGlove) { output = "Big Boss Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = "Hyper Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = "Mega Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = "Superlaser"; }
-        else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = "Throwable Item"; }
-
-        else { output = "(PLACEHOLDER)"; }
-        return output;
-    }
-
-    public float[] CalcGridDistr(int item_count, int base_column_count, Vector2 item_base_dims, Vector3 item_base_scale, Vector2 grid_dims, bool rows_instead_of_columns = false)
-    {
-        // Outputs: column_count, scale_x, scale_y, scale_z, spacing_x, spacing_y 
-        float[] out_arr = new float[6];
-        if (base_column_count <= 0) { return out_arr; }
-
-        // Get the dims that can fit in a single column
-        bool found_fit = false;
-        int columns_to_fit = 1;
-        Vector2 grid_spacing = new Vector2(0, 0);
-
-        float fit_dim = item_base_dims.y;
-        if (rows_instead_of_columns) { fit_dim = item_base_dims.x; }
-
-        Vector3 item_new_scale = new Vector3 ((float)item_base_scale.x, (float)item_base_scale.y, (float)item_base_scale.z);
-        item_new_scale *= base_column_count;
-
-        while (!found_fit)
-        {
-            if (rows_instead_of_columns)
-            {
-                // I want to fit 7 items of size 100 in a 600 grid. Base column count is 1.
-                // iter 1: 700 > 600, go to next iter with a scalar of 0.5
-                // iter 2: 175 <= 600, this is our stop
-                fit_dim = (item_base_dims.x * item_count * item_new_scale.x * (1.0f / columns_to_fit));
-                if (fit_dim > grid_dims.x)
-                {
-                    columns_to_fit++;
-                    item_new_scale = item_base_scale * ((float)base_column_count / columns_to_fit);
-                    continue;
-                }
-                found_fit = true;
-            }
-            else
-            {
-                // I want to fit 7 items of size 100 in a 600 grid. Base column count is 1.
-                // iter 1: 700 > 600, go to next iter with a scalar of 0.5
-                // iter 2: 175 <= 600, this is our stop
-                fit_dim = (item_base_dims.y * item_count * item_new_scale.y * (1.0f / columns_to_fit));
-                if (fit_dim > grid_dims.y)
-                {
-                    columns_to_fit++;
-                    item_new_scale = item_base_scale * ((float)base_column_count / columns_to_fit);
-                    continue;
-                }
-                found_fit = true;
-            }
-        }
-
-        grid_spacing = item_base_dims * ((float)base_column_count / columns_to_fit);
-        if (columns_to_fit <= base_column_count) { 
-            grid_spacing -= item_base_dims;
-        }
-        else
-        {
-            grid_spacing += item_base_dims;
-        }
-        out_arr[0] = columns_to_fit;
-        out_arr[1] = item_new_scale.x;
-        out_arr[2] = item_new_scale.y;
-        out_arr[3] = item_new_scale.z;
-        out_arr[4] = grid_spacing.x;
-        out_arr[5] = grid_spacing.y;
-
-        //return new Vector4(item_new_scale.x, item_new_scale.y, item_new_scale.z, columns_to_fit);
-        return out_arr;
-    }
-
-    public bool IntToBool(int i)
-    {
-        bool b = false;
-        if (i >= 1) { b = true; }
-        return b;
-    }
-
-    public int BoolToInt(bool b)
-    {
-        int i = 0;
-        if (b) { i = 1; }
-        return i;
-    }
-
-    public void DictSort(ref int[] keys, ref int[] values, bool ascending_sort = true, bool keys_only = false)
-    {
-        if (keys == null || values == null || keys.Length != values.Length) { return; }
-
-        for (int i = 0; i < keys.Length; i++)
-        {
-            int selectedIndex = i;
-            for (int j = i + 1; j < keys.Length; j++)
-            {
-                // ASCENDING: use `<`, DESCENDING: use `>`
-                bool shouldSwap = ascending_sort ? values[j] < values[selectedIndex] : values[j] > values[selectedIndex];
-                if (shouldSwap)
-                {
-                    selectedIndex = j;
-                }
-            }
-
-            int temp = keys[i];
-            keys[i] = keys[selectedIndex];
-            keys[selectedIndex] = temp;
-            if (!keys_only)
-            {
-                temp = values[i];
-                values[i] = values[selectedIndex];
-                values[selectedIndex] = temp;
-            }
-        }
-    }
-
-    /*public void DictSort(ref int[] keys, ref int[] values, bool ascending_sort = true)
-    {
-        if (keys == null || values == null) { return; }
-        if (keys.Length != values.Length)
-        {
-            UnityEngine.Debug.LogWarning("Tried to sort a dict with unequal key & value pair lengths!");
-            return;
-        }
-
-        int n = keys.Length;
-
-        for (int i = 0; i < n - 1; i++)
-        {
-            for (int j = 0; j < n - i - 1; j++)
-            {
-                bool swap = ascending_sort ? values[j] > values[j + 1] : values[j] < values[j + 1];
-
-                if (swap)
-                {
-                    // Swap values
-                    int tempVal = values[j];
-                    values[j] = values[j + 1];
-                    values[j + 1] = tempVal;
-
-                    // Swap keys in the same way
-                    int tempKey = keys[j];
-                    keys[j] = keys[j + 1];
-                    keys[j + 1] = tempKey;
-                }
-            }
-        }
-
-    }*/
-
-    public Transform GetChildTransformByName(Transform parent_tranform, string name)
-    {
-        Transform transform_out = null;
-        foreach (Transform child in parent_tranform)
-        {
-            if (child.name.ToLower().Trim() == name.ToLower().Trim())
-            {
-                transform_out = child;
-                break;
-            }
-        }
-        return transform_out;
-    }
-    /*public string DebugPrintFloatArray(float[] inArr)
-    {
-        var strOut = "{";
-        for (int i = 0; i < inArr.Length; i++)
-        {
-            strOut += inArr[i].ToString();
-            if (i < inArr.Length - 1) { strOut += ","; }
-        }
-        strOut += "}";
-        return strOut;
-    }*/
-
-    public Quaternion RotateTowards(Vector3 source_position, Vector3 target_position)
-    {
-        //Quaternion rotateTo = source_rotation;
-        Vector3 targetDir = (source_position - target_position).normalized;
-        //Vector3 headForward = rotateTo * Vector3.forward;
-        //if (noVertical) { headForward.y = 0; }
-        //headForward = headForward.normalized;
-        //float angleOffset = Vector3.SignedAngle(headForward, targetDir, Vector3.up);
-        //Quaternion.AngleAxis(-angleOffset, Vector3.up) * 
-        Quaternion rotateTo = Quaternion.LookRotation(targetDir, Vector3.up);
-        return rotateTo;
-    }
-
     public int PreallocNextAvailableIndex(int[] refs_arr)
     {
         if (refs_arr == null || refs_arr.Length == 0) { return -1; }
@@ -3892,25 +3150,7 @@ public class GameController : UdonSharpBehaviour
     public GameObject PreallocAddSlot(int prealloc_obj_type)
     {
         GameObject return_obj = null;
-        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile)
-        {
-            return_obj = global_projectile_arr[global_lowest_available_projectile_index].gameObject;
-            WeaponProjectile projectile = global_projectile_arr[global_lowest_available_projectile_index];
-            global_projectile_refs[global_projectile_cnt] = global_lowest_available_projectile_index;
-            projectile.ref_index = global_projectile_cnt;
-            global_projectile_cnt++;
-            global_lowest_available_projectile_index = PreallocNextAvailableIndex(global_projectile_refs);
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox)
-        {
-            return_obj = global_hurtbox_arr[global_lowest_available_hurtbox_index].gameObject;
-            WeaponHurtbox hurtbox = global_hurtbox_arr[global_lowest_available_hurtbox_index];
-            global_hurtbox_refs[global_hurtbox_cnt] = global_lowest_available_hurtbox_index;
-            hurtbox.ref_index = global_hurtbox_cnt;
-            global_hurtbox_cnt++;
-            global_lowest_available_hurtbox_index = PreallocNextAvailableIndex(global_hurtbox_refs);
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
+        if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
         {
             return_obj = global_powerup_arr[global_lowest_available_powerup_index].gameObject;
             ItemPowerup powerup = global_powerup_arr[global_lowest_available_powerup_index];
@@ -3934,52 +3174,7 @@ public class GameController : UdonSharpBehaviour
 
     public void PreallocClearSlot(int prealloc_obj_type, int global_index, ref int ref_index)
     {
-        if (prealloc_obj_type == (int)prealloc_obj_name.WeaponProjectile)
-        {
-            if (ref_index > -1 && global_projectile_refs != null)
-            {
-                // Free the index from the refs table by swapping it with the most recent entry in the list
-                if (global_projectile_cnt > 0 && global_projectile_cnt <= global_projectile_refs.Length)
-                {
-                    global_projectile_refs[ref_index] = global_projectile_refs[global_projectile_cnt - 1];
-                    global_projectile_arr[global_projectile_refs[ref_index]].ref_index = ref_index;
-                    global_projectile_refs[global_projectile_cnt - 1] = -1;
-                    ref_index = -1;
-                    global_projectile_cnt--;
-                }
-
-                // Free the index from the global table
-                if (global_index < global_lowest_available_projectile_index || global_lowest_available_projectile_index == -1)
-                {
-                    global_lowest_available_projectile_index = global_index;
-                }
-            }
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.WeaponHurtbox)
-        {
-            if (ref_index > -1 && global_hurtbox_refs != null)
-            {
-                // Free the index from the refs table by swapping it with the most recent entry in the list
-                if (global_hurtbox_cnt > 0 && global_hurtbox_cnt <= global_hurtbox_refs.Length)
-                {
-                    global_hurtbox_refs[ref_index] = global_hurtbox_refs[global_hurtbox_cnt - 1];
-                    if (global_hurtbox_refs[ref_index] < global_hurtbox_arr.Length && global_hurtbox_arr[global_hurtbox_refs[ref_index]] != null)
-                    {
-                        global_hurtbox_arr[global_hurtbox_refs[ref_index]].ref_index = ref_index; //CRASH null refernce! need allocation check!
-                    }
-                    global_hurtbox_refs[global_hurtbox_cnt - 1] = -1;
-                    ref_index = -1;
-                    global_hurtbox_cnt--;
-                }
-
-                // Free the index from the global table
-                if (global_index < global_lowest_available_hurtbox_index || global_lowest_available_hurtbox_index == -1)
-                {
-                    global_lowest_available_hurtbox_index = global_index;
-                }
-            }
-        }
-        else if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
+        if (prealloc_obj_type == (int)prealloc_obj_name.ItemPowerup)
         {
             if (ref_index > -1 && global_powerup_refs != null)
             {
@@ -4023,5 +3218,84 @@ public class GameController : UdonSharpBehaviour
         }
     }
 
+    public void RemovePlayerFromObjOwners(int player_id)
+    {
+        if (ply_object_owners == null || ply_owners_cnt <= 0) { return; }
+        int owner_index = -1;
+        for (int i = 0; i < ply_object_owners.Length; i++)
+        {
+            if (ply_object_owners[i] == player_id) { owner_index = ply_object_owners[i]; break; }
+        }
+        if (owner_index < 0) { return; }
+
+        if (ply_owners_cnt > 1) 
+        { 
+            ply_object_owners[owner_index] = ply_object_owners[ply_owners_cnt - 1];
+            ply_object_owners[ply_owners_cnt - 1] = -1;
+        }
+
+        ply_owners_cnt--;
+    }
+
+    public int GetPlayerObjIndexFromID(int player_id)
+    {
+        // if (ply_object_owners == null) { return -1; }
+        if (player_id < 0) { return -1; } // Player IDs are always positive
+        VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
+        if (player == null) { return -1; } // Make sure the player is still connected to the game
+        for (int i = 0; i < ply_object_owners.Length; i++)
+        {
+            if (ply_object_owners[i] == player_id) { return i; }
+        }
+        // If by the end of the search we find no owner, return invalid value
+        return -1;
+    }
+
+    public PlayerAttributes FindPlayerAttributes(VRCPlayerApi player)
+    {
+        if (ply_object_owners != null && ply_owners_cnt > 0) { return GetPlayerAttributesFromID(player.playerId); }
+        else
+        {
+            var objects = Networking.GetPlayerObjects(player);
+            for (int i = 0; i < objects.Length; i++)
+            {
+                if (!Utilities.IsValid(objects[i])) continue;
+                if (!objects[i].name.Contains("PlayerAttributes")) continue;
+                PlayerAttributes foundScript = objects[i].GetComponentInChildren<PlayerAttributes>();
+                if (Utilities.IsValid(foundScript))
+                {
+                    return foundScript;
+                }
+            }
+            return null;
+        }
+    }
+
+    public PlayerAttributes GetPlayerAttributesFromID(int player_id)
+    {
+        // if (ply_object_owners == null) { return null; }
+        int ply_obj_index = GetPlayerObjIndexFromID(player_id);
+        if (ply_obj_index < 0) { return null; }
+        PlayerAttributes plyAttr = ply_object_plyattr[ply_obj_index];
+        return plyAttr;
+    }
+    
+    public PlayerWeapon GetPlayerWeaponFromID(int player_id)
+    {
+        // if (ply_object_owners == null) { return null; }
+        int ply_obj_index = GetPlayerObjIndexFromID(player_id);
+        if (ply_obj_index < 0) { return null; }
+        PlayerWeapon plyWeapon = ply_object_plyweapon[ply_obj_index];
+        return plyWeapon;
+    }
+
+    public PlayerHitbox GetPlayerHitboxFromID(int player_id)
+    {        
+        // if (ply_object_owners == null) { return null; }
+        int ply_obj_index = GetPlayerObjIndexFromID(player_id);
+        if (ply_obj_index < 0) { return null; }
+        PlayerHitbox plyHitbox = ply_object_plyhitbox[ply_obj_index];
+        return plyHitbox;
+    }
 }
 

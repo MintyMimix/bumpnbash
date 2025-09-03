@@ -85,7 +85,7 @@ public class ItemGeneric : UdonSharpBehaviour
         else if (other.GetComponent<WeaponHurtbox>() != null && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Strike && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Kapow) { return false; }
 
         // We only care if someone else got this if this is a free-floating non-template item (i.e. neither handled by a spawner nor created by a player)
-        if (Networking.GetOwner(other.gameObject) != Networking.LocalPlayer)
+        if (!Networking.IsOwner(other.gameObject))
         {
             if (!CheckForSpawnerParent()) { item_state = (int)item_state_name.Destroyed; return false; } //Destroy(gameObject); }
             else { return false; }

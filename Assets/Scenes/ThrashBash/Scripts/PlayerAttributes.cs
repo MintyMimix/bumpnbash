@@ -94,7 +94,6 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         powerups_active = new GameObject[0];
 
-        SetupTutorialMessages();
         SetDefaultEyeHeight();
     }
 
@@ -109,7 +108,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 ply_deaths_local = ply_deaths;
                 ply_team_local = ply_team;
                 gameController.RefreshGameUI();
-                if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
+                if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
             }
         }
     }
@@ -126,7 +125,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
             else { return; }
         }
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
 
         // Handle player state
         if (ply_respawn_timer < ply_respawn_duration)
@@ -217,7 +216,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void LocalPerTickUpdate()
     {
         // Update size
-        if (plyEyeHeight_change && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (plyEyeHeight_change && Networking.IsOwner(gameObject))
         {
             var plyCurrentEyeHeight = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
             var lerp_delta = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), plyEyeHeight_lerp_start_ms);
@@ -244,13 +243,13 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     public override void OnAvatarChanged(VRCPlayerApi player) {
-        if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || !Networking.IsOwner(gameObject)) { return; }
         SetDefaultEyeHeight();
     }
 
     public override void OnAvatarEyeHeightChanged(VRCPlayerApi player, float prevHeight)
     {
-        if (player != Networking.LocalPlayer || Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || !Networking.IsOwner(gameObject)) { return; }
         if (prevHeight == 0) { SetDefaultEyeHeight(); }
         // We should also allow users to change their default height in the ready roomw
         else if (gameController != null && 
@@ -272,7 +271,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NetworkCallable]
     public void SetDefaultEyeHeight()
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         ResetPowerups();
 
         float default_height = Mathf.Clamp(Networking.LocalPlayer.GetAvatarEyeHeightAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMinimumAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMaximumAsMeters());
@@ -429,7 +428,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
-        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
+        if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
     }
 
     public void HandleLocalPlayerDeath()
@@ -539,7 +538,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController != null && gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
-        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
+        if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
         else { gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal"); }
 
     }
@@ -625,7 +624,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
             gameController.PlaySFXFromArray(powerup.item_snd_source, powerup.powerup_snd_clips, powerup.powerup_type);
             Debug.Log(gameObject.name + ": Attempting to play sound " + powerup.powerup_snd_clips[powerup.powerup_type].name + " for type " + powerup.powerup_type);
-            powerups_active = gameController.AddToGameObjectArray(powerup_template, powerups_active);
+            powerups_active = GlobalHelperFunctions.AddToGameObjectArray(powerup_template, powerups_active);
 		}
 
         else
@@ -668,7 +667,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 }
             }
             //Debug.Log("Removing effects of active powerup of type " + powerup.powerup_type);
-            powerups_active = gameController.RemoveEntryFromGameObjectArray(powerup.gameObject, powerups_active);
+            powerups_active = GlobalHelperFunctions.RemoveEntryFromGameObjectArray(powerup.gameObject, powerups_active);
         }
 
     }
@@ -693,7 +692,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             else
             {
                 //Debug.Log("Found powerup at " + i + " index that does not exist; resetting in array");
-                powerups_active = gameController.RemoveIndexFromGameObjectArray(0, powerups_active);
+                powerups_active = GlobalHelperFunctions.RemoveIndexFromGameObjectArray(0, powerups_active);
             }
             index_iter++;
         }
@@ -745,13 +744,13 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_desktop[(int)powerup_type_name.Multijump] = "Grants an additional jump while in mid-air!";
         local_tutorial_message_str_desktop[(int)powerup_type_name.HighGrav] = "Decreases time spent in mid-air!";
 
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = "Fire off projectiles that will explode in a radius! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox. Attack rate scales with # of players in-game! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = "Fire off projectiles that will explode in a radius! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox. Attack rate scales with # of players in-game! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Push your fire key to toss it forward! (Contains: $NAME)";
 
         for (int i = 0; i < (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH; i++)
@@ -759,18 +758,18 @@ public class PlayerAttributes : UdonSharpBehaviour
             local_tutorial_message_bool[i] = false;
             if (local_tutorial_message_str_desktop[i] != "" && i < (int)powerup_type_name.ENUM_LENGTH)
             {
-                local_tutorial_message_str_desktop[i] = gameController.PowerupTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i];
+                local_tutorial_message_str_desktop[i] = GlobalHelperFunctions.PowerupTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i];
             }
             else if (local_tutorial_message_str_desktop[i] != "" && i >= (int)powerup_type_name.ENUM_LENGTH) 
             { 
-                local_tutorial_message_str_desktop[i] = gameController.WeaponTypeToStr(i - (int)powerup_type_name.ENUM_LENGTH).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; 
+                local_tutorial_message_str_desktop[i] = GlobalHelperFunctions.WeaponTypeToStr(i - (int)powerup_type_name.ENUM_LENGTH).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; 
             }
 
             local_tutorial_message_str_vr[i] = local_tutorial_message_str_desktop[i].Replace("fire key", "Trigger");
         }
 
         // VR-specific messages
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Toss it by releasing your Grip! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Toss it by releasing your Grip! It will detonate after " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
         local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your Trigger to charge it up and fire a huge beam!";
         local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Toss it by releasing your Grip! (Contains: $NAME)";
 
@@ -796,15 +795,15 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void SendTutorialMessage(int item_type)
     {
         // Send a tutorial message
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        if (Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
             string display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
             if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
             {
                 string item_name = "";
-                if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = gameController.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
-                else { item_name = gameController.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH); }
+                if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = GlobalHelperFunctions.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
+                else { item_name = GlobalHelperFunctions.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH); }
                 display_str = display_str.Replace("$NAME", item_name);
             }
 
@@ -824,7 +823,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         // Send a tutorial message
         string display_str = "";
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        if (Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
             display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }

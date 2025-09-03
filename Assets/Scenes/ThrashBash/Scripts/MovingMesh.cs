@@ -6,8 +6,10 @@ using VRC.Udon;
 
 public class MovingMesh : UdonSharpBehaviour
 {
+    [SerializeField] Rigidbody rb;
+
     void FixedUpdate()
     {
-        GetComponent<Rigidbody>().AddForce(Vector3.zero);
+        rb.AddForce(Vector3.zero);
     }
 }

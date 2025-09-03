@@ -80,7 +80,7 @@
     }
   },
   "HurtboxShow": {
-    "LastUpdated": "2025-08-21T19:05:02.5212246-04:00",
+    "LastUpdated": "2025-09-03T16:36:20.8954664-04:00",
     "Key": "HurtboxShow",
     "Value": {
       "type": "Bool",
@@ -120,11 +120,11 @@
     }
   },
   "UIOtherScale": {
-    "LastUpdated": "2025-08-31T18:24:44.464314-04:00",
+    "LastUpdated": "2025-09-03T16:36:36.4893727-04:00",
     "Key": "UIOtherScale",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 12.0
     }
   },
   "UIWrist": {
@@ -133,6 +133,14 @@
     "Value": {
       "type": "Int",
       "value": 0
+    }
+  },
+  "UIDistance": {
+    "LastUpdated": "2025-09-02T22:05:52.7800193-04:00",
+    "Key": "UIDistance",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
     }
   }
 }

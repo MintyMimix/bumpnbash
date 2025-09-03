@@ -110,7 +110,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public void SetSpawnChances(byte gamemode)
     {
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         float[] parsed_spawn_chances = ParseInspectorSpawnChances();
         for (int i = 0; i < parsed_spawn_chances.Length; i++)
         {
@@ -131,7 +131,7 @@ public class ItemSpawner : UdonSharpBehaviour
             }
         }
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(parsed_spawn_chances));
-        item_spawn_chances_str = gameController.ConvertIntArrayToString(item_spawn_chances);
+        item_spawn_chances_str = GlobalHelperFunctions.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization(); 
     }
 
@@ -142,7 +142,7 @@ public class ItemSpawner : UdonSharpBehaviour
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { training_tutorial_ui_ready = false; UpdateTrainingTutorialText(); RequestSerialization(); }
+        if (Networking.IsOwner(gameObject)) { training_tutorial_ui_ready = false; UpdateTrainingTutorialText(); RequestSerialization(); }
         else if (player == Networking.LocalPlayer) { wait_for_join_sync = true; }
     }
     
@@ -154,7 +154,7 @@ public class ItemSpawner : UdonSharpBehaviour
             UpdateTrainingTutorialText();
             wait_for_join_sync = false;
         }
-        if (gameController != null) { item_spawn_chances = gameController.ConvertStrToIntArray(item_spawn_chances_str); }
+        if (gameController != null) { item_spawn_chances = GlobalHelperFunctions.ConvertStrToIntArray(item_spawn_chances_str); }
     }
 
     public override void OnPostSerialization(SerializationResult result)
@@ -192,7 +192,7 @@ public class ItemSpawner : UdonSharpBehaviour
         if (!ProcessTimer()) { return; }
 
         // -- Master Only Below --
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
+        if (!Networking.IsOwner(gameObject)) { return; }
         // Only spawn the item if it's in a spawnable state
         if (item_spawn_state == (int)item_spawn_state_name.Spawnable)
         {
@@ -226,7 +226,7 @@ public class ItemSpawner : UdonSharpBehaviour
         //item_timer_local = 0.0f;
         item_timer_network = 0.0f;
         item_timer_duration = duration;
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { RequestSerialization(); }
+        if (Networking.IsOwner(gameObject)) { RequestSerialization(); }
     }
 
     [NetworkCallable]
@@ -423,13 +423,13 @@ public class ItemSpawner : UdonSharpBehaviour
         {
             if (i < (int)powerup_type_name.ENUM_LENGTH)
             {
-                var powerup_type_name_enum_index = gameController.KeyToPowerupType(item_spawn_chances_config_keys[i]);
+                var powerup_type_name_enum_index = GlobalHelperFunctions.KeyToPowerupType(item_spawn_chances_config_keys[i]);
                 outArr[powerup_type_name_enum_index] = item_spawn_chances_config_values[i];
                 //Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": PARSED POWERUP " + powerup_type_name_enum_index + " from key of " + item_spawn_chances_config_keys[i] + " and value of " + item_spawn_chances_config_values[i]);
             }
             else if (i - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
             {
-                var weapon_type_name_enum_index = gameController.KeyToWeaponType(item_spawn_chances_config_keys[i]);
+                var weapon_type_name_enum_index = GlobalHelperFunctions.KeyToWeaponType(item_spawn_chances_config_keys[i]);
                 outArr[weapon_type_name_enum_index + (int)powerup_type_name.ENUM_LENGTH] = item_spawn_chances_config_values[i];
                 //Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": PARSED WEAPON " + weapon_type_name_enum_index + " from key of " + item_spawn_chances_config_keys[i] + " and value of " + item_spawn_chances_config_values[i]);
             }

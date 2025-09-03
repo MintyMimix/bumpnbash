@@ -95,7 +95,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
             Vector2 base_dims = ((RectTransform)template_UIAssignTeamPanel.transform).sizeDelta;
             Vector3 base_scale = ((RectTransform)template_UIAssignTeamPanel.transform).localScale;
             Vector2 grid_dims = ((RectTransform)UIScrollPanelGridLayoutGroup.transform).sizeDelta;
-            float[] grid_result = gameController.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims);
+            float[] grid_result = GlobalHelperFunctions.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims);
             UIScrollPanelGridLayoutGroup.constraintCount = (int)grid_result[0];
             UIScrollPanelGridLayoutGroup.cellSize = base_dims * grid_result[1];
             //UIScrollPanelGridLayoutGroup.spacing = new Vector2(grid_result[4], grid_result[5]);
@@ -117,7 +117,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
             Vector2 base_dims = ((RectTransform)template_TeamCountDisplay.transform).sizeDelta;
             Vector3 base_scale = ((RectTransform)template_TeamCountDisplay.transform).localScale;
             Vector2 grid_dims = ((RectTransform)UITeamCountPanelLayoutGroup.transform).sizeDelta;
-            float[] grid_result = gameController.CalcGridDistr(active_panels, base_rows, base_dims, base_scale, grid_dims, true);
+            float[] grid_result = GlobalHelperFunctions.CalcGridDistr(active_panels, base_rows, base_dims, base_scale, grid_dims, true);
             UITeamCountPanelLayoutGroup.constraintCount = (int)grid_result[0];
             UITeamCountPanelLayoutGroup.cellSize = base_dims * grid_result[1];
             //UIScrollPanelGridLayoutGroup.spacing = new Vector2(grid_result[4], grid_result[5]);
@@ -250,7 +250,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
             uiarrow.player = null;
             uiarrow.current_value = -3;
             uiarrow.array_id = i;
-            player_obj_list = gameController.AddToGameObjectArray(uiobj, player_obj_list);
+            player_obj_list = GlobalHelperFunctions.AddToGameObjectArray(uiobj, player_obj_list);
 
             uiarrow.Refresh();
         }
@@ -313,7 +313,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         new_host_proposed_id = host_requested;
         string display_text = "The Game Master will be changed to:\n$NAME\n\nAre you sure?";
         display_text = display_text.Replace("$NAME", player.displayName);
-        gameController.GetChildTransformByName(UIHostChangePanel.transform, "UIHostText").GetComponent<TMP_Text>().text = display_text;
+        GlobalHelperFunctions.GetChildTransformByName(UIHostChangePanel.transform, "UIHostText").GetComponent<TMP_Text>().text = display_text;
         UIHostChangePanel.SetActive(true);
     }
 
