@@ -18,22 +18,14 @@ public class WeaponProjectile : UdonSharpBehaviour
 {
 
     [NonSerialized] public int projectile_type, weapon_type;
-    [NonSerialized] public int owner_id;
     [NonSerialized] public float owner_scale;
-    [NonSerialized] public int global_index = -1;
-    [NonSerialized] public int ref_index = -1;
-    [NonSerialized] public bool keep_parent;
-    //[NonSerialized] public int keep_parent_ext;
     [NonSerialized] public Vector3 pos_start;
     [NonSerialized] public float projectile_distance;
     [NonSerialized] public float projectile_duration;
     [NonSerialized] public double projectile_start_ms;
-    //[NonSerialized] private double projectile_timer_local = 0.0f;
     [NonSerialized] private double projectile_timer_network = 0.0f;
-    [SerializeField] public GameObject template_WeaponHurtbox;
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject[] projectile_mdl;
-    [NonSerialized] public GameObject weapon_parent;
     [NonSerialized] public float actual_distance;
     [NonSerialized] public Vector3 previousPosition;
     [SerializeField] public Rigidbody rb;
@@ -45,6 +37,9 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public LayerMask layers_to_hit;
     [NonSerialized] private Vector3 INVALID_HIT_POS;
     [NonSerialized] private Animator cached_animator;
+    [NonSerialized] private float tick_timer = 0.0f;
+    [NonSerialized] private Transform cached_trail;
+    [NonSerialized] private Transform cached_particle;
 
     private void Start()
     {
@@ -56,30 +51,30 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     public void ResetProjectile()
     {
+        tick_timer = 0.0f;
         projectile_duration = 0.0f;
         projectile_distance = 0.0f;
         projectile_hit_on_this_frame = false;
         projectile_start_ms = 0.0f;
         projectile_timer_network = 0.0f;
         contact_made = false;
-        keep_parent = false;
         has_physics = false;
         transform.parent = null;
         transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
-        transform.SetPositionAndRotation(gameController.template_WeaponProjectile.transform.position, gameController.template_WeaponProjectile.transform.rotation);
+        //transform.SetPositionAndRotation(gameController.template_WeaponProjectile.transform.position, gameController.template_WeaponProjectile.transform.rotation);
+        GetComponent<Collider>().isTrigger = true;
         if (rb != null)
         {
-            rb.position = gameController.template_WeaponProjectile.transform.position;
-            rb.rotation = gameController.template_WeaponProjectile.transform.rotation;
-            previousPosition = rb.position;
+            //rb.position = gameController.template_WeaponProjectile.transform.position;
+            //rb.rotation = gameController.template_WeaponProjectile.transform.rotation;
+            //previousPosition = rb.position;
             rb.useGravity = false;
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
-            GetComponent<Collider>().isTrigger = true;
         }
         else { previousPosition = transform.position; }
-        //if (rb == null) { rb = gameObject.GetComponent<Rigidbody>(); }
-        //if (rb != null) { previousPosition = rb.position; }
+        if (cached_trail != null) { cached_trail.gameObject.SetActive(false); }
+        if (cached_particle != null) { cached_particle.gameObject.SetActive(false); }
         Start();
     }
 
@@ -93,62 +88,61 @@ public class WeaponProjectile : UdonSharpBehaviour
                 { 
                     projectile_mdl[i].SetActive(true);
                     // Recolor the model to team
-                    if (owner_id >= 0)
+                    int owner_team = gameController.GetGlobalTeam(Networking.GetOwner(gameObject).playerId);
+                    owner_team = Mathf.Max(0, owner_team);
+                    //if (owner_team < 0) { continue; }
+                    Renderer m_Renderer = projectile_mdl[i].GetComponent<Renderer>();
+                    if (m_Renderer != null && gameController.team_colors != null && owner_team >= 0)
                     {
-                        int owner_team = gameController.GetGlobalTeam(owner_id);
-                        owner_team = Mathf.Max(0, owner_team);
-                        //if (owner_team < 0) { continue; }
-                        Renderer m_Renderer = projectile_mdl[i].GetComponent<Renderer>();
-                        if (m_Renderer != null && gameController.team_colors != null && owner_team >= 0)
+                        Material mat = m_Renderer.materials[0];
+                        if (weapon_type == (int)weapon_type_name.Bomb && m_Renderer.materials.Length > 1) { mat = m_Renderer.materials[1]; }
+                        if (gameController.option_teamplay)
                         {
-                            Material mat = m_Renderer.materials[0];
-                            if (weapon_type == (int)weapon_type_name.Bomb && m_Renderer.materials.Length > 1) { mat = m_Renderer.materials[1]; }
-                            if (gameController.option_teamplay)
+                            mat.SetColor("_Color",
+                                new Color32(
+                                (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].r)),
+                                (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].g)),
+                                (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].b)),
+                                (byte)0));
+                            mat.EnableKeyword("_EMISSION");
+                            mat.SetColor("_EmissionColor",
+                                new Color32(
+                                (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].r)),
+                                (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].g)),
+                                (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].b)),
+                                (byte)gameController.team_colors[owner_team].a));
+                        }
+                        else
+                        {
+                            mat.SetColor("_Color", new Color32(255, 255, 255, 0));
+                            mat.EnableKeyword("_EMISSION");
+                            mat.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
+                        }
+                        cached_trail = GlobalHelperFunctions.GetChildTransformByName(projectile_mdl[i].transform, "Trail");
+                        if (cached_trail != null && cached_trail.GetComponent<TrailRenderer>() != null) 
+                        {
+                            cached_trail.GetComponent<TrailRenderer>().startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                            cached_trail.GetComponent<TrailRenderer>().endColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                            cached_trail.gameObject.SetActive(true);
+                        }
+                        cached_particle = GlobalHelperFunctions.GetChildTransformByName(projectile_mdl[i].transform, "Particle");
+                        if (cached_particle != null && cached_particle.GetComponent<ParticleSystem>() != null)
+                        {
+                            cached_particle.gameObject.SetActive(false);
+                            var particle_main = cached_particle.GetComponent<ParticleSystem>().main;
+                            particle_main.startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
+                            particle_main.duration = projectile_duration;
+                            particle_main.playOnAwake = true;
+                            if (gameController != null && gameController.local_ppp_options != null)
                             {
-                                mat.SetColor("_Color",
-                                    new Color32(
-                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].r)),
-                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].g)),
-                                    (byte)Mathf.Max(0, Mathf.Min(255, 80 + gameController.team_colors[owner_team].b)),
-                                    (byte)0));
-                                mat.EnableKeyword("_EMISSION");
-                                mat.SetColor("_EmissionColor",
-                                    new Color32(
-                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].r)),
-                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].g)),
-                                    (byte)Mathf.Max(0, Mathf.Min(255, -80 + gameController.team_colors[owner_team].b)),
-                                    (byte)gameController.team_colors[owner_team].a));
+                                var particle_emission = cached_particle.GetComponent<ParticleSystem>().emission;
+                                particle_emission.enabled = gameController.local_ppp_options.particles_on;
                             }
-                            else
-                            {
-                                mat.SetColor("_Color", new Color32(255, 255, 255, 0));
-                                mat.EnableKeyword("_EMISSION");
-                                mat.SetColor("_EmissionColor", new Color32(83, 83, 83, 255));
-                            }
-                            Transform trail = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Trail");
-                            if (trail != null && trail.GetComponent<TrailRenderer>() != null) 
-                            {
-                                trail.GetComponent<TrailRenderer>().startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
-                                trail.GetComponent<TrailRenderer>().endColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
-                            }
-                            Transform particle = gameController.GetChildTransformByName(projectile_mdl[i].transform, "Particle");
-                            if (particle != null && particle.GetComponent<ParticleSystem>() != null)
-                            {
-                                particle.gameObject.SetActive(false);
-                                var particle_main = particle.GetComponent<ParticleSystem>().main;
-                                particle_main.startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
-                                particle_main.duration = projectile_duration;
-                                particle_main.playOnAwake = true;
-                                if (gameController != null && gameController.local_ppp_options != null)
-                                {
-                                    var particle_emission = particle.GetComponent<ParticleSystem>().emission;
-                                    particle_emission.enabled = gameController.local_ppp_options.particles_on;
-                                }
-                                particle.gameObject.SetActive(true);
-                                particle.GetComponent<ParticleSystem>().Play();
-                            }
+                            cached_particle.gameObject.SetActive(true);
+                            cached_particle.GetComponent<ParticleSystem>().Play();
                         }
                     }
+
                 }
                 else { projectile_mdl[i].SetActive(false); }
             }
@@ -163,18 +157,9 @@ public class WeaponProjectile : UdonSharpBehaviour
     private Vector3 CalcPosAtTime(double time_elapsed)
     {
         Vector3 outPos = rb.position;
-        switch (projectile_type)
+        if (projectile_type == (int)projectile_type_name.Bullet || projectile_type == (int)projectile_type_name.Laser)
         {
-            case (int)projectile_type_name.Bullet:
-                if (keep_parent && weapon_parent != null) { pos_start = weapon_parent.transform.position; }
-                outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
-                break;
-            case (int)projectile_type_name.Laser:
-                if (keep_parent && weapon_parent != null) { pos_start = weapon_parent.transform.position; }
-                outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
-                break;
-            default:
-                break;
+            outPos = pos_start + (transform.right * CalcDistanceAtTime(time_elapsed));
         }
         return outPos;
     }
@@ -183,12 +168,18 @@ public class WeaponProjectile : UdonSharpBehaviour
     {
         if (projectile_duration <= 0) { return; }
 
-        //projectile_timer_local += Time.deltaTime;
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
+
+        tick_timer += Time.deltaTime;
+
+        if (tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
+        {
+            UpdatePerActiveTick();
+            tick_timer = 0.0f;
+        }
 
         if (projectile_hit_on_this_frame && pos_end != null)
         {
-            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " hit a target on this frame at " + pos_end.ToString());
             rb.MovePosition(pos_end);
             OnProjectileHit(pos_end, contact_made);
         }
@@ -203,20 +194,14 @@ public class WeaponProjectile : UdonSharpBehaviour
         }
     }
 
-    private void FixedUpdate()
+    private void UpdatePerActiveTick()
+    {
+        HandleMovement();
+    }
+
+    private void HandleMovement()
     {
         if (projectile_duration <= 0) { return; }
-
-        // Before anything else, if we have a parent, make sure we're positioned and rotated with the parent
-        if (keep_parent && weapon_parent != null && !projectile_hit_on_this_frame)
-        {
-            // New behavior: just immediately detonate the projectile and have the hurtbox handle the sizing instead
-            rb.MoveRotation(weapon_parent.transform.rotation);
-            //rb.MovePosition(weapon_parent.transform.position + (weapon_parent.transform.right * CalcDistanceAtTime(projectile_timer_network)));
-            pos_end = weapon_parent.transform.position;
-            contact_made = false;
-            projectile_hit_on_this_frame = true;
-        }
 
         // If this is not a physics object, we calculate the next position, either based on lerp from the distance or raycast if there's an obstacle between our current and next position
         if (!has_physics) {
@@ -224,26 +209,20 @@ public class WeaponProjectile : UdonSharpBehaviour
             Vector3 rayPos = RaycastToNextPos(projectile_timer_network);
             if (Mathf.FloorToInt(rayPos.x) != Mathf.FloorToInt(INVALID_HIT_POS.x) && !projectile_hit_on_this_frame)
             {
-                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
                 pos_end = rayPos;
                 projectile_hit_on_this_frame = true;
                 contact_made = true;
-                //rb.MovePosition(rayPos);
-                //projectile_hit_on_this_frame = true;
-                //OnProjectileHit(rayPos, true);
-                //Debug.Log("[PROJECTILE] Create projectile at RayPos!");
             }
             else
             {
                 rb.MovePosition(lerpPos);
                 if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
                 {
-                    UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                    //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                     pos_end = CalcPosAtTime(projectile_duration);
                     projectile_hit_on_this_frame = true;
                     contact_made = false;
-                    //OnProjectileHit(CalcPosAtTime(projectile_duration), false);
-                    //Debug.Log("[PROJECTILE] Create projectile because of lifetime!");
                 }
             }
         }
@@ -252,7 +231,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
             {
-                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                 pos_end = rb.position;
                 projectile_hit_on_this_frame = true;
                 contact_made = false;
@@ -262,13 +241,11 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     public void OnProjectileHit(Vector3 position, bool is_contact_made)
     {
-        //NetworkCreateHurtBox(Vector3 position, float damage, double start_ms, int player_id, int weapon_type)
-        //actual_distance = Vector3.Distance(pos_start, this.GetComponent<Rigidbody>().position);
-        if (owner_id == Networking.LocalPlayer.playerId)
+        if (Networking.IsOwner(gameObject))
         {
 
             PlayerAttributes plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
-            float damage = gameController.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
+            float damage = gameController.local_plyweapon.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
             damage *= plyAttr.ply_atk * (owner_scale * gameController.scale_damage_factor);
             float dist_scale = 1.0f;
             // For a Laser type projectile, we want to instead position the hurtbox at the midway point between start and current, and scale it according to that distance
@@ -287,54 +264,22 @@ public class WeaponProjectile : UdonSharpBehaviour
 
             }
 
-            if (!keep_parent) { gameController.local_plyweapon.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); } // ENUM_LENGTH is used for weapon fire
+            gameController.local_plyweapon.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); // ENUM_LENGTH is used for weapon fire
 
-            gameController.SendCustomNetworkEvent(
+            gameController.local_plyweapon.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
                 , position
                 , pos_start
                 , rb.rotation
                 , new Vector4(damage, owner_scale, dist_scale, extra_data)
-                , keep_parent
-                , owner_id
+                , false
+                , Networking.LocalPlayer.playerId
                 , weapon_type
                 );
-        
-            // Play the striking sound, if applicable
-            if (weapon_parent != null && weapon_parent.GetComponent<PlayerWeapon>() != null && is_contact_made && owner_id == Networking.LocalPlayer.playerId)
-            {
-                var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
-                gameController.PlaySFXFromArray(
-                    plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, weapon_type
-                );
-                /*
-                switch (weapon_type)
-                {
-                    case (int)weapon_type_name.Bomb:
-                        gameController.PlaySFXFromArray(
-                        weapon_parent.GetComponent<PlayerWeapon>().weapon_snd_source, gameController.snd_game_sfx_clips[(int)game_sfx_name.WeaponFire], weapon_type
-                        );
-                        break;
-                    case (int)weapon_type_name.Rocket:
-                        gameController.PlaySFXFromArray(
-                        weapon_parent.GetComponent<PlayerWeapon>().weapon_snd_source, gameController.snd_game_sfx_clips[(int)game_sfx_name.WeaponFire], weapon_type
-                        );
-                        break;
-                    default:
-                        break;
-                }*/
-            }
         }
 
-        //Destroy(gameObject);
-        if (global_index > -1 && ref_index > -1 && gameController.global_projectile_refs != null)
-        {
-            gameController.PreallocClearSlot((int)prealloc_obj_name.WeaponProjectile, global_index, ref ref_index);
-        }
-        //ResetProjectile();
         gameObject.SetActive(false);
-        
     }
 
     private bool CheckCollider(Collider other)
@@ -343,7 +288,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         // Did we hit a hitbox?
         if (other.gameObject.GetComponent<PlayerHitbox>() != null)
         {
-            if (owner_id != Networking.GetOwner(other.gameObject).playerId)
+            if (Networking.GetOwner(gameObject) != Networking.GetOwner(other.gameObject))
             {
                 return true;
             }
@@ -381,7 +326,6 @@ public class WeaponProjectile : UdonSharpBehaviour
     private Vector3 RaycastToNextPos(double time_elapsed)
     {
         bool ray_cast = Physics.Linecast(previousPosition, CalcPosAtTime(projectile_timer_network), out RaycastHit hitInfo, layers_to_hit, QueryTriggerInteraction.Collide);
-        //UnityEngine.Debug.DrawLine(previousPosition, CalcPosAtTime(projectile_timer_network), Color.red, 0.1f);
         previousPosition = rb.position;
         // Since vectors are non-nullable, let's just return something impossible
         if (!ray_cast || hitInfo.collider == null || !CheckCollider(hitInfo.collider)) { return INVALID_HIT_POS; }

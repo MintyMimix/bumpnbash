@@ -72,7 +72,7 @@ public class PPP_Options : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
-        Transform harmtester_transform = gameController.GetChildTransformByName(transform, "HarmTester");
+        Transform harmtester_transform = GlobalHelperFunctions.GetChildTransformByName(transform, "HarmTester");
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
         canvas_pos_init = transform.position;
@@ -261,11 +261,11 @@ public class PPP_Options : UdonSharpBehaviour
             }
             if (should_refresh) { RefreshComponents(); }
         }
-        else if (Networking.GetOwner(gameObject) != Networking.LocalPlayer && gameObject.activeInHierarchy)
+        else if (!Networking.IsOwner(gameObject) && gameObject.activeInHierarchy)
         {
             gameObject.SetActive(false);
         }
-        else if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && !gameObject.activeInHierarchy)
+        else if (Networking.IsOwner(gameObject) && !gameObject.activeInHierarchy)
         {
             gameObject.SetActive(true);
         }

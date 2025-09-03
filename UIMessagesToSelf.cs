@@ -26,7 +26,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
     
     private void Update()
     {
-        if (owner == null && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (owner == null && Networking.IsOwner(gameObject))
         {
             TransferOwner(Networking.LocalPlayer);
         }

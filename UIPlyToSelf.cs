@@ -401,7 +401,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     private void Update()
     {
-        if (owner == null && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        if (owner == null && Networking.IsOwner(gameObject))
         {
             TransferOwner(Networking.LocalPlayer);
         }
@@ -446,7 +446,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 //AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.4 --", Color.white);
                 //AddToTextQueue("Step in the square to join the game!", Color.white);
                 if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
-                if (gameController != null && Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.ResetGameOptionsToDefault(false); }
+                if (gameController != null && Networking.IsOwner(gameController.gameObject)) { gameController.ResetGameOptionsToDefault(false); }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
@@ -808,7 +808,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
                 // Display first three letters of holder's name
                 int hold_index = 0;
-                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { hold_index = gameController.DictIndexFromKey(capturezone.hold_id, capturezone.dict_points_keys_arr); }
+                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { hold_index = GlobalHelperFunctions.DictIndexFromKey(capturezone.hold_id, capturezone.dict_points_keys_arr); }
                 string hold_text = ""; Color hold_color = Color.white;
                 if (!capturezone.is_locked && hold_index >= 0 && hold_index < capturezone.dict_points_keys_arr.Length)
                 {
@@ -857,7 +857,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
                 // Display contest progress as an overlay
                 int contest_index = -1;
-                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { contest_index = gameController.DictIndexFromKey(capturezone.contest_id, capturezone.dict_points_keys_arr); }
+                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { contest_index = GlobalHelperFunctions.DictIndexFromKey(capturezone.contest_id, capturezone.dict_points_keys_arr); }
                  Color contest_color = Color.white;
                 if (contest_index >= 0 && contest_index < capturezone.dict_points_keys_arr.Length)
                 {

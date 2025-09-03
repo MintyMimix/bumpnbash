@@ -102,10 +102,10 @@ public class CaptureZone : UdonSharpBehaviour
         HandleUI();
         
         // Networking Sync
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer)
+        if (!Networking.IsOwner(gameObject))
         {
-            dict_points_keys_arr = gameController.ConvertStrToIntArray(dict_points_keys_str);
-            dict_points_values_arr = gameController.ConvertStrToIntArray(dict_points_values_str);
+            dict_points_keys_arr = GlobalHelperFunctions.ConvertStrToIntArray(dict_points_keys_str);
+            dict_points_values_arr = GlobalHelperFunctions.ConvertStrToIntArray(dict_points_values_str);
         }
 
         double currentNetworkTime = Networking.GetServerTimeInSeconds();
@@ -118,7 +118,7 @@ public class CaptureZone : UdonSharpBehaviour
             point_grant_timer = 0.0f;
             if (!is_locked && dict_points_keys_arr != null && dict_points_values_arr != null)
             {
-                int hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
+                int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
                 if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
                 {
                     hold_points = dict_points_values_arr[hold_index];
@@ -127,7 +127,7 @@ public class CaptureZone : UdonSharpBehaviour
                     else { } // Overtime condition
                 }
 
-                if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+                if (Networking.IsOwner(gameObject))
                 {
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
                     if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
@@ -152,7 +152,7 @@ public class CaptureZone : UdonSharpBehaviour
                 int local_id = 0;
                 if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
                 else { local_id = Networking.LocalPlayer.playerId; }
-                int local_index = gameController.DictIndexFromKey(local_id, dict_points_keys_arr);
+                int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
                 if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
                 {
                     gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
@@ -181,7 +181,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (is_locked && initial_lock_timer >= initial_lock_duration)
         {
             is_locked = false;
-            if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Unlock, -1); }
+            if (Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Unlock, -1); }
         }
         else if (is_locked && gameController.round_state == (int)round_state_name.Ongoing)
         {
@@ -190,10 +190,10 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (is_locked)
         {
-            if (Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+            if (Networking.IsOwner(gameObject))
             {
-                dict_points_keys_str = gameController.ConvertIntArrayToString(dict_points_keys_arr);
-                dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
+                dict_points_keys_str = GlobalHelperFunctions.ConvertIntArrayToString(dict_points_keys_arr);
+                dict_points_values_str = GlobalHelperFunctions.ConvertIntArrayToString(dict_points_values_arr);
             }
             return;
         }
@@ -214,10 +214,10 @@ public class CaptureZone : UdonSharpBehaviour
             //UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
 
             // Assign a penalty if a holder lost the point within the last 5 seconds
-            int hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
+            int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
             if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && (gameController.option_gm_goal - dict_points_values_arr[hold_index]) <= 5) {
                 dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6;
-                if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { LocalGrantPoints(); }
+                if (!Networking.IsOwner(gameObject)) { LocalGrantPoints(); }
                 else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
             }
 
@@ -228,7 +228,7 @@ public class CaptureZone : UdonSharpBehaviour
             contest_id = -1;
             
             // Play SFX based on whether it was the player's team that captured it or not
-            if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Capture_Team, hold_id); }
+            if (Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Capture_Team, hold_id); }
 
 
         }
@@ -238,9 +238,9 @@ public class CaptureZone : UdonSharpBehaviour
             contest_id = -1; contest_progress = 0.0f; contest_pause_timer = 0.0f;
         }
 
-        if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) {
-            dict_points_keys_str = gameController.ConvertIntArrayToString(dict_points_keys_arr);
-            dict_points_values_str = gameController.ConvertIntArrayToString(dict_points_values_arr);
+        if (Networking.IsOwner(gameObject)) {
+            dict_points_keys_str = GlobalHelperFunctions.ConvertIntArrayToString(dict_points_keys_arr);
+            dict_points_values_str = GlobalHelperFunctions.ConvertIntArrayToString(dict_points_values_arr);
         }
 
     }
@@ -277,7 +277,7 @@ public class CaptureZone : UdonSharpBehaviour
         else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = other_id;
-            if (Networking.GetOwner(gameObject) == Networking.LocalPlayer) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Start_Team, contest_id); }
+            if (Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Start_Team, contest_id); }
         }
         // Even if there are too many people on the point, we can still display a generic "Contested by multiple people" message
         else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
@@ -430,7 +430,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (hold_id >= 0)
         {
             int hold_index = hold_id;
-            hold_index = gameController.DictIndexFromKey(hold_id, dict_points_keys_arr);
+            hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
             if (gameController.option_teamplay)
             {
                 activeImage.color = gameController.team_colors[hold_id];
@@ -632,10 +632,10 @@ public class CaptureZone : UdonSharpBehaviour
         {
             if (gameController.local_plyAttr != null) { local_index_check = Networking.LocalPlayer.playerId; }
         }
-        reward_ply_points = gameController.DictValueFromKey(local_index_check, dict_points_keys_arr, dict_points_values_arr);
+        reward_ply_points = GlobalHelperFunctions.DictValueFromKey(local_index_check, dict_points_keys_arr, dict_points_values_arr);
         if (reward_ply_points >= 0) { gameController.local_plyAttr.ply_points = (ushort)reward_ply_points; }
 
-        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer) { gameController.CheckForRoundGoal(); }
+        if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
     }
 
     public void AddPlayerOnPoint(int player_id)
@@ -689,7 +689,7 @@ public class CaptureZone : UdonSharpBehaviour
         }
         
         // If we are not the master, signal to them that we entered the trigger
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerEnter", player.playerId); }
+        if (!Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerEnter", player.playerId); }
         // Regardless of whether or not we are the master, try manipulate the array just so we have a local copy
         AddPlayerOnPoint(player.playerId);
     }
@@ -700,7 +700,7 @@ public class CaptureZone : UdonSharpBehaviour
         VRCPlayerApi player = Networking.GetOwner(other.gameObject);
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
         // If we are not the master, signal to them that we entered the trigger
-        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerExit", player.playerId); }
+        if (!Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "SignalTriggerExit", player.playerId); }
         // Regardless of whether or not we are the master, try manipulate the array just so we have a local copy
         RemovePlayerOnPoint(player.playerId);
     }

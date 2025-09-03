@@ -34,7 +34,7 @@ public class UIArrowTeamPanel : UIArrow
     {
         if (button_increment != null && button_decrement != null)
         {
-            bool toggle_should_be_on = Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer;
+            bool toggle_should_be_on = Networking.IsOwner(parent_teampanel.gameController.gameObject);
             if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
             else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
@@ -111,7 +111,7 @@ public class UIArrowTeamPanel : UIArrow
 
     public void UpdateOwnership()
     {
-        bool toggle_should_be_on = Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer;
+        bool toggle_should_be_on = Networking.IsOwner(parent_teampanel.gameController.gameObject);
         if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
         else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
@@ -130,7 +130,7 @@ public class UIArrowTeamPanel : UIArrow
         float text_xoffset = local_xoffset_init;
         float text_width = local_width_init;
         button_make_host.gameObject.SetActive(false);
-        if (parent_teampanel != null && parent_teampanel.gameController != null && Networking.GetOwner(parent_teampanel.gameController.gameObject) == Networking.LocalPlayer && player != Networking.LocalPlayer && player != null)
+        if (parent_teampanel != null && parent_teampanel.gameController != null && Networking.IsOwner(parent_teampanel.gameController.gameObject) && player != Networking.LocalPlayer && player != null)
         {
             button_make_host.gameObject.SetActive(true);
             

@@ -47,14 +47,14 @@ public class MapSelectPanel : UdonSharpBehaviour
             panel_attr.array_id = i;
             panel_attr.Refresh();
 
-            if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer)  
+            if (Networking.IsOwner(gameController.gameObject))  
             {
                 if (i > 0) { gameController.maps_active_str += ","; }
                 gameController.maps_active_str += "0";
             }
         }
         ArrangeMaps();
-        if (Networking.GetOwner(gameController.gameObject) == Networking.LocalPlayer)
+        if (Networking.IsOwner(gameController.gameObject))
         {
             gameController.RequestSerialization();
         }
@@ -65,12 +65,12 @@ public class MapSelectPanel : UdonSharpBehaviour
         if (gameController == null || gameController.maps_active_str == null) { return; }
         if (map_obj_list == null) { BuildMapList(); }
 
-        int[] maps_active_arr = gameController.ConvertStrToIntArray(gameController.maps_active_str);
+        int[] maps_active_arr = GlobalHelperFunctions.ConvertStrToIntArray(gameController.maps_active_str);
         for (int i = 0; i < map_obj_list.Length; i++)
         {
             MapSelectTemplate panel_attr = map_obj_list[i].GetComponent<MapSelectTemplate>();
             panel_attr.Refresh();
-            if (Networking.GetOwner(gameController.gameObject) != Networking.LocalPlayer) { map_obj_list[i].GetComponent<Toggle>().isOn = gameController.IntToBool(maps_active_arr[i]); }
+            if (!Networking.IsOwner(gameController.gameObject)) { map_obj_list[i].GetComponent<Toggle>().isOn = GlobalHelperFunctions.IntToBool(maps_active_arr[i]); }
         }
     }
 
@@ -115,7 +115,7 @@ public class MapSelectPanel : UdonSharpBehaviour
             Vector2 base_dims = ((RectTransform)template_map_panel.transform).sizeDelta;
             Vector3 base_scale = ((RectTransform)template_map_panel.transform).localScale;
             Vector2 grid_dims = ((RectTransform)map_grid.transform).sizeDelta;
-            float[] grid_result = gameController.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims, true);
+            float[] grid_result = GlobalHelperFunctions.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims, true);
             map_grid.constraintCount = (int)grid_result[0];
             //map_grid.cellSize = base_dims * grid_result[1];
             map_grid.spacing = new Vector2(-grid_result[4], -grid_result[5] );

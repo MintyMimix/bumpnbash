@@ -83,7 +83,7 @@ public class Scoreboard : UdonSharpBehaviour
         Vector2 base_dims = ((RectTransform)template_scoreboard_panel.transform).sizeDelta;
         Vector3 base_scale = ((RectTransform)template_scoreboard_panel.transform).localScale;
         Vector2 grid_dims = ((RectTransform)scoreboard_grid.transform).sizeDelta;
-        float[] grid_result = gameController.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims);
+        float[] grid_result = GlobalHelperFunctions.CalcGridDistr(active_panels, base_columns, base_dims, base_scale, grid_dims);
         scoreboard_grid.constraintCount = (int)grid_result[0];
         scoreboard_grid.spacing = new Vector2(grid_result[4], grid_result[5]);
         for (int i = 0; i < scoreboard_obj_list.Length; i++)
