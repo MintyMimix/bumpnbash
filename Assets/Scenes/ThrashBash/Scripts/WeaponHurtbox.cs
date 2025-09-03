@@ -304,26 +304,24 @@ public class WeaponHurtbox : UdonSharpBehaviour
 		// Finally, calculate the force direction and tell the player they've been hit
 		//Vector3 force_dir = Vector3.Normalize(colliderOwner.GetPosition() - rb.position);
 		//force_dir = new Vector3(force_dir.x, 0, force_dir.z);
-		Vector3 force_dir = Vector3.zero; Vector3 force_origin = Vector3.zero;
+		Vector3 force_dir = Vector3.zero; Vector3 hitSpot = Vector3.zero;
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.Rocket) 
         {
-            force_origin = active_collider.ClosestPointOnBounds(colliderOwner.GetPosition());
-            force_dir = (colliderOwner.GetPosition() - force_origin).normalized; 
+            force_dir = (colliderOwner.GetPosition() - rb.position).normalized; 
         }
         else 
         {
-            force_origin = active_collider.ClosestPointOnBounds(origin);
-            force_dir = (colliderOwner.GetPosition() - force_origin).normalized; 
+            force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPointOnBounds(origin)).normalized; 
         }
 
-        
+        hitSpot = active_collider.ClosestPointOnBounds(colliderOwner.GetPosition());
         // force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPoint(colliderOwner.GetPosition())).normalized;
         //UnityEngine.Debug.Log("Force direction: " + force_dir.ToString() + " (old: " + Vector3.Normalize(colliderOwner.GetPosition() - rb.position) + ") ");
 
-        if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, force_origin, owner_id, damage_type, false); }
+        if (!hit_self) { gameController.FindPlayerAttributes(colliderOwner).SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, hitSpot, owner_id, damage_type, false); }
         else
         {
-            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, force_origin, owner_id, damage_type, true);
+            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, hitSpot, owner_id, damage_type, true);
             var plyWeapon = weapon_parent.GetComponent<PlayerWeapon>();
             gameController.PlaySFXFromArray(
                 plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type

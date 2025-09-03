@@ -240,7 +240,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void HitOtherPlayer(int attacker_id, int damage_type, Vector3 forceOrigin)
+    public void HitOtherPlayer(int attacker_id, int defender_id, float damage, int damage_type, Vector3 hitSpot)
     {
         // Only the attacker should have a registered hit
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
@@ -248,11 +248,15 @@ public class PlayerAttributes : UdonSharpBehaviour
         combo_send++;
 
         TryHapticEvent((int)game_sfx_name.HitSend);
-        // To-do: show damage number at forceOrigin
+        // Damage indicator
+        if (gameController.local_uiplytoself != null)
+        {
+            gameController.local_uiplytoself.ShowHarmNumber(defender_id, damage, hitSpot);
+        }
     }
 
     [NetworkCallable]
-    public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 forceOrigin, int attacker_id, int damage_type, bool hit_self)
+    public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 hitSpot, int attacker_id, int damage_type, bool hit_self)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
         if (ply_state != (int)player_state_name.Alive) { return; }
@@ -306,7 +310,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
                 last_hit_by_timer = 0.0f;
                 var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
-                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, damage_type, forceOrigin);
+                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, Networking.LocalPlayer.playerId, calcDmg, damage_type, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position);
             }
 
             TryHapticEvent((int)game_sfx_name.HitReceive);
@@ -315,7 +319,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Damage indicator
         if (gameController.local_uiplytoself != null)
         {
-            gameController.local_uiplytoself.ShowPainIndicator(calcDmg, forceOrigin);
+            gameController.local_uiplytoself.ShowPainIndicator(calcDmg, hitSpot);
         }
     }
 

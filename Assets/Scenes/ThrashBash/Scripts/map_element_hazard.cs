@@ -64,8 +64,8 @@ public class map_element_hazard : BouncePad
                 break;
         }
 
-        Vector3 force_origin = GetComponent<Collider>().ClosestPointOnBounds(player.GetPosition()); 
-        plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, force_origin, - 1, (int)damage_type_name.HazardBurn, false);
+        Vector3 hitSpot = GetComponent<Collider>().ClosestPointOnBounds(player.GetPosition()); 
+        plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ReceiveDamage", current_damage, Vector3.zero, hitSpot, - 1, (int)damage_type_name.HazardBurn, false);
         Bounce(player);
     }
 

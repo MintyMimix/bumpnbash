@@ -113,7 +113,7 @@ public class ItemWeapon : ItemGeneric
             if (gameController.local_uiplytoself != null && iweapon_type >= 0 && iweapon_sprites != null && iweapon_type < iweapon_sprites.Length) { gameController.local_uiplytoself.PTSWeaponSprite.sprite = iweapon_sprites[iweapon_type]; }
             item_is_template = false;
         }
-        else if (plyWeapon != null && plyWeapon.weapon_type == (int)weapon_type_name.BossGlove) 
+        else if (plyWeapon != null && plyWeapon.weapon_type == (int)weapon_type_name.BossGlove && gameController.option_gamemode == (int)gamemode_name.BossBash) 
         {
             gameController.PlaySFXFromArray(plyWeapon.snd_source_weaponcharge, item_snd_clips, (int)item_snd_clips_name.Spawn);
         }

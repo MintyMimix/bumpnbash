@@ -78,7 +78,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     }
 
-    private void SetupTutorialMessages()
+    public void SetupTutorialMessages()
     {
         local_tutorial_message_bool = new bool[(int)weapon_type_name.ENUM_LENGTH];
         local_tutorial_message_str_desktop = new string[(int)weapon_type_name.ENUM_LENGTH];

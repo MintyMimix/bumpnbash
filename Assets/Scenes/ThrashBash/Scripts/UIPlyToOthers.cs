@@ -150,13 +150,13 @@ public class UIPlyToOthers : UdonSharpBehaviour
                 PTOLivesImage.color = PTOTeamFlagImage.color;
             }
          }
-        else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
+        else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
-            float timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); 
+            float timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)playerAttributes.ply_points); 
             LivesText = timeLeft.ToString();
             float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
             PTOLives.color = new Color(1.0f, timeRatio / 1.5f, timeRatio / 1.0f, 1.0f);
-            PTOLivesImage.color = PTOLivesImage.color;
+            PTOLivesImage.color = PTOTeamFlagImage.color;
             if (ref_uiplytoself != null) { PTOLivesImage.sprite = ref_uiplytoself.PTSTimerImage; }
         }
         else
@@ -192,27 +192,4 @@ public class UIPlyToOthers : UdonSharpBehaviour
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
     }
 
-    /*
-    public GameController gameController;
-    public TMP_Text PTODebugInfo;
-    public VRCPlayerApi owner;
-    void Start()
-    {
-        
-    }
-
-    private void Update()
-    {
-        var debugText = "";
-        owner = Networking.GetOwner(gameObject);
-        var ownerAttr = gameController.FindPlayerAttributes(owner);
-        debugText += owner.displayName + " {" + owner.playerId + "}";
-        debugText += "\n" + ownerAttr.ply_dp + " % [" + ownerAttr.ply_lives + "]";
-        debugText += "\n" + "PlayerAttributes: " + Networking.GetOwner(gameController.FindOwnedObject(owner, "PlayerAttributes")).playerId.ToString();
-        debugText += "\n" + "PlayerWeapon: " + Networking.GetOwner(gameController.FindOwnedObject(owner, "PlayerWeapon")).playerId.ToString();
-        //debugText += "\n" + "PlayerHitbox: " + .playerId.ToString();
-        PTODebugInfo.text = debugText;
-
-        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3 (0.0f, 1.5f, 0.0f), owner.GetRotation());
-    }*/
 }

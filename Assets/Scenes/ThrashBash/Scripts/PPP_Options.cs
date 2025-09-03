@@ -14,14 +14,17 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_particletoggle;
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uisoundslider;
     [SerializeField] public TMP_Text ui_uiscaletext;
     [SerializeField] public TMP_Text ui_uiseparationtext;
     [SerializeField] public TMP_Text ui_uistretchtext;
+    [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
     [NonSerialized] public bool hurtbox_show = true;
@@ -30,9 +33,11 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_scale = 1.0f;
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
+    [NonSerialized] public float ui_harm_scale = 1.0f;
     [NonSerialized] public bool waiting_on_playerdata = true;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
+    [NonSerialized] public bool particles_on = true;
 
     private void Start()
     {
@@ -64,8 +69,11 @@ public class PPP_Options : UdonSharpBehaviour
     {
         RefreshComponents();
         UpdateUIScale();
+        UpdateUISeparation();
+        UpdateUIStretch();
         UpdateHurtbox();
         UpdateColorblind();
+        UpdateParticles();
         UpdateMusicVolume();
         UpdateSoundVolume();
     }
@@ -94,6 +102,12 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIStretch();
                     continue;
                 }
+                if (!PlayerData.HasKey(player, "UIHarmScale"))
+                {
+                    ui_uiharmscaleslider.value = 10.0f;
+                    UpdateUIHarmScale();
+                    continue;
+                }
                 if (!PlayerData.HasKey(player, "MusicVolume"))
                 {
                     ui_uimusicslider.value = 10.0f;
@@ -116,6 +130,18 @@ public class PPP_Options : UdonSharpBehaviour
                 {
                     ui_hurtboxtoggle.isOn = true;
                     UpdateHurtbox();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "ParticleShow"))
+                {
+                    if (gameController != null && gameController.flag_for_mobile_vr != null) {
+                        if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_particletoggle.isOn = true; }
+                        else { 
+                            ui_particletoggle.isOn = false;
+                            ui_particletoggle.interactable = false;
+                        }
+                    }
+                    UpdateParticles();
                     continue;
                 }
                 if (infos[i].State == PlayerData.State.Restored || infos[i].State == PlayerData.State.Changed)
@@ -171,6 +197,18 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateUIStretch();
         }
 
+        float out_UIHarmScale;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIHarmScale", out out_UIHarmScale))
+        {
+            ui_uiharmscaleslider.value = out_UIHarmScale;
+        }
+        else
+        {
+            ui_uiharmscaleslider.value = 10.0f;
+            UpdateUIHarmScale();
+        }
+
+
         float out_MusicVolume;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "MusicVolume", out out_MusicVolume))
         {
@@ -215,6 +253,25 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateHurtbox();
         }
 
+        bool out_ParticleShow;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "ParticleShow", out out_ParticleShow))
+        {
+            ui_particletoggle.isOn = out_ParticleShow;
+        }
+        else
+        {
+            if (gameController != null && gameController.flag_for_mobile_vr != null)
+            {
+                if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_particletoggle.isOn = true; }
+                else
+                {
+                    ui_particletoggle.isOn = false;
+                    ui_particletoggle.interactable = false;
+                }
+            }
+            UpdateParticles();
+        }
+
     }
 
     public void UpdateUIScale()
@@ -243,10 +300,15 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_separation = ui_uiseparationslider.value / 10.0f;
         GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        if (ui_plyself_obj != null && ui_plyself_obj.GetComponent<UIPlyToSelf>() != null)
+        UIPlyToSelf ui_plyself_script = null;
+        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
+        if (ui_plyself_obj != null && ui_plyself_script != null)
         {
-            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
-            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
+            if (!ui_plyself_script.ui_show_intro_text)
+            {
+                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
+                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
+            }
         }
         ui_uiseparationtext.text = "UI Vertical: " + (ui_separation * 100.0f) + "%";
         if ((ui_separation * 10.0f) <= ui_uiseparationslider.minValue) { ui_uiseparationtext.color = Color.red; }
@@ -260,10 +322,15 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_stretch = ui_uistretchslider.value / 10.0f;
         GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
-        if (ui_plyself_obj != null && ui_plyself_obj.GetComponent<UIPlyToSelf>() != null)
+        UIPlyToSelf ui_plyself_script = null;
+        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
+        if (ui_plyself_obj != null && ui_plyself_script != null)
         {
-            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
-            ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
+            if (!ui_plyself_script.ui_show_intro_text)
+            {
+                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_timer = 0.0f;
+                ui_plyself_obj.GetComponent<UIPlyToSelf>().ui_demo_enabled = true;
+            }
         }
         ui_uistretchtext.text = "UI Horizontal: " + (ui_stretch * 100.0f) + "%";
         if ((ui_stretch * 10.0f) <= ui_uistretchslider.minValue) { ui_uistretchtext.color = Color.red; }
@@ -271,6 +338,29 @@ public class PPP_Options : UdonSharpBehaviour
 
         if (waiting_on_playerdata) { return; }
         PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
+    }
+
+    public void UpdateUIHarmScale()
+    {
+        ui_harm_scale = ui_uiharmscaleslider.value / 10.0f;
+        GameObject ui_plyself_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "UIPlyToSelf");
+        UIPlyToSelf ui_plyself_script = null;
+        if (ui_plyself_obj != null) { ui_plyself_script = ui_plyself_obj.GetComponent<UIPlyToSelf>(); }
+        if (ui_plyself_obj != null && ui_plyself_script != null)
+        {
+            if (!ui_plyself_script.ui_show_intro_text)
+            {
+                ui_plyself_script.ui_demo_timer = 0.0f;
+                ui_plyself_script.ui_demo_enabled = true;
+                ui_plyself_script.TestHarmNumber();
+            }
+        }
+        ui_uiharmscaletext.text = "Damage Indicator Scale: " + (ui_harm_scale * 100.0f) + "%";
+        if ((ui_harm_scale * 10.0f) <= ui_uiharmscaleslider.minValue) { ui_uiharmscaletext.color = Color.red; }
+        else { ui_uiharmscaletext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
     }
 
     public void UpdateMusicVolume()
@@ -314,6 +404,15 @@ public class PPP_Options : UdonSharpBehaviour
 
         if (waiting_on_playerdata) { return; }
         PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
+    }
+
+    public void UpdateParticles()
+    {
+        particles_on = ui_particletoggle.isOn;
+        gameController.RefreshSetupUI();
+
+        if (waiting_on_playerdata) { return; }
+        PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn);
     }
 
     // Spectator does not require persistence

@@ -3,17 +3,20 @@ using System;
 using System.Linq;
 using TMPro;
 using UdonSharp;
+using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
+using static UnityEngine.UI.Image;
 
 public class UIPlyToSelf : UdonSharpBehaviour
 {
-
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
+    [SerializeField] public GameObject harmTester;
     [SerializeField] public RectTransform PTSCanvas;
     [SerializeField] public TMP_Text[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
@@ -48,13 +51,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
 
-    [SerializeField] public Transform PTSCapturePanel;
-    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureSprites;
-    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureOverlays;
-    [NonSerialized] public TMP_Text[] PTSCaptureTexts;
+//    [SerializeField] public Transform PTSCapturePanel;
+//    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureSprites;
+//    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureOverlays;
+//    [NonSerialized] public TMP_Text[] PTSCaptureTexts;
 
     [SerializeField] public GameObject PTSPainDirTemplate;
-
+    [SerializeField] public GameObject PTSHarmNumberTemplate;
+    [NonSerialized] public UIHarmNumber[] PTSHarmNumberList;
+    [SerializeField] public GameObject PTSParticleTemplate;
+    [SerializeField] public int max_particle_emitters_in_pool = 10;
+    [SerializeField] public int particle_pool_iter = 0;
+    [NonSerialized] public ParticleSystem[] PTSParticleList;
+   
     [NonSerialized] public PlayerAttributes playerAttributes;
 
     // Fields used for demonstrating UI scale when modifying local options
@@ -102,6 +111,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
+        SetRenderQueueFromParent(transform);
+
         var item_index = 0;
         var item_size = 0;
         text_queue_limited_timers = new float[text_queue_limited_lines];
@@ -132,12 +143,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
         }
 
-        /*temp_parent = null;
-        for (int i = 0; i < PTSCapturePanel.transform.childCount; i++)
-        {
-            var child = (RectTransform)transform.GetChild(i);
-            if (child.name.Contains("PTSCapturePanel")) { temp_parent = child; break; }
-        }*/
+        /*
         foreach (GameObject child in (Transform)PTSCapturePanel)
         {
             if (child == null) { continue; }
@@ -159,17 +165,30 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 }
                 item_index++;
             }
-        }
+        }*/
 
         if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
         if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
         if (PTSChargeMeterBGSprite != null) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
 
+        PTSHarmNumberList = new UIHarmNumber[0];
+
+        PTSParticleList = new ParticleSystem[max_particle_emitters_in_pool];
+        for (int i = 0; i < max_particle_emitters_in_pool; i++)
+        {
+            PTSParticleList[i] = Instantiate(PTSParticleTemplate).GetComponent<ParticleSystem>();
+            PTSParticleList[i].gameObject.SetActive(false);
+        }
 
         ui_show_intro_text = true;
         if (ui_show_intro_text) { AddToTextQueue("Welcome!"); }
         ui_demo_enabled = true;
 
+    }
+
+    private void OnEnable()
+    {
+        SetRenderQueueFromParent(transform);
     }
 
     public void TransferOwner(VRCPlayerApi newOwner)
@@ -239,11 +258,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
         int rank = -1;
 
         int total_lives = 0;
-        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_lives.Length) { total_lives = gamevars_local_team_lives[inPlyAttr.ply_team]; }
+        if (gamevars_local_team_lives != null && inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_lives.Length) { total_lives = gamevars_local_team_lives[inPlyAttr.ply_team]; }
         int total_points = 0; 
-        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_points.Length) { total_points = gamevars_local_team_points[inPlyAttr.ply_team]; }
+        if (gamevars_local_team_points != null && inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_points.Length) { total_points = gamevars_local_team_points[inPlyAttr.ply_team]; }
         int total_deaths = 0;
-        if (inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_deaths.Length) { total_deaths = gamevars_local_team_deaths[inPlyAttr.ply_team]; }
+        if (gamevars_local_team_deaths != null && inPlyAttr.ply_team >= 0 && inPlyAttr.ply_team < gamevars_local_team_deaths.Length) { total_deaths = gamevars_local_team_deaths[inPlyAttr.ply_team]; }
 
         // We perform the below to get a dense rank (e.g. if points are {3, 3, 2, 1, 1, 0}, ranks should be {1, 1, 3, 4, 4, 6} instead of {1, 2, 3, 4, 5, 6})
         for (int i = 0; i < gamevars_progress_arr.Length; i++)
@@ -502,7 +521,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
         if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0 && playerAttributes.ply_team >= 0 && gamevars_leaderboard_arr != null
-            && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team)
+            && gamevars_local_team_lives != null && gamevars_local_team_points != null && gamevars_local_team_deaths != null
+            && gamevars_local_team_lives.Length > playerAttributes.ply_team && gamevars_local_team_points.Length > playerAttributes.ply_team && gamevars_local_team_deaths.Length > playerAttributes.ply_team)
         {
 
             int members_alive = 0; int team_total_lives = 0;
@@ -543,13 +563,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 FlagText = gamevars_local_team_lives[0].ToString() + " Alive";
             }
             // To-do: If this is King of the Hill, display the total capture time remaining
-            else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
                 PlacementText = rank_str;
                 if (local_rank == 0) { FlagText = ""; }
                 else
                 {
-                    FlagText = "\n\n1st:\n" + Mathf.RoundToInt(gameController.option_gm_goal - (gamevars_progress_arr[0] / gameController.koth_decimal_division)).ToString() + "s";
+                    FlagText = "\n\n1st:\n" + Mathf.RoundToInt(gameController.option_gm_goal - gamevars_progress_arr[0]).ToString();
                 }
             }
             // If we are in Fitting In, display the leader's death count
@@ -606,17 +626,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
             else if (gameController.option_gamemode == (int)gamemode_name.Infection)
             {
                 // If this is infection, display the total infections
-                if (gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
+                if (gamevars_local_team_points != null && gamevars_local_team_points.Length > 1) { LivesText = gamevars_local_team_points[1].ToString(); }
                 PTSLives.color = Color.white;
                 PTSLivesImage.color = Color.white;
                 PTSLivesImage.sprite = PTSDeathsSprite;
             }
             // If this is King of the Hill, display the total capture time remaining
-            else if (gameController.option_gamemode == (int)gamemode_name.ENUM_LENGTH)
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
                 float timeLeft;
-                if (gameController.option_teamplay && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)gamevars_local_team_points[playerAttributes.ply_team] / gameController.koth_decimal_division)); }
-                else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)((float)playerAttributes.ply_points / gameController.koth_decimal_division)); }
+                if (gameController.option_teamplay && gamevars_local_team_points != null && playerAttributes.ply_team < gamevars_local_team_points.Length && gamevars_local_team_points.Length > 0 && playerAttributes.ply_team >= 0) { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)gamevars_local_team_points[playerAttributes.ply_team]); }
+                else { timeLeft = Mathf.RoundToInt(gameController.option_gm_goal - (float)playerAttributes.ply_points); }
                 LivesText = timeLeft.ToString();
                 float timeRatio = Mathf.Clamp((float)(timeLeft / (float)gameController.option_gm_goal), 0.0f, 1.0f);
                 PTSLives.color = new Color(timeRatio, 1.0f, timeRatio / 1.5f, 1.0f);
@@ -734,9 +754,15 @@ public class UIPlyToSelf : UdonSharpBehaviour
     private void FixedUpdate()
     {
         if (owner != Networking.LocalPlayer || owner == null) { return; }
+        SetUIForward();
+    }
+
+    public Vector3 SetUIForward()
+    {
         var heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         var scaleUI = 1.0f;
-        if (gameController != null && gameController.local_ppp_options != null) {
+        if (gameController != null && gameController.local_ppp_options != null)
+        {
             PPP_Options ppp_options = gameController.local_ppp_options;
             scaleUI *= (ppp_options.ui_scale);
             //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
@@ -754,7 +780,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
             PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation);
-            PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f); 
+            PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
             //ppp_options.ui_separation * (5.0f / 3.0f)
             //ppp_options.ui_scale
         }
@@ -771,21 +797,168 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         //if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
         //else { scaleUI *= 0.5f; }
+        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI) + velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
-            Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI) + velAdd
+            posOut
             , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
             );
+
+        return posOut;
     }
 
     public void ShowPainIndicator(float damage, Vector3 point_towards)
     {
-        GameObject indicator_obj = Instantiate(PTSPainDirTemplate);
+        GameObject indicator_obj = Instantiate(PTSPainDirTemplate, transform);
         UIPainIndicator indicator_script = indicator_obj.GetComponent<UIPainIndicator>();
         indicator_script.pointTowards = point_towards;
-        indicator_script.duration = Mathf.Clamp(damage / 25.0f, indicator_script.min_duration, indicator_script.max_duration);
+        indicator_script.duration = Mathf.Clamp(damage / 10.0f, indicator_script.min_duration, indicator_script.max_duration);
+        indicator_script.RotateComponent();
         indicator_obj.SetActive(true);
         indicator_script.StartTimer();
+    }
+
+    public void ShowHarmNumber(int defender_id, float damage, Vector3 origin_point)
+    {
+        // If the HarmNumber array is empty, create a new one with the single entry being our newest
+        bool createNewNumber = false; int internal_id = -1;
+        if (PTSHarmNumberList == null || PTSHarmNumberList.Length == 0)
+        {
+            createNewNumber = true;
+            PTSHarmNumberList = new UIHarmNumber[1];
+            internal_id = 0;
+        }
+        else
+        {
+            // Otherwise, check if the entry already exists for the defender_id. If so, we can just update it at the index.
+            for (int i = 0; i < PTSHarmNumberList.Length; i++)
+            {
+                if (defender_id == PTSHarmNumberList[i].target_id) { internal_id = i; break; }
+            }
+            // If the entry does not exist, we'll create a new one at the index = old array length
+            if (internal_id == -1) 
+            {
+                createNewNumber = true;
+                internal_id = PTSHarmNumberList.Length;
+                UIHarmNumber[] tempHarmNumberList = new UIHarmNumber[internal_id + 1];
+                for (int i = 0; i < internal_id; i++)
+                {
+                    // Make sure new array has all of the old entries
+                    tempHarmNumberList[i] = PTSHarmNumberList[i];
+                }
+                PTSHarmNumberList = tempHarmNumberList;
+            }
+        }
+
+        Color32 defender_color = new Color32(255, 153, 0, 255);
+        if (gameController.option_teamplay)
+        {
+            int defender_team = gameController.GetGlobalTeam(defender_id);
+            if (defender_team >= 0) { defender_color = gameController.team_colors_bright[defender_team]; }
+        }
+
+        if (createNewNumber)
+        {
+            //int internal_id = gameController.DictIndexFromKey(defender_id, gameController.ply_tracking_dict_keys_arr);
+            // Food for thought: instead of creating/destroying all of these, just have 80 on standby and then assign to the players in the tracking index accordingly and activate/deactivate
+            GameObject harm_obj = Instantiate(PTSHarmNumberTemplate, transform);
+            harm_obj.transform.SetParent(null);
+            UIHarmNumber harm_script = harm_obj.GetComponent<UIHarmNumber>();
+            harm_script.ui_parent = gameObject;
+            harm_script.UpdateValue(Mathf.RoundToInt(damage), false);
+            harm_script.origin = origin_point;
+            harm_script.ply_init_distance = Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), origin_point));
+            harm_obj.transform.localScale *= (harm_script.ply_init_distance / Mathf.Abs(Vector3.Distance( Networking.LocalPlayer.GetPosition(), SetUIForward())));
+            harm_script.scale_init_stored = transform.localScale; // Must occur BEFORE the ui_harm_scale
+            if (gameController.local_ppp_options != null) { harm_obj.transform.localScale *= gameController.local_ppp_options.ui_harm_scale; }
+            UnityEngine.Debug.Log("[HARM_TEST] harm_script.ply_init_distance = " + harm_script.ply_init_distance + " compare to " + Mathf.Abs(Vector3.Distance(SetUIForward(), Networking.LocalPlayer.GetPosition())));
+            harm_script.target_id = defender_id;
+            if (playerAttributes != null) { harm_script.duration = playerAttributes.combo_send_duration; }
+            harm_script.ui_text.color = defender_color;
+            harm_obj.SetActive(true);
+            harm_script.StartTimer();
+            PTSHarmNumberList[internal_id] = harm_script;
+        }
+        else
+        {
+            PTSHarmNumberList[internal_id].origin = origin_point;
+            PTSHarmNumberList[internal_id].ply_init_distance = Mathf.Abs(Vector3.Distance(Networking.LocalPlayer.GetPosition(), origin_point));
+            PTSHarmNumberList[internal_id].ui_text.color = defender_color;
+            if (gameController.local_ppp_options != null) { PTSHarmNumberList[internal_id].scale_init = gameController.local_ppp_options.ui_harm_scale * PTSHarmNumberList[internal_id].scale_init_stored;  }
+            PTSHarmNumberList[internal_id].UpdateValue(Mathf.RoundToInt(damage));
+        }
+
+        StartEmitParticle(damage, origin_point);
+    }
+
+    public void ReleaseHarmNumber(int target_id, GameObject inHarmNumberObj)
+    {
+        // Search the array for the target_id, if the array exists
+        int internal_id = -1;
+        if (PTSHarmNumberList == null || PTSHarmNumberList.Length == 0)
+        {
+            if (inHarmNumberObj != null) { Destroy(inHarmNumberObj); }
+            return;
+        }
+        else
+        {
+            for (int i = 0; i < PTSHarmNumberList.Length; i++)
+            {
+                if (target_id == PTSHarmNumberList[i].target_id) { internal_id = i; break; }
+            }
+            // If the entry does not exist, just destroy the object
+            if (internal_id < 0) { Destroy(inHarmNumberObj); }
+            // Otherwise, remove from the array first before doing so
+            else
+            {
+                UIHarmNumber[] tempHarmNumberList = new UIHarmNumber[PTSHarmNumberList.Length - 1];
+                for (int i = 0; i < PTSHarmNumberList.Length; i++)
+                {
+                    if (i < internal_id) { tempHarmNumberList[i] = PTSHarmNumberList[i]; }
+                    else if (i > internal_id) { tempHarmNumberList[i - 1] = PTSHarmNumberList[i]; }
+                }
+                PTSHarmNumberList = tempHarmNumberList;
+                Destroy(inHarmNumberObj);
+            }
+        }
+    }
+
+    public void StartEmitParticle(float damage, Vector3 origin_point)
+    {
+        if (gameController == null || gameController.local_ppp_options == null || !gameController.local_ppp_options.particles_on || PTSParticleList == null || PTSParticleList.Length == 0) { return; }
+        if (particle_pool_iter >= PTSParticleList.Length) { particle_pool_iter = 0; }
+        if (PTSParticleList[particle_pool_iter] == null) { particle_pool_iter++; return; }
+
+        PTSParticleList[particle_pool_iter].gameObject.SetActive(false);
+        var main = PTSParticleList[particle_pool_iter].main;
+        if (playerAttributes != null) 
+        { 
+            main.duration = playerAttributes.combo_send_duration / 2.0f;
+            main.startLifetime = playerAttributes.combo_send_duration / 2.0f;
+        }
+        main.maxParticles = Mathf.FloorToInt(damage / 2.0f);
+        PTSParticleList[particle_pool_iter].gameObject.transform.position = origin_point;
+        PTSParticleList[particle_pool_iter].gameObject.SetActive(true);
+        particle_pool_iter++;
+    }
+    
+    public void TestHarmNumber()
+    {
+        ShowHarmNumber(0, 10, harmTester.transform.position);
+    }
+
+    private void SetRenderQueueFromParent(Transform parent_transform)
+    {
+        map_element_spawn[] array_working = new map_element_spawn[1000];
+        Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
+        foreach (Transform t in AllChildren)
+        {
+            Renderer component = t.GetComponent<Renderer>();
+            if (component != null)
+            {
+                component.material.renderQueue = (int)RenderQueue.Overlay;
+            }
+        }
     }
 
 }

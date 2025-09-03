@@ -39,14 +39,23 @@ public class UIPainIndicator : UdonSharpBehaviour
         Color color = sprite.color;
         float fade_at_time = (duration * fade_at_pct);
         if (timer < fade_at_time) { color.a = 1.0f; }
-        else { color.a = ((timer - fade_at_time) / (duration - fade_at_time)); }
+        else { color.a = 1.0f - ((timer - fade_at_time) / (duration - fade_at_time)); }
         sprite.color = color;
+        
+    }
 
+    public void FixedUpdate()
+    {
+        RotateComponent();
+    }
+
+    public void RotateComponent()
+    {
         // Handle rotation
-        Vector3 targetDir = (transform.position - pointTowards).normalized;
-        Quaternion rotateTo = Quaternion.LookRotation(targetDir, Vector3.up);
-        rotateTo.x = 0; rotateTo.y = 0;
-        axis.rotation = rotateTo;
+        Vector3 targetVector = (transform.position - pointTowards);
+        Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        float angle = Vector3.SignedAngle(plyForward.normalized, targetVector.normalized, Vector3.up);
+        axis.localEulerAngles = new Vector3(0, 0, -angle + 180);
     }
 
 }

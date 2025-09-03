@@ -326,7 +326,8 @@ public class ItemSpawner : UdonSharpBehaviour
                 //Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": PARSED WEAPON " + weapon_type_name_enum_index + " from key of " + item_spawn_chances_config_keys[i] + " and value of " + item_spawn_chances_config_values[i]);
             }
         }
-        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": Parsed inspector array: " + gameController.DebugPrintFloatArray(outArr));
+        //UnityEngine.Debug.Log(transform.parent.gameObject.name + " of " + gameObject.name + ": Parsed inspector array: " + gameController.
+        //(outArr));
         return outArr;
     }
 

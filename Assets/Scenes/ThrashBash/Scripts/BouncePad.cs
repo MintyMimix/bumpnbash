@@ -85,11 +85,13 @@ public class BouncePad : UdonSharpBehaviour
 
     public override void OnPlayerTriggerEnter(VRCPlayerApi player)
     {
+        if (player != Networking.LocalPlayer) { return; }
         Bounce(player);
     }
 
     public override void OnPlayerCollisionEnter(VRCPlayerApi player)
     {
+        if (player != Networking.LocalPlayer) { return; }
         Bounce(player);
     }
 
