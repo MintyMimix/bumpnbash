@@ -60,7 +60,7 @@ public class GameController : UdonSharpBehaviour
     [Header("References")]
     [SerializeField] public GameObject template_WeaponProjectile;
     [SerializeField] public GameObject template_WeaponHurtbox;
-    [SerializeField] public GameObject template_ItemSpawner;
+    [SerializeField] public GameObject template_ItemSpawner; // Note: this will be overriden by the player-owned instance of the object, but we need to have the template available for early reference
     [SerializeField] public Sprite Sprite_None;
     [SerializeField] public Material skybox;
     [SerializeField] public Texture default_skybox_tex;
@@ -414,7 +414,7 @@ public class GameController : UdonSharpBehaviour
         }
         else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 2.5f;
             weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
             // To emulate a "projectile speed", we can determine the distance based on projectile time
             weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
@@ -1173,6 +1173,8 @@ public class GameController : UdonSharpBehaviour
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
             local_ppp_options.RefreshAllOptions();
 
+            template_ItemSpawner = FindPlayerOwnedObject(player, "ItemSpawnerTemplate");
+
             if (Networking.IsMaster) { ui_round_mapselect.BuildMapList(); SetupMap(); }
         }
 
@@ -1252,6 +1254,7 @@ public class GameController : UdonSharpBehaviour
             local_plyAttr.plyEyeHeight_change = true;
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
+            local_plyAttr.in_ready_room = true;
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
         }
@@ -1512,20 +1515,15 @@ public class GameController : UdonSharpBehaviour
         if (personal_description.Length > 0) { AddToLocalTextQueue(personal_description, color_personal, ready_length); }
         if (player_description.Length > 0) { AddToLocalTextQueue(player_description, color_team, ready_length); }
 
-        room_spectator_portal.SetActive(true);
-
-        // -- Master Handling Below --
-        if (!Networking.IsMaster) { return; }
-        round_state = (int)round_state_name.Ready;
-        round_start_ms = Networking.GetServerTimeInSeconds();
-        largest_ply_scale = plysettings_scale;
-
+        // KOTH Capture Zone handling
         if (option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
-            // KOTH Capture Zone handling
             foreach (CaptureZone capturezone in mapscript_list[map_selected].map_capturezones)
             {
                 if (capturezone == null || capturezone.gameObject == null) { continue; }
+                capturezone.gameObject.SetActive(ply_parent_arr[0].Length >= capturezone.min_players);
+
+                if (!Networking.IsMaster) { continue; }
                 if (option_teamplay)
                 {
                     // If we have teams on, the leaderboard will be a list of team IDs
@@ -1537,8 +1535,8 @@ public class GameController : UdonSharpBehaviour
                         capturezone.dict_points_values_arr[i] = 0;
                     }
                 }
-                else 
-                { 
+                else
+                {
                     capturezone.dict_points_keys_arr = ply_parent_arr[0];
                     capturezone.dict_points_values_arr = ply_parent_arr[1];
                 }
@@ -1546,6 +1544,14 @@ public class GameController : UdonSharpBehaviour
                 capturezone.RequestSerialization(); // Continous sync probably doesn't require this, but just in case
             }
         }
+
+        room_spectator_portal.SetActive(true);
+
+        // -- Master Handling Below --
+        if (!Networking.IsMaster) { return; }
+        round_state = (int)round_state_name.Ready;
+        round_start_ms = Networking.GetServerTimeInSeconds();
+        largest_ply_scale = plysettings_scale;
 
         RequestSerialization();
     }
@@ -1628,7 +1634,10 @@ public class GameController : UdonSharpBehaviour
     {
         //if (GetGlobalTeam(Networking.LocalPlayer.playerId) < 0)
         float largest_voice_scale = largest_ply_scale;
-        largest_voice_scale = Mathf.Pow(10.0f, Mathf.Min(0.0f, largest_ply_scale - 1.0f));
+        largest_voice_scale = Mathf.Pow(10.0f, Mathf.Min(0.0f, largest_ply_scale - 1.0f)); // - 1.0f
+        largest_voice_scale *= 2.5f;
+        if (local_plyAttr != null && local_plyAttr.in_spectator_area) { largest_voice_scale *= 10.0f; }
+        else if (local_plyAttr != null && local_plyAttr.in_ready_room) { largest_voice_scale /= 2.5f; }
         Networking.LocalPlayer.SetVoiceDistanceNear(voice_distance_near * largest_voice_scale); // default "near 0"
         Networking.LocalPlayer.SetVoiceDistanceFar(voice_distance_far * largest_voice_scale); // default 25
         Networking.LocalPlayer.SetVoiceGain(voice_gain * largest_ply_scale); //default 15
@@ -1885,7 +1894,8 @@ public class GameController : UdonSharpBehaviour
             koth_progress_dict[1] = new int[keys_len];
             Array.Copy(mapscript_list[map_selected].map_capturezones[0].dict_points_keys_arr, koth_progress_dict[0], keys_len);
             Array.Copy(mapscript_list[map_selected].map_capturezones[0].dict_points_values_arr, koth_progress_dict[1], keys_len);
-            for (int i = 1; i < mapscript_list[map_selected].map_capturezones.Length; i++)
+            // To-Do: I have no idea why, but for some reason, all of the points between capture zones are synchronized, so this block below ends up not working as intended.
+            /*for (int i = 1; i < mapscript_list[map_selected].map_capturezones.Length; i++)
             {
                 CaptureZone capturezone = mapscript_list[map_selected].map_capturezones[i];
                 if (capturezone == null || capturezone.gameObject == null || !capturezone.gameObject.activeInHierarchy) { continue; }
@@ -1894,7 +1904,7 @@ public class GameController : UdonSharpBehaviour
                 {
                     koth_progress_dict[1][j] += capturezone.dict_points_values_arr[j];
                 }
-            }
+            }*/
 
             if (koth_progress_dict[0] != null && koth_progress_dict[0].Length > 0) {
                 // Normally, we wouldn't set the leaderboard array, but because the KOTH arrays are static at round start, we need to be consistent
@@ -2129,6 +2139,8 @@ public class GameController : UdonSharpBehaviour
         Networking.LocalPlayer.TeleportTo(new Vector3(rx, spawnZoneBounds.center.y, rz), rotateTo);
         UnityEngine.Debug.Log("Teleporting player to spawn zone " + spawnZoneIndex);
         platformHook.custom_force_unhook = false;
+
+        if (local_plyAttr != null) { local_plyAttr.in_ready_room = false; }
     }
 
     [NetworkCallable]
@@ -2162,6 +2174,7 @@ public class GameController : UdonSharpBehaviour
         {
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
+            local_plyAttr.in_ready_room = true;
             if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
             {
@@ -2195,7 +2208,8 @@ public class GameController : UdonSharpBehaviour
         //room_training.SetActive(true);
         if (local_plyAttr != null) 
         { 
-            local_plyAttr.ply_training = true; 
+            local_plyAttr.ply_training = true;
+            local_plyAttr.in_ready_room = false;
             if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
             {
@@ -2222,7 +2236,8 @@ public class GameController : UdonSharpBehaviour
         //room_training.SetActive(true);
         if (local_plyAttr != null) 
         { 
-            local_plyAttr.ply_training = true; 
+            local_plyAttr.ply_training = true;
+            local_plyAttr.in_ready_room = false;
             local_plyAttr.ply_state = (int)player_state_name.Alive;
             UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Training Arena with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
         }
@@ -2241,7 +2256,7 @@ public class GameController : UdonSharpBehaviour
         if (mapscript_list == null || map_selected >= mapscript_list.Length || map_selected < 0) { return; }
         mapscript_list[map_selected].room_spectator_area.SetActive(true);
 
-        if (local_plyAttr != null) { local_plyAttr.in_spectator_area = true; }
+        if (local_plyAttr != null) { local_plyAttr.in_spectator_area = true; local_plyAttr.in_ready_room = false; }
         if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.GetComponent<PlayerWeapon>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.GetComponent<PlayerHitbox>().SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
 
@@ -2977,6 +2992,7 @@ public class GameController : UdonSharpBehaviour
         else if (cleanStr == "partialheal") { output = (int)powerup_type_name.PartialHeal; }
         else if (cleanStr == "fullheal") { output = (int)powerup_type_name.FullHeal; }
         else if (cleanStr == "multijump") { output = (int)powerup_type_name.Multijump; }
+        else if (cleanStr == "highgrav") { output = (int)powerup_type_name.HighGrav; }
         //UnityEngine.Debug.Log("Attempted to match key '" + cleanStr + "' to value: " + output);
         return output;
     }
@@ -3010,6 +3026,7 @@ public class GameController : UdonSharpBehaviour
         else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = "Heal (50%)"; }
         else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = "Heal (100%)"; }
         else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = "Multi-Jump"; }
+        else if (in_powerup_type == (int)powerup_type_name.HighGrav) { output = "High Gravity"; }
         else { output = "(PLACEHOLDER)"; }
         return output;
     }

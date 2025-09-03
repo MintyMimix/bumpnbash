@@ -40,6 +40,7 @@ public class ItemGeneric : UdonSharpBehaviour
     [NonSerialized] public bool item_is_template = false;
     [NonSerialized] public ItemSpawner spawner_parent;
     [NonSerialized] public bool trigger_destroy = false;
+    [NonSerialized] public bool apply_after_spawn = false; // used by item spawner template for item bomb only
     //[NonSerialized] public bool allow_multiple_owners = false;
 
     [SerializeField] public AudioSource item_snd_source;

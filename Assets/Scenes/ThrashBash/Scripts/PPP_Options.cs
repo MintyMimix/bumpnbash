@@ -11,6 +11,7 @@ using VRC.Udon;
 public class PPP_Options : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
+    [NonSerialized] public GameObject harmTester;
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_l;
@@ -53,6 +54,7 @@ public class PPP_Options : UdonSharpBehaviour
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
+        harmTester = gameController.GetChildTransformByName(transform, "HarmTester").gameObject;
     }
 
     private void Update()
@@ -118,7 +120,7 @@ public class PPP_Options : UdonSharpBehaviour
                 if (!PlayerData.HasKey(player, "UIOtherScale"))
                 {
                     ui_uiotherscaleslider.value = 10.0f;
-                    UpdateUIHarmScale();
+                    UpdateUIOtherScale();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "UIHarmScale"))
@@ -293,7 +295,12 @@ public class PPP_Options : UdonSharpBehaviour
         bool out_ParticleShow;
         if (PlayerData.TryGetBool(Networking.LocalPlayer, "ParticleShow", out out_ParticleShow))
         {
-            ui_particletoggle.isOn = out_ParticleShow;
+            if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_particletoggle.isOn = out_ParticleShow; }
+            else
+            {
+                ui_particletoggle.isOn = false;
+                ui_particletoggle.interactable = false;
+            }
         }
         else
         {
@@ -497,6 +504,7 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.RefreshSetupUI();
 
         if (waiting_on_playerdata) { return; }
+        if (gameController.flag_for_mobile_vr.activeInHierarchy) { return; }
         PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn);
     }
 

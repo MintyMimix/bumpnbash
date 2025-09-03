@@ -173,13 +173,13 @@ public class ItemSpawner : UdonSharpBehaviour
             else {
                 // Spawn the item
                 item_spawn_index = RollForItem(item_spawn_chances);
-                if (is_template) { SpawnItem(item_spawn_index, false); }
+                if (is_template) { SpawnItem(item_spawn_index, true); }
                 else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SpawnItem", item_spawn_index, false); }
             }
-         }
+        }
         else if (item_spawn_state == (int)item_spawn_state_name.InWorld)
         {
-            if (is_template) { DespawnItem((int)item_sfx_index.ItemExpire, -1, true); }
+            if (is_template) { DespawnItem((int)item_sfx_index.ItemExpire, -1, false); }
             else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true); }
         }
     }
@@ -215,6 +215,7 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.powerup_timer_local = 0.0f;
             child_powerup.powerup_timer_network = 0.0f;
             //child_powerup.allow_multiple_owners = false;
+            child_powerup.apply_after_spawn = apply_after_spawn;
             child_powerup.gameObject.SetActive(true);
             // This must be the last step, in case we try to destroy it on the same frame we are spawning it in
             child_powerup.item_state = (int)item_state_name.InWorld;
@@ -240,12 +241,15 @@ public class ItemSpawner : UdonSharpBehaviour
                 { 
                     child_weapon.iweapon_extra_data = (byte)UnityEngine.Random.Range(0, (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH); 
                     // If the random powerup rolls the boss glove, set it to be another throwable item for maximum chaos
-                    if (child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove) { child_weapon.iweapon_extra_data = (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem; }
+                    if (child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove
+                        || child_weapon.iweapon_extra_data == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove
+                        ) { child_weapon.iweapon_extra_data = (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem; }
                 }
             }
             child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * item_spawn_duration_mul);
             child_weapon.iweapon_duration *= item_spawn_duration_mul;
             //child_weapon.allow_multiple_owners = false;
+            child_weapon.apply_after_spawn = apply_after_spawn;
             child_weapon.gameObject.SetActive(true);
             child_weapon.item_state = (int)item_state_name.InWorld;
         }
@@ -255,7 +259,7 @@ public class ItemSpawner : UdonSharpBehaviour
         else { child_marker.SetActive(false); }
         StartTimer(item_spawn_linger);
 
-        if (apply_after_spawn) { ForceApplyItem(); }
+        //if (apply_after_spawn) { ForceApplyItem(); }
     }
 
     [NetworkCallable]
@@ -263,7 +267,6 @@ public class ItemSpawner : UdonSharpBehaviour
     {
         bool playSFXfiltered = playSFX;
         if (training_spawner) { playSFXfiltered = false; }
-
         // Powerup
         if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && child_powerup != null)
         {
@@ -298,18 +301,20 @@ public class ItemSpawner : UdonSharpBehaviour
     }
 
     // Forcibly applies a copy of the item to the local player as if they picked it up without triggering a networked event. Only used for the throwable weapon.
-    public void ForceApplyItem()
+    /*public void ForceApplyItem()
     {
         if (item_spawn_index < (int)powerup_type_name.ENUM_LENGTH && child_powerup != null)
         {
-            child_powerup.LocalApplyPowerup();
+            //child_powerup.LocalApplyPowerup();
+            child_powerup.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>());
         }
         else if ((item_spawn_index - (int)powerup_type_name.ENUM_LENGTH) < (int)weapon_type_name.ENUM_LENGTH && child_weapon != null)
         {
-            child_weapon.LocalApplyWeapon();
+            //child_weapon.LocalApplyWeapon();
+            child_weapon.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>());
         }
-        DespawnItem((int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, false);
-    }
+        //DespawnItem((int)item_snd_clips_name.PickupOther, Networking.LocalPlayer.playerId, false);
+    }*/
 
     // Process the spawn timer. Return true if an event should fire.
     internal bool ProcessTimer()

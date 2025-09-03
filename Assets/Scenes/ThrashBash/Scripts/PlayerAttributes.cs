@@ -26,6 +26,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
     [NonSerialized] [UdonSynced] public bool ply_training = false;
     [NonSerialized] [UdonSynced] public bool in_spectator_area = false;
+    [NonSerialized] [UdonSynced] public bool in_ready_room = true;
 
     [NonSerialized] public ushort ply_lives_local; // We create local versions of these variables for other clients to compare to. If there is a mismatch, we can have events fire off OnDeserialization().
     [NonSerialized] public ushort ply_points_local = 0;
@@ -61,6 +62,8 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float hazard_cooldown = 0.5f;
     [NonSerialized] public float hazard_timer = 0.0f;
 
+    [NonSerialized] public bool powerups_are_resetting = false;
+
     [NonSerialized] public GameObject[] powerups_active;
 
     [NonSerialized] [UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
@@ -84,6 +87,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         powerups_active = new GameObject[0];
+
         SetupTutorialMessages();
         SetDefaultEyeHeight();
     }
@@ -171,7 +175,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         // Handle player stats
         // To-do: this more efficiently
-        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) { 
+        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) { 
             Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed);
             Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed);
@@ -248,7 +252,9 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         ResetPowerups();
-        plyEyeHeight_default = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+
+        float default_height = Mathf.Clamp(Networking.LocalPlayer.GetAvatarEyeHeightAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMinimumAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMaximumAsMeters());
+        plyEyeHeight_default = default_height;
         plyEyeHeight_desired = plyEyeHeight_default;
         
     }
@@ -344,6 +350,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             //gameController.template_ItemSpawner.SetActive(true);
             ItemSpawner itemSpawnerTemplate = gameController.template_ItemSpawner.GetComponent<ItemSpawner>();
+            itemSpawnerTemplate.item_spawn_index = extra_data;
             itemSpawnerTemplate.SpawnItem(extra_data, true);
             //if (extra_data < (int)powerup_type_name.ENUM_LENGTH) { itemSpawnerTemplate.child_powerup.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
             //else { itemSpawnerTemplate.child_weapon.OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
@@ -588,8 +595,11 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public void ResetPowerups()
     {
+        if (powerups_are_resetting) { return; }
+
         var index_iter = 0;
         var powerup_count = powerups_active.Length;
+        powerups_are_resetting = true;
         // The issue is that this fails because the length is continously shortening. Instead, let's have it on a while loop with the iter++ until we reach the length of the initial
         while (index_iter < powerup_count) {
             if (powerups_active.Length <= 0) { break; }
@@ -607,6 +617,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
             index_iter++;
         }
+        powerups_are_resetting = false;
     }
 
     [NetworkCallable]
@@ -649,6 +660,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_desktop[(int)powerup_type_name.PartialHeal] = "Removes 50% of damage dealt to the user!";
         local_tutorial_message_str_desktop[(int)powerup_type_name.FullHeal] = "Removes 100% of damage dealt to the user!";
         local_tutorial_message_str_desktop[(int)powerup_type_name.Multijump] = "Grants an additional jump while in mid-air!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.HighGrav] = "Decreases time spent in mid-air!";
 
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
         local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
@@ -709,7 +721,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             {
                 string item_name = "";
                 if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = gameController.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
-                else { item_name = gameController.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
+                else { item_name = gameController.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH); }
                 display_str = display_str.Replace("$NAME", item_name);
             }
 

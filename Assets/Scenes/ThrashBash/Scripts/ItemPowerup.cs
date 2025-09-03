@@ -10,7 +10,7 @@ using VRC.Udon.Common.Interfaces;
 
 public enum powerup_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER IF ANY ARE ADDED/REMOVED FOR KeyToPowerupType()
 {
-    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, PartialHeal, FullHeal, Multijump, ENUM_LENGTH
+    SizeUp, SizeDown, SpeedUp, AtkUp, DefUp, AtkDown, DefDown, LowGrav, PartialHeal, FullHeal, Multijump, HighGrav, ENUM_LENGTH
 }
 
 public enum powerup_stat_name
@@ -123,6 +123,12 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_value[(int)powerup_stat_name.Jumps] = 1.0f;
                 powerup_stat_behavior[(int)powerup_stat_name.Jumps] = (int)powerup_stat_behavior_name.Add;
                 break;
+            case (int)powerup_type_name.HighGrav:
+                powerup_stat_value[(int)powerup_stat_name.Grav] = 2.0f;
+                powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = -0.25f;
+                powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
+                break;
             default:
                 break;
         }
@@ -176,6 +182,14 @@ public class ItemPowerup : ItemGeneric
 
     }
 
+    private void LateUpdate()
+    {
+        if (item_state == (int)item_state_name.InWorld && apply_after_spawn && spawner_parent != null) 
+        {
+            if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
+        }
+    }
+
     private void FixedUpdate()
     {
         transform.rotation = Networking.LocalPlayer.GetRotation();
@@ -197,8 +211,11 @@ public class ItemPowerup : ItemGeneric
         return false;
     }
 
-    public void LocalApplyPowerup()
+    public void OnTriggerEnter(Collider other)
     {
+        // Check if the player colliding with this is valid
+        if (!CheckValidCollisionEvent(other)) { return; }
+
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerAttributes plyAttr = gameController.local_plyAttr;
         if (plyAttr != null)
@@ -220,14 +237,6 @@ public class ItemPowerup : ItemGeneric
             plyAttr.ProcessPowerUp(powerup_obj, true);
             item_is_template = false;
         }
-    }
-
-    public void OnTriggerEnter(Collider other)
-    {
-        // Check if the player colliding with this is valid
-        if (!CheckValidCollisionEvent(other)) { return; }
-
-        LocalApplyPowerup();
 
         // Despawn powerup for everyone else, with reason code of "someone else got it"
         // This does mean that it's possible that two people can get the same powerup due to lag, but that's a fun bonus!

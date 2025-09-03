@@ -23,6 +23,8 @@ public class CaptureZone : UdonSharpBehaviour
     [SerializeField] [UdonSynced] public float contest_pause_duration = 4.0f;
     [Tooltip("How often should a capture point grant points? (While there shouldn't be much reason for this to not be 1, it's good to be prepared.)")]
     [SerializeField] public float point_grant_impulse = 1.0f;
+    [Tooltip("What's the minimum number of players required for this point to be active? (-1 = no requirement)")]
+    [SerializeField] public int min_players = -1;
 
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject captureDisplayArea;
@@ -35,6 +37,7 @@ public class CaptureZone : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image UIContestMeterFG;
     [SerializeField] public UnityEngine.UI.Image UIContestMeterBG;
     [SerializeField] public TMP_Text UITimerText;
+
 
     [NonSerialized] [UdonSynced] public double last_network_time = 0.0f;
     [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
@@ -565,14 +568,19 @@ public class CaptureZone : UdonSharpBehaviour
 
         foreach (Transform t in captureDisplayArea.GetComponentInChildren<Transform>())
         {
-            if (t.GetComponent<Renderer>() != null) 
-            { 
-                t.GetComponent<Renderer>().material.color = color;
-            }
-            else if (t.GetComponent<ParticleSystem>() != null)
+            if (t.GetComponent<ParticleSystem>() != null)
             {
+                if (gameController != null && gameController.local_ppp_options != null) 
+                {
+                    var particle_emission = t.GetComponent<ParticleSystem>().emission;
+                    particle_emission.enabled = gameController.local_ppp_options.particles_on; 
+                }
                 var particle_main = t.GetComponent<ParticleSystem>().main;
                 particle_main.startColor = color;
+            }
+            else if (t.GetComponent<Renderer>() != null)
+            {
+                t.GetComponent<Renderer>().material.color = color;
             }
         }
     }

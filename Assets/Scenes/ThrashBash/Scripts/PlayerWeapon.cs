@@ -113,6 +113,11 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (weapon_mat != null) {
                 particle_main.startColor = new Color(weapon_mat.GetColor("_Color").r, weapon_mat.GetColor("_Color").g, weapon_mat.GetColor("_Color").b, 1.0f);
             }
+            if (gameController != null && gameController.local_ppp_options != null)
+            {
+                var particle_emission = particle.GetComponent<ParticleSystem>().emission;
+                particle_emission.enabled = gameController.local_ppp_options.particles_on;
+            }
             particle.gameObject.SetActive(true);
             particle.GetComponent<ParticleSystem>().Play();
         }
@@ -163,7 +168,10 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         }
 
-        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
+        if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem) {
+            waiting_for_toss = Networking.GetOwner(gameObject).IsUserInVR();
+            use_timer = use_cooldown;
+        }
         GetComponent<Rigidbody>().useGravity = false;
         GetComponent<Rigidbody>().velocity = Vector3.zero;
         GetComponent<Rigidbody>().angularVelocity = Vector3.zero;
@@ -529,6 +537,11 @@ public class PlayerWeapon : UdonSharpBehaviour
                     Transform particle = gameController.GetChildTransformByName(weapon_mdl[weapon_type].transform, "Particle");
                     if (particle != null && particle.GetComponent<ParticleSystem>() != null)
                     {
+                        if (gameController != null && gameController.local_ppp_options != null)
+                        {
+                            var particle_emission = particle.GetComponent<ParticleSystem>().emission;
+                            particle_emission.enabled = gameController.local_ppp_options.particles_on;
+                        }
                         particle.gameObject.SetActive(true);
                         particle.GetComponent<ParticleSystem>().Play();
                     }
@@ -566,7 +579,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public override void OnDrop()
     {
-        if (waiting_for_toss)
+        if (waiting_for_toss && use_ready)
         {
             TossWeapon();
         }
@@ -587,8 +600,8 @@ public class PlayerWeapon : UdonSharpBehaviour
             float throwForce = 11.0f;
             velocity_stored = GetComponent<Rigidbody>().velocity + (throwDir * throwForce);
         }
-        else { velocity_stored = GetComponent<Rigidbody>().velocity; }
-        UnityEngine.Debug.Log("[WEAPON_TEST] THROW WEAPON AT VELOCITY " + velocity_stored.ToString());
+        else { velocity_stored = GetComponent<Rigidbody>().velocity * 2.5f; }
+        //UnityEngine.Debug.Log("[WEAPON_TEST] THROW WEAPON AT VELOCITY " + velocity_stored.ToString());
 
         FireWeapon();
         waiting_for_toss = false;
@@ -602,9 +615,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (event_type == (int)game_sfx_name.HitSend && haptic_cooldown_type == -1) { duration = 2.0f; amplitude = 0.1f; frequency = 0.1f; }
         else if (event_type == (int)game_sfx_name.HitReceive && (haptic_cooldown_type == -1 || haptic_cooldown_type == (int)game_sfx_name.HitSend)) { duration = 2.0f; amplitude = 0.3f; frequency = 0.3f; }
         else if(event_type == (int)game_sfx_name.Kill && !(haptic_cooldown_type == (int)game_sfx_name.Kill || haptic_cooldown_type == (int)game_sfx_name.Death)) { duration = 2.0f; amplitude = 0.6f; frequency = 0.6f; }
-        else if(event_type == (int)game_sfx_name.Death && haptic_cooldown_type != (int)game_sfx_name.Death) { duration = 2.0f; amplitude = 2.0f; frequency = 1.0f; }
-        //Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, duration, amplitude, frequency);
-        //Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, duration, amplitude, frequency);
+        else if(event_type == (int)game_sfx_name.Death && haptic_cooldown_type != (int)game_sfx_name.Death) { duration = 2.0f; amplitude = 1.0f; frequency = 1.0f; }
+        Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Left, duration, amplitude * 10.0f, 1.0f);
+        Networking.LocalPlayer.PlayHapticEventInHand(VRC_Pickup.PickupHand.Right, duration, amplitude * 10.0f, 1.0f);
         
         // Set the haptic on cooldown after playing it
         UnityEngine.Debug.Log("[HAPTIC_TEST] PLAY HAPTIC EVENT OF TYPE " + event_type + " WHERE CURRENT COOLDOWN TYPE IS " + haptic_cooldown_type + " WITH CURRENT COOLDOWN " + haptic_countdown + " THAT WILL BECOME " + haptic_cooldowns[Mathf.Max(0,event_type)]);

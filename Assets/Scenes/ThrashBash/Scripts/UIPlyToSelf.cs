@@ -15,8 +15,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
 {
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
-    [SerializeField] public GameObject harmTester;
-    [SerializeField] public GameObject harmTesterUI;
     [SerializeField] public RectTransform PTSCanvas;
     [SerializeField] public RectTransform[] PTSTextStack;
     [SerializeField] public GameObject PTSTopPanel;
@@ -51,10 +49,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
 
-//    [SerializeField] public Transform PTSCapturePanel;
-//    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureSprites;
-//    [NonSerialized] public UnityEngine.UI.Image[] PTSCaptureOverlays;
-//    [NonSerialized] public TMP_Text[] PTSCaptureTexts;
+    [SerializeField] public Transform PTSCapturePanel;
+    [NonSerialized] public RectTransform[] PTSCaptureSprites;
+    [NonSerialized] public RectTransform[] PTSCaptureOverlays;
+    [NonSerialized] public TMP_Text[] PTSCaptureTexts;
 
     [SerializeField] public GameObject PTSPainDirTemplate;
     [SerializeField] public GameObject PTSHarmNumberTemplate;
@@ -114,8 +112,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         SetRenderQueueFromParent(transform);
 
-        var item_index = 0;
-        var item_size = 0;
         text_queue_limited_timers = new float[text_queue_limited_lines];
         for (int t = 0; t < text_queue_limited_timers.Length; t++)
         {
@@ -130,6 +126,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
             text_queue_full_durations[t] = text_queue_duration_default;
         }
 
+        var item_index = 0;
+        var item_size = 0;
         foreach (GameObject child in (Transform)PTSPowerupPanel) 
         {
             if (child.name.Contains("PTSPowerupSprite")) { item_size++; }
@@ -146,29 +144,30 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
         }
 
-        /*
+        var capture_index = 0;
+        var capture_size = 0;
         foreach (GameObject child in (Transform)PTSCapturePanel)
         {
             if (child == null) { continue; }
-            if (child.name.Contains("PTSCaptureSprite")) { item_size++; }
+            if (child.name.Contains("PTSCaptureSprite")) { capture_size++; }
         }
-        PTSCaptureSprites = new UnityEngine.UI.Image[item_size];
-        PTSCaptureOverlays = new UnityEngine.UI.Image[item_size];
-        PTSCaptureTexts = new TMP_Text[item_size];
+        PTSCaptureSprites = new RectTransform[capture_size];
+        PTSCaptureOverlays = new RectTransform[capture_size];
+        PTSCaptureTexts = new TMP_Text[capture_size];
         foreach (Transform child in (Transform)PTSCapturePanel)
         {
             if (child.name.Contains("PTSCaptureSprite"))
             {
-                PTSCaptureSprites[item_index] = child.GetComponent<UnityEngine.UI.Image>();
+                PTSCaptureSprites[capture_index] = (RectTransform)child;
                 child.gameObject.SetActive(false);
                 foreach (Transform subchild in child)
                 {
-                    if (subchild.name.Contains("PTSCaptureOverlay")) { PTSCaptureOverlays[item_index] = subchild.GetComponent<UnityEngine.UI.Image>(); ; }
-                    if (subchild.name.Contains("PTSCaptureText")) { PTSCaptureTexts[item_index] = subchild.GetComponent<TMP_Text>(); ; }
+                    if (subchild.name.Contains("PTSCaptureOverlay")) { PTSCaptureOverlays[capture_index] = (RectTransform)subchild; }
+                    if (subchild.name.Contains("PTSCaptureText")) { PTSCaptureTexts[capture_index] = subchild.GetComponent<TMP_Text>(); ; }
                 }
-                item_index++;
+                capture_index++;
             }
-        }*/
+        }
 
         if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
         if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
@@ -211,6 +210,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     // Overloaded method where no color = Color.white and no timer = default
     public void AddToTextQueue(string input, Color color, float duration)
     {
+        //if (text_queue_full_colors == null || text_queue_full_durations == null || text_queue_full_colors.Length == 0 || text_queue_full_durations.Length == 0) { return; }
+
         string[] queue_arr = text_queue_full_str.Split(text_queue_separator);
         //text_queue_limited_durations
         if (queue_arr.Length > text_queue_full_max_lines)
@@ -405,7 +406,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         ProcessTextQueue();
-        
+
         string[] splitStr = text_queue_full_str.Split(text_queue_separator);
         for (int i = 0; i < text_queue_limited_lines; i++)
         {
@@ -454,11 +455,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         // Sort out better without all the debug
-        if (playerAttributes == null) 
-        { 
+        if (playerAttributes == null)
+        {
             if (gameController != null && owner != null) { playerAttributes = gameController.FindPlayerAttributes(owner); }
             else if (owner == null) { TransferOwner(Networking.GetOwner(gameObject)); }
-            return; 
+            return;
         }
 
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
@@ -474,8 +475,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else if (gameController.round_state == (int)round_state_name.Ready) { TimerText = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString(); }
         else
         {
-            if (TimerValue < 10.0f) 
-            { 
+            if (TimerValue < 10.0f)
+            {
                 PTSTimer.color = new Color(1.0f, 0.4f, 0.4f, 1.0f);
                 float scaleAdd = ((TimerValue * 10.0f) % 5.0f) / 5.0f;
                 //if (scaleAdd < 0.05f) { gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitReceive], gameController.snd_ready_sfx_clips, (int)ready_sfx_name.TimerTick, 0.5f); }
@@ -484,17 +485,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
             else { PTSTimer.color = Color.white; }
         }
         PTSTimer.text = TimerText;
-        
+
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start && !playerAttributes.ply_training) { DamageText = ""; }
         PTSDamage.text = DamageText;
-        PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp/100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
+        PTSDamage.color = new Color(Mathf.Min(Mathf.Max(0.2f, 1.0f - ((playerAttributes.ply_dp - 100) / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), Mathf.Min(Mathf.Max(0.2f, 1.0f - (playerAttributes.ply_dp / 100)), 1.0f), 1.0f);
 
         var InvulText = Mathf.Floor(playerAttributes.ply_respawn_duration - playerAttributes.ply_respawn_timer + 1.0f).ToString();
         if (gameController.round_state == (int)round_state_name.Start || playerAttributes.ply_state != (int)player_state_name.Respawning)
         {
-            InvulText = ""; 
+            InvulText = "";
             PTSInvul.gameObject.transform.parent.gameObject.SetActive(false);
             PTSDamage.gameObject.transform.parent.gameObject.SetActive(true);
         }
@@ -522,24 +523,24 @@ public class UIPlyToSelf : UdonSharpBehaviour
         PTSDefense.text = DefenseText;
 
         if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { PTSTeamCBSpriteImage.enabled = true; }
-        else { PTSTeamCBSpriteImage.enabled = false;  }
+        else { PTSTeamCBSpriteImage.enabled = false; }
         PTSTeamFlagImage.sprite = PTSFlagSprite;
         PTSTeamFlagImage.enabled = !PTSTeamCBSpriteImage.enabled;
         PTSTeamPoleImage.enabled = PTSTeamFlagImage.enabled;
 
 
-        if (gameController.option_teamplay && playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
-        { 
+        if (gameController.option_teamplay && playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length)
+        {
             PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team];
             PTSTeamCBSpriteImage.sprite = gameController.team_sprites[playerAttributes.ply_team];
         }
-        else 
-        { 
-            PTSTeamFlagImage.color = new Color32(255,255,255,255);
+        else
+        {
+            PTSTeamFlagImage.color = new Color32(255, 255, 255, 255);
             PTSTeamCBSpriteImage.sprite = gameController.team_sprites[0];
         }
         PTSTeamCBSpriteImage.color = PTSTeamFlagImage.color;
- 
+
 
         string FlagText = ""; string PlacementText = "";
         PTSTeamText.color = Color.white;
@@ -657,7 +658,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If this is King of the Hill, display the total capture time remaining
             else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
-                float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points; 
+                float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points;
                 LivesText = timeLeft.ToString();
                 PTSLives.color = new Color(
                     Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
@@ -688,7 +689,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
         }
         PTSLives.text = LivesText;
- 
+
 
         // Handle powerup sprites
         if (playerAttributes.powerups_active != null)
@@ -720,7 +721,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     }
                     if (powerup_time_left <= 5.0f) { PTSPowerupSpriteText.color = new Color(1.0f, 0.4f, 0.4f, 1.0f); }
                     else { PTSPowerupSpriteText.color = Color.white; }
-                //
+                    //
                 }
 
             }
@@ -733,13 +734,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
         {
             string weaponTxt = "";
             PTSWeaponText.color = Color.white;
-            if (plyweapon.weapon_temp_ammo > -1) 
-            { 
+            if (plyweapon.weapon_temp_ammo > -1)
+            {
                 weaponTxt += plyweapon.weapon_temp_ammo.ToString();
                 if (plyweapon.weapon_temp_ammo < 3) { PTSWeaponText.color = new Color(1.0f, 0.8f, 0.4f, 1.0f); }
             }
-            if (plyweapon.weapon_temp_duration > -1) 
-            { 
+            if (plyweapon.weapon_temp_duration > -1)
+            {
                 if (weaponTxt.Length > 0) { weaponTxt += " (^)"; }
                 else { weaponTxt = "^"; }
                 float weapon_time_left = plyweapon.weapon_temp_duration - plyweapon.weapon_temp_timer;
@@ -763,17 +764,124 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 PTSChargeMeterBGSprite.gameObject.SetActive(plyweapon.weapon_is_charging);
                 float offsetMax = PTSChargeMeterBGSprite.rectTransform.rect.width;
                 float offsetPct = 0.0f;
-                if (plyweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(plyweapon.weapon_charge_timer / plyweapon.weapon_charge_duration);}
+                if (plyweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(plyweapon.weapon_charge_timer / plyweapon.weapon_charge_duration); }
                 PTSChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSChargeMeterFGSprite.rectTransform.offsetMax.y);
             }
         }
-        else 
+        else
         {
             if (PTSWeaponText != null) { PTSWeaponText.text = ""; }
             if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
             if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
             if (PTSChargeMeterBGSprite != null) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
         }
+
+        // Handle capture zones
+        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) && gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && gameController.map_selected >= 0 && gameController.mapscript_list != null && gameController.map_selected < gameController.mapscript_list.Length && gameController.mapscript_list[gameController.map_selected].map_capturezones != null)
+        {
+            PTSCapturePanel.gameObject.SetActive(true);
+            byte koth_iter = 0;
+            for (int i = 0; i < PTSCaptureSprites.Length; i++)
+            {
+                PTSCaptureSprites[i].transform.gameObject.SetActive(false);
+                PTSCaptureTexts[i].text = "";
+                if (i >= gameController.mapscript_list[gameController.map_selected].map_capturezones.Length) { break; }
+                if (gameController.mapscript_list[gameController.map_selected].map_capturezones.Length > PTSCaptureSprites.Length) { UnityEngine.Debug.LogWarning("There are more capture zones (" + gameController.mapscript_list[gameController.map_selected].map_capturezones.Length + ") than sprites available to draw (" + PTSCaptureSprites.Length + ")!"); }
+
+                CaptureZone capturezone = gameController.mapscript_list[gameController.map_selected].map_capturezones[i];
+                if (capturezone == null || capturezone.gameObject == null || !capturezone.gameObject.activeInHierarchy) { continue; }
+                PTSCaptureSprites[koth_iter].transform.gameObject.SetActive(true);
+
+                // Display first three letters of holder's name
+                int hold_index = 0;
+                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { hold_index = gameController.DictIndexFromKey(capturezone.hold_id, capturezone.dict_points_keys_arr); }
+                string hold_text = ""; Color hold_color = Color.white;
+                if (!capturezone.is_locked && hold_index >= 0 && hold_index < capturezone.dict_points_keys_arr.Length)
+                {
+                    if (gameController.option_teamplay) 
+                    { 
+                        hold_text = gameController.team_names[capturezone.hold_id];
+                        hold_color = gameController.team_colors[capturezone.hold_id];
+                        PTSCaptureTexts[i].color = gameController.team_colors_bright[capturezone.hold_id];
+                    }
+                    else
+                    {
+                        VRCPlayerApi hold_ply = VRCPlayerApi.GetPlayerById(capturezone.hold_id);
+                        if (hold_ply != null)
+                        {
+                            hold_text = hold_ply.displayName;
+                            if (hold_ply.playerId == Networking.LocalPlayer.playerId) 
+                            {
+                                hold_color = gameController.team_colors[0];
+                                PTSCaptureTexts[i].color = gameController.team_colors_bright[0];
+                            }
+                            else 
+                            {
+                                hold_color = gameController.team_colors[1];
+                                PTSCaptureTexts[i].color = gameController.team_colors_bright[1];
+                            }
+                        }
+                    }
+                    hold_text = hold_text.Substring(0, Mathf.Min(hold_text.Length, 3));
+                    PTSCaptureTexts[koth_iter].color = Color.white;
+                }
+                else if (capturezone.is_locked)
+                {
+                    hold_color = Color.gray;
+                    PTSCaptureTexts[koth_iter].color = Color.gray;
+                    hold_text = "X";
+                }
+                else
+                {
+                    hold_color = Color.white;
+                    PTSCaptureTexts[koth_iter].color = Color.white;
+                    hold_text = "O";
+                }
+                hold_color.a = 0.8f;
+                PTSCaptureSprites[koth_iter].GetComponent<UnityEngine.UI.Image>().color = hold_color;
+                PTSCaptureTexts[koth_iter].text = hold_text;
+
+                // Display contest progress as an overlay
+                int contest_index = -1;
+                if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { contest_index = gameController.DictIndexFromKey(capturezone.contest_id, capturezone.dict_points_keys_arr); }
+                 Color contest_color = Color.white;
+                if (contest_index >= 0 && contest_index < capturezone.dict_points_keys_arr.Length)
+                {
+                    PTSCaptureOverlays[koth_iter].offsetMax = new Vector2(PTSCaptureOverlays[koth_iter].offsetMax.x, Mathf.Lerp(-PTSCaptureSprites[i].sizeDelta.y, 0, capturezone.contest_progress / gameController.option_gm_config_a));
+                    if (gameController.option_teamplay)
+                    {
+                        contest_color = gameController.team_colors[capturezone.contest_id];
+                    }
+                    else
+                    {
+                        VRCPlayerApi contest_ply = VRCPlayerApi.GetPlayerById(capturezone.contest_id);
+                        if (contest_ply != null)
+                        {
+                            if (contest_ply.playerId == Networking.LocalPlayer.playerId)
+                            {
+                                contest_color = gameController.team_colors[0];
+                            }
+                            else
+                            {
+                                contest_color = gameController.team_colors[2];
+                            }
+                        }
+                    }
+                }
+                else 
+                { 
+                    PTSCaptureOverlays[koth_iter].offsetMax = new Vector2(PTSCaptureOverlays[koth_iter].offsetMax.x, -PTSCaptureSprites[i].sizeDelta.y);
+                    contest_color = Color.white;
+                }
+                contest_color.a = 0.8f;
+                PTSCaptureOverlays[koth_iter].GetComponent<UnityEngine.UI.Image>().color = contest_color;
+
+                koth_iter++;
+
+            }
+        }
+        else { PTSCapturePanel.gameObject.SetActive(false); }
+
     }
 
     private void FixedUpdate()
@@ -1015,11 +1123,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
     
     public void TestHarmNumber()
     {
-        ShowHarmNumber(0, 10, harmTester.transform.position);
-        
-        if (gameController != null && gameController.local_ppp_options != null)
-        {
+        if (gameController != null && gameController.local_ppp_options != null) { 
+
+            GameObject harmTester = gameController.local_ppp_options.harmTester;
+
+            ShowHarmNumber(0, 10, harmTester.transform.position);
+
             PPP_Options ppp_options = gameController.local_ppp_options;
+            GameObject harmTesterUI = harmTester.transform.GetChild(0).gameObject;
             HarmTesterUI harmtester_script = harmTesterUI.GetComponent<HarmTesterUI>();
             float scaleOtherUI = ((0.0f + ppp_options.ui_other_scale) / 1.0f);
             float posOtherUI = ((1.0f + ppp_options.ui_other_scale) / 2.0f);

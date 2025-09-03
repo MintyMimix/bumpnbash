@@ -11,7 +11,7 @@ using VRC.Udon;
 
 public enum projectile_type_name
 {
-    Bullet, ArcDown, ArcUp, Bomb, Laser, ENUM_LENGTH
+    Bullet, ArcDown, ArcUp, Bomb, Laser, ItemProjectile, ENUM_LENGTH
 }
 
 public class WeaponProjectile : UdonSharpBehaviour
@@ -39,6 +39,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] public Vector3 pos_end;
     [NonSerialized] public bool contact_made = false;
     [NonSerialized] public bool has_physics = false;
+    [NonSerialized] public byte extra_data = 0;
 
     private void Start()
     {
@@ -101,6 +102,11 @@ public class WeaponProjectile : UdonSharpBehaviour
                                 particle_main.startColor = new Color(mat.GetColor("_Color").r, mat.GetColor("_Color").g, mat.GetColor("_Color").b, 1.0f);
                                 particle_main.duration = projectile_duration;
                                 particle_main.playOnAwake = true;
+                                if (gameController != null && gameController.local_ppp_options != null)
+                                {
+                                    var particle_emission = particle.GetComponent<ParticleSystem>().emission;
+                                    particle_emission.enabled = gameController.local_ppp_options.particles_on;
+                                }
                                 particle.gameObject.SetActive(true);
                                 particle.GetComponent<ParticleSystem>().Play();
                             }
@@ -239,7 +245,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                 , position
                 , pos_start
                 , rb.rotation
-                , new Vector3(damage, owner_scale, dist_scale)
+                , new Vector4(damage, owner_scale, dist_scale, extra_data)
                 , keep_parent
                 , owner_id
                 , weapon_type

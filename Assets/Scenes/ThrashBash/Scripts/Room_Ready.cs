@@ -9,9 +9,25 @@ public class Room_Ready : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject WarningCanvas;
+    [SerializeField] public GameObject WarningPanel;
     [SerializeField] public GameObject monitor_obj;
     [NonSerialized] public bool warning_acknowledged = false;
     // Why we use BOTH plyAttr.ply_team and GetGlobalTeam(): one is local, the other is networked. If the network is busy, we do not want to flood them with requests!
+
+    /*private void Update()
+    {
+        if (WarningCanvas != null && WarningCanvas.activeInHierarchy)
+        {
+            Vector3 pos = WarningPanel.transform.position;
+            pos.x = Networking.LocalPlayer.GetPosition().x;
+            WarningPanel.transform.position = pos;
+            pos = WarningPanel.transform.localPosition;
+            float widthAdjust = ((RectTransform)WarningCanvas.transform).rect.width / 2.0f;
+            widthAdjust -= ((RectTransform)WarningPanel.transform).rect.width / 2.0f;
+            pos.x = Mathf.Clamp(pos.x, -widthAdjust, widthAdjust);
+            WarningPanel.transform.localPosition = pos;
+        }
+    }*/
 
     public void AcknowledgeWarning()
     {
