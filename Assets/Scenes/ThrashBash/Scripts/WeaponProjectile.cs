@@ -1,165 +1,110 @@
 ﻿
+using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.ProBuilder;
+using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
+using static VRC.SDKBase.VRCPlayerApi;
+
+public enum projectile_state_name
+{
+    Inactive, Active, Waiting
+}
 
 public class WeaponProjectile : UdonSharpBehaviour
 {
-    public int projectileID, projectileType, projectileState;
-    public float projectileLifetime, projectileTimer;
-    //public Vector3 initDirection;
-    public GameObject weaponHurtboxTemplate;
-    public GameHandler gameHandler;
-    private Rigidbody physbody;
-    public WeaponBase parentWeaponBase;
-    //public WeaponHurtbox[] weaponHurtboxes;
+    public Vector3 pos_start;
+    public float projectile_speed;
+    public float projectile_lifetime;
+    private float projectile_timer;
+    public int projectile_state;
+    public int owner_id;
+    private LayerMask layers_to_hit;
+    public GameObject template_WeaponHurtbox;
+    public TMP_Text DebugTxt;
+    public int testNetwork = 0;
 
-    // To-Do: Right now, weapon projectile is created and moves based on a desynced player object, which results in hurtboxes that don't align.
-    // To resolve this, we can either: (A) have hurtboxes be networked objects of a transmitted position, or (B) have the projectile have a source & destination position (or direction) passed by network
-    // (A) is cheaper on resources, while (B) ensures alignment between the projectile's appearance on all clients
-    // The most expensive but synced way would be doing both
-
+    //To-do: when updating position, perform a ray trace to see if any objects in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed; if so, make the next position that instead
     void Start()
     {
-        physbody = transform.GetComponent<Rigidbody>();
-        transform.parent = null;
+        //layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox");
+    }
+
+    [NetworkCallable]
+    public void CreateHurtBox(Vector3 position, float damage, float lifetime, int player_id)
+    {
+        var newHurtboxObj = Instantiate(template_WeaponHurtbox, transform);
+
+        newHurtboxObj.transform.parent = null;
+        var hurtbox = newHurtboxObj.GetComponent<WeaponHurtbox>();
+
+        newHurtboxObj.transform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
+        newHurtboxObj.transform.position = position;
+        hurtbox.hurtbox_state = (int)hurtbox_state_name.Active;
+        hurtbox.hurtbox_damage = damage;
+        hurtbox.hurtbox_lifetime = lifetime;
+        hurtbox.owner_id = player_id;
+
+        // Set velocity, size, etc. of projectile here
+        //if (weaponType == 0)
+        //{
+
+        Destroy(gameObject);
+     }
+
+    [NetworkCallable]
+    public void TestNetwork()
+    {
+        testNetwork = 1;
+    }
+
+    public void OnProjectileHit(Vector3 position)
+    {
+        projectile_state = (int)projectile_state_name.Waiting;
+        if (owner_id != Networking.LocalPlayer.playerId) { return; }
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "TestNetwork");
+        //if (owner_id != Networking.LocalPlayer.playerId) { return; }
+        //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "CreateHurtBox", position, 10.0f, 2.0f, owner_id);
     }
 
     private void Update()
     {
-        // Handle life timer
-        if (projectileState == 1 && projectileTimer < projectileLifetime)
+        if (testNetwork == 1) { DebugTxt.text = "Hi, I'm a networked event!";  }
+        else if (owner_id > 0 && VRCPlayerApi.GetPlayerById(owner_id) != null)
         {
-            projectileTimer += Time.deltaTime;
+            DebugTxt.text = projectile_state.ToString() + "\n" + VRCPlayerApi.GetPlayerById(owner_id).displayName + " {" + owner_id.ToString() + "} vs yours {" + Networking.LocalPlayer.playerId.ToString() + "}";
+            if (owner_id == Networking.LocalPlayer.playerId) { DebugTxt.text += "\nI will trigger events"; }
         }
-        else if (projectileState == 1 && projectileTimer >= projectileLifetime) 
+
+        // While active, count down lifetime timer, and set to remove when at max
+        /*if (projectile_state == 1 && projectile_timer < projectile_lifetime)
         {
-            // Destroy projectile
-            projectileState = 2;
-            DetonateProjectileNoContact();
+            projectile_timer++;
         }
-
-        // Handle movement behavior, as applicable
-        if (projectileState == 1 && projectileType == 0) {
-            physbody.MovePosition(physbody.position + transform.up * 0.3f);
-        }
-    }
-
-    public void CreateHurtbox(Vector3 createPosition, Quaternion createRotation)
-    {
-        projectileState = 2;
-        var hurtboxObj = Instantiate(weaponHurtboxTemplate, createPosition, createRotation);
-        hurtboxObj.name = "Hurtbox[" + projectileID + "](" + Networking.GetOwner(gameObject).displayName + ")";
-        Networking.SetOwner(Networking.GetOwner(gameObject), hurtboxObj);
-        SetHurtboxDamage(hurtboxObj);
-        parentWeaponBase.DestroyProjectile(projectileID);
-    }
-        
-    public void SetHurtboxDamage(GameObject hurtboxObjToSet)
-    {
-        var hurtbox = hurtboxObjToSet.GetComponent<WeaponHurtbox>();
-        switch (projectileType)
+        else if (projectile_state == 1 && projectile_timer >= projectile_lifetime)
         {
-            case 5:
-                hurtbox.hurtboxDamage = 100.0f;
-                break;
-            // Put in exception cases above
-            default:
-                hurtbox.hurtboxDamage = 10.0f;
-                hurtbox.hurtboxTransitionDuration = 0.1f;
-                hurtbox.hurtboxLingerDuration = 0.5f;
-                hurtbox.hurtboxSize = 1.0f;
-                break;
-        }
-        hurtbox.gameHandler = gameHandler;
-        hurtbox.hurtboxState = 1;
-        hurtbox.hurtboxID = projectileID;
-        hurtboxObjToSet.SetActive(true);
-    }
+            projectile_state = 2;
+        }*/
 
-    // Potential flaw: relies on two collisions: one where a player enters the projectile (relative to the attacker), and one where a player enters the hurtbox (relative to the defender)
-    // To-do: either have the hurtbox be immediately passed into as damaging X player, or make this local player only, or both
-    // >>>Alternatively: have these functions all merged into a single "create hurtbox", as a networked event, with a defined position and rotation passed into as arguments
-    public override void OnPlayerCollisionEnter(VRCPlayerApi player)
-    {
-        // We don't want it to collide with ourselves!
-        if (player == Networking.LocalPlayer) { return; }
-        CreateHurtbox(player.GetPosition(), player.GetRotation());
-    }
-
-    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
-    {
-        // We don't want it to collide with ourselves!
-        if (player == Networking.LocalPlayer) { return; }
-        CreateHurtbox(player.GetPosition(), player.GetRotation());
-    }
-
-    private void OnCollisionEnter(Collision collision)
-    {
-        ContactPoint contact = collision.contacts[0];
-        Quaternion rotation = Quaternion.FromToRotation(Vector3.up, contact.normal);
-        Vector3 position = contact.point;
-        CreateHurtbox(position, rotation);
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        var colliderOwner = Networking.GetOwner(other.gameObject);
-        Debug.Log("PROJECTILE " + gameObject.name + " COLLIDED WITH " + other.gameObject.name + " OWNED BY " + colliderOwner.displayName);
-        if (colliderOwner == Networking.LocalPlayer && other.gameObject.layer != 11) { return; }
-        CreateHurtbox(transform.position, transform.rotation);
-    }
-
-    private void DetonateProjectileNoContact()
-    {
-        CreateHurtbox(transform.position, transform.rotation);
-    }
-
-    private void HandleMovementRocket()
-    {
-
-    }
-
-    private void HandleMovementBomb()
-    {
-
-    }
-
-    /*
-    public void CreateHurtBox()
-    {
-        // Create a new array of hurtboxes with length + 1, fill in entries from old array, then last entry contains the new object
-        var mergedHurtboxes = new WeaponHurtbox[weaponHurtboxes.Length + 1];
-        for (int i = 0; i < weaponHurtboxes.Length; i++)
+        // Update position based on:
+        // (1) The lerp between startPos & endPos using projectile_speed, maxing at endPos
+        // (2) If any objects are in the Player, PlayerLocal, or PlayerHitbox layers are between current position and current position + speed
+        if (projectile_state == (int)projectile_state_name.Active)
         {
-            mergedHurtboxes[i] = weaponHurtboxes[i];
+            var pos_current = transform.position;
+            //var ray_cast = Physics.Raycast(transform.position, transform.forward, out RaycastHit hitInfo, projectile_speed, layers_to_hit, QueryTriggerInteraction.Collide);
+            var rb = this.GetComponent<Rigidbody>();
+            rb.MovePosition(rb.position + transform.forward * projectile_speed);
+            /*if (hitInfo.collider == null) { transform.position = transform.position + transform.forward * projectile_speed; }
+            else {
+                transform.position = hitInfo.point; 
+                //Debug.Log("WE HIT EM BOYS @ " + hitInfo.point.ToString() + " AND WE WILL HIT " + Networking.GetOwner(hitInfo.collider.gameObject).displayName);
+                OnProjectileHit(hitInfo.point);
+                // To-do: create hurtbox on collider; have collider be on environment too
+                // To-do: (on hurtbox) send networked event of having hit this guy, but only if you are the owner; otherwise, just delete self
+            } */
         }
-        var newhurtboxObj = Instantiate(weaponHurtboxTemplate, transform);
-        mergedHurtboxes[weaponHurtboxes.Length] = newhurtboxObj.GetComponent<WeaponHurtbox>();
-        Networking.SetOwner(Networking.GetOwner(gameObject), newhurtboxObj);
-        newhurtboxObj.GetComponent<WeaponHurtbox>().hurtboxID = weaponHurtboxes.Length;
-        weaponHurtboxes = mergedHurtboxes;
     }
-
-    public void DestroyHurtbox(int hurtboxID)
-    {
-        var reducedHurtboxes = new WeaponHurtbox[weaponHurtboxes.Length - 1];
-        for (int i = 0; i < weaponHurtboxes.Length; i++)
-        {
-            if (i == hurtboxID) { continue; }
-            else if (i < hurtboxID)
-            {
-                reducedHurtboxes[i] = weaponHurtboxes[i];
-            }
-            else
-            {
-                reducedHurtboxes[i - 1] = weaponHurtboxes[i];
-            }
-        }
-        weaponHurtboxes[hurtboxID].EndDestroy();
-    }
-    */
-
 }
