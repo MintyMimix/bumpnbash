@@ -20,14 +20,17 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized][UdonSynced] public float ply_dp_default;
     [NonSerialized][UdonSynced] public ushort ply_lives;
     [NonSerialized][UdonSynced] public ushort ply_points = 0;
+    [NonSerialized] public ushort ply_lives_local; // We create local versions of these variables for other clients to compare to. If there is a mismatch, we can have events fire off OnDeserialization().
+    [NonSerialized] public ushort ply_points_local = 0;
+
     // While we aren't syncing the stats below right now, we may want to in the future for UI purposes
-    [NonSerialized][UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced because it affects visuals
+    [NonSerialized][UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced most because it affects visuals
     [NonSerialized] public float ply_speed = 1.0f;
-    [NonSerialized] public float ply_atk = 1.0f;
-    [NonSerialized] public float ply_def = 1.0f;
+    [NonSerialized][UdonSynced] public float ply_atk = 1.0f;
+    [NonSerialized][UdonSynced] public float ply_def = 1.0f;
     [NonSerialized] public float ply_grav = 1.0f;
     [NonSerialized] public float ply_respawn_duration;
-    [NonSerialized] public int ply_team = -1; // -1: Spectator, all others are teams
+    [NonSerialized][UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
     [NonSerialized] public VRCPlayerApi last_hit_by_ply;
     [NonSerialized] public int last_kill_ply = -1;
     [NonSerialized] public float last_kill_duration = 4.0f;
@@ -53,7 +56,22 @@ public class PlayerAttributes : UdonSharpBehaviour
     void Start()
     {
         powerups_active = new GameObject[0];
-        ResetDefaultEyeHeight();
+        //ResetDefaultEyeHeight();
+    }
+
+    public override void OnDeserialization()
+    {
+        // Master-only events below
+        if (!Networking.LocalPlayer.isMaster) { return; }
+        if (gameController.round_state == (int)round_state_name.Ongoing)
+        {
+            if (ply_lives_local != ply_lives || ply_points_local != ply_points)
+            {
+                ply_lives_local = ply_lives;
+                ply_points_local = ply_points;
+                gameController.CheckForRoundGoal(); // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
+            }
+        }
     }
 
     private void Update()
@@ -73,7 +91,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else if (ply_state == (int)player_state_name.Dead && gameController.round_state == (int)round_state_name.Ongoing)
         {
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal");
+            //gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal");
             ply_respawn_timer = 0.0f;
         }
 
@@ -107,6 +125,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed);
             Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav);
+            Networking.LocalPlayer.SetJumpImpulse(4.0f / ply_grav); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
         {
@@ -114,6 +133,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             Networking.LocalPlayer.SetRunSpeed(4.0f);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f);
             Networking.LocalPlayer.SetGravityStrength(1.0f);
+            Networking.LocalPlayer.SetJumpImpulse(4.0f);
         }
     }
 
@@ -145,6 +165,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         ResetDefaultEyeHeight();
     }
 
+    [NetworkCallable]
     public void ResetDefaultEyeHeight()
     {
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
@@ -197,15 +218,18 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NetworkCallable]
     public void KillOtherPlayer(int attackerPlyId, int defenderPlyId)
     {
-        Debug.Log("Is owner? " + Networking.IsOwner(gameObject));
-        Debug.Log("LocalPlayer.playerId: " + Networking.LocalPlayer.playerId);
-        Debug.Log("Attacker ID: " + attackerPlyId);
+        //Debug.Log("Is owner? " + Networking.IsOwner(gameObject));
+        //Debug.Log("LocalPlayer.playerId: " + Networking.LocalPlayer.playerId);
+        //Debug.Log("Attacker ID: " + attackerPlyId);
         if (attackerPlyId != Networking.LocalPlayer.playerId) { return; }
         Debug.Log("We killed Defender ID: " + defenderPlyId);
         ply_points++;
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_index.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_index.Kill]);
+
+        // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
+        if (Networking.LocalPlayer.isMaster) { gameController.CheckForRoundGoal(); }
     }
 
     public void HandleLocalPlayerDeath()
@@ -252,6 +276,9 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController.option_gamemode == (int)round_mode_name.Infection && ply_team != 1) { ply_team = 1; }
 
         ResetPowerups();
+
+        // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
+        if (Networking.LocalPlayer.isMaster) { gameController.CheckForRoundGoal(); }
 
     }
 

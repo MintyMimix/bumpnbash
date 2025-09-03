@@ -45,22 +45,6 @@ public class UIPlyToOthers : UdonSharpBehaviour
         if (gameController.round_state == (int)round_state_name.Start && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
         else if (gameController.round_state != (int)round_state_name.Start && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
 
-        var LivesText = "";
-        if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points_a && !(playerAttributes.ply_team == 1 && !gameController.option_goal_points_b))
-        {
-            LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
-            PTOLivesImage.sprite = PTOPointsSprite;
-            PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-        }
-        else
-        {
-            LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
-            PTOLivesImage.sprite = PTOLivesSprite;
-            PTOLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
-        }
-        PTOLives.text = LivesText;
-
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
@@ -97,7 +81,45 @@ public class UIPlyToOthers : UdonSharpBehaviour
         else { PTODefense.color = new Color32(255, 255, 255, 255); }
         PTODefense.text = DefenseText;
 
-        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) { PTOTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
+        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
+        { 
+            if (gameController.option_teamplay) { PTOTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
+            else { PTOTeamFlagImage.color = new Color32(255, 255, 255, 255); }
+        }
+
+        var LivesText = "";
+        if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
+        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
+        {
+            PTOLivesImage.sprite = PTOPointsSprite;
+            if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
+            {
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
+                var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
+                if (bossAttr != null)
+                {
+                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + " / " + gameController.option_goal_points_a;
+                }
+                else { LivesText = "?"; }
+                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLivesImage.color = PTOTeamFlagImage.color;
+            }
+            else
+            {
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + " / " + gameController.option_goal_points_a;
+                PTOLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTOLivesImage.color = PTOTeamFlagImage.color;
+            }
+        }
+        else
+        {
+            LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
+            PTOLivesImage.sprite = PTOLivesSprite;
+            PTOLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+            PTOLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
+        }
+        PTOLives.text = LivesText;
+
         //var FlagText = "";
         //if (gameController.team_count >= 0) { FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString(); }
         //PTOTeamText.text = FlagText;

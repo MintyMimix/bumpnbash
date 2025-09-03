@@ -18,6 +18,7 @@ public class WeaponProjectile : UdonSharpBehaviour
 
     [NonSerialized] public int projectile_type, weapon_type;
     [NonSerialized] public int owner_id;
+    [NonSerialized] public float owner_scale;
     [NonSerialized] public bool keep_parent;
     [NonSerialized] public Vector3 pos_start;
     [NonSerialized] public float projectile_distance;
@@ -99,6 +100,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                 , damage
                 , Networking.GetServerTimeInSeconds()
                 , keep_parent
+                , plyAttr.ply_scale
                 , owner_id
                 , weapon_type
                 );
@@ -135,6 +137,24 @@ public class WeaponProjectile : UdonSharpBehaviour
         }
         // Did we hit the environment?
         else if (other.gameObject.layer == LayerMask.NameToLayer("Environment"))
+        {
+            OnProjectileHit(transform.position);
+        }
+
+    }
+
+    private void OnCollisionEnter(UnityEngine.Collision collision)
+    {
+        // Did we hit a hitbox?
+        if (collision.gameObject.GetComponent<PlayerHitbox>() != null)
+        {
+            if (owner_id != Networking.GetOwner(collision.gameObject).playerId)
+            {
+                OnProjectileHit(transform.position);
+            }
+        }
+        // Did we hit the environment?
+        else if (collision.gameObject.layer == LayerMask.NameToLayer("Environment"))
         {
             OnProjectileHit(transform.position);
         }

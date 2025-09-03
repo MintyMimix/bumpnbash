@@ -116,6 +116,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
             default:
                 break;
         }
+
+        showTextPrimary = "isNetworkSettled(): " + Networking.IsNetworkSettled;
+        showTextSecondary = "isClogged(): " + Networking.IsClogged;
+
         PTSPrimaryInfo.text = showTextPrimary;
         PTSSecondaryInfo.text = showTextSecondary;
 
@@ -128,22 +132,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (gameController.round_state == (int)round_state_name.Start) { TimerText = ""; }
         else if (gameController.round_state == (int)round_state_name.Ready) { TimerText = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString(); }
         PTSTimer.text = TimerText;
-
-        var LivesText = "";
-        if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
-        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
-        {
-            LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
-            PTSLivesImage.sprite = PTSPointsSprite;
-            PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
-        }
-        else
-        {
-            LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
-            PTSLivesImage.sprite = PTSLivesSprite;
-            PTSLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f); 
-        }
-        PTSLives.text = LivesText;
 
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
@@ -180,11 +168,48 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else { PTSDefense.color = new Color32(255, 255, 255, 255); }
         PTSDefense.text = DefenseText;
 
-        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) { PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
+        if (playerAttributes.ply_team >= 0 && playerAttributes.ply_team < gameController.team_colors.Length) 
+        { 
+            if (gameController.option_teamplay) { PTSTeamFlagImage.color = gameController.team_colors[playerAttributes.ply_team]; }
+            else { PTSTeamFlagImage.color = new Color32(255,255,255,255); }
+        }
         var FlagText = "";
-        if (gameController.team_count >= 0) { FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString(); }
+        if (gameController.round_state != (int)round_state_name.Start && gameController.team_count >= 0) { FlagText = gameController.CheckSpecificTeamLives(playerAttributes.ply_team).ToString(); }
         PTSTeamText.text = FlagText;
 
+
+        var LivesText = "";
+        if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
+        else if (gameController.option_goal_points_a && !(!gameController.option_goal_points_b && playerAttributes.ply_team == 1))
+        {
+            PTSLivesImage.sprite = PTSPointsSprite;
+            if (gameController.option_gamemode == (int)round_mode_name.BossBash && gameController.gamemode_boss_id >= 0)
+            {
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString();
+                var bossAttr = gameController.FindPlayerAttributes(VRCPlayerApi.GetPlayerById(gameController.gamemode_boss_id));
+                if (bossAttr != null) 
+                { 
+                    LivesText = Mathf.RoundToInt(bossAttr.ply_points).ToString() + " / " + gameController.option_goal_points_a; 
+                }
+                else { LivesText = "?"; }
+                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLivesImage.color = PTSTeamFlagImage.color;
+            }
+            else
+            {
+                LivesText = Mathf.RoundToInt(playerAttributes.ply_points).ToString() + " / " + gameController.option_goal_points_a;
+                PTSLives.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+                PTSLivesImage.color = PTSTeamFlagImage.color;
+            }
+        }
+        else
+        {
+            LivesText = Mathf.RoundToInt(playerAttributes.ply_lives).ToString();
+            PTSLivesImage.sprite = PTSLivesSprite;
+            PTSLivesImage.color = new Color(1.0f, 1.0f, 1.0f, 1.0f);
+            PTSLives.color = new Color(1.0f, (playerAttributes.ply_lives / gameController.plysettings_lives), (playerAttributes.ply_lives / gameController.plysettings_lives), 1.0f);
+        }
+        PTSLives.text = LivesText;
 
 
         // Handle powerup sprites
@@ -212,6 +237,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (owner != Networking.LocalPlayer || owner == null) { return; }
         var scaleUI = (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         if (!Networking.LocalPlayer.IsUserInVR()) { scaleUI *= 0.5f; }
+        else { scaleUI *= 0.5f; }
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
         transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * scaleUI);
         transform.rotation = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;

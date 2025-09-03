@@ -16,6 +16,7 @@ public class PlayerHitbox : UdonSharpBehaviour
     //public int owner_id;
     [SerializeField] public Material[] hitboxMats;
     [SerializeField] public float default_hitbox_size = 2.0f;
+
     [NonSerialized] public int material_id;
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
@@ -27,6 +28,32 @@ public class PlayerHitbox : UdonSharpBehaviour
             var scaleHitbox = playerAttributes.ply_scale;
             transform.localScale = new Vector3(scaleHitbox, default_hitbox_size * scaleHitbox, scaleHitbox);
             transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, scaleHitbox / default_hitbox_size, 0.0f), owner.GetRotation());
+            var m_Renderer = GetComponent<Renderer>();
+            if (m_Renderer != null && playerAttributes.gameController.team_colors != null && playerAttributes.ply_team >= 0)
+            {
+                if (playerAttributes.gameController.option_teamplay)
+                {
+                    m_Renderer.material.SetColor("_Color",
+                        new Color32(
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                        (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                    m_Renderer.material.EnableKeyword("_EMISSION");
+                    m_Renderer.material.SetColor("_EmissionColor",
+                        new Color32(
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
+                        (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                        (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                }
+                else
+                {
+                    m_Renderer.material.SetColor("_Color", new Color32(255, 255, 255, 255));
+                    m_Renderer.material.EnableKeyword("_EMISSION");
+                    m_Renderer.material.SetColor("_EmissionColor", new Color32(255, 255, 255, 255));
+                }
+            }
         }
     }
 

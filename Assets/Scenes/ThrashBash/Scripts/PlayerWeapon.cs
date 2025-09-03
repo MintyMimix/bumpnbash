@@ -2,6 +2,7 @@
 using System;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Android;
 using VRC.SDK3.Components;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
@@ -22,10 +23,11 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public float animate_pct;
     [SerializeField] public GameObject[] weapon_mdl;
     [SerializeField] public GameController gameController;
-
+    [NonSerialized] public float scale_inital;
 
     void Start()
     {
+        scale_inital = transform.localScale.x; 
         weapon_type = (int)weapon_type_name.PunchingGlove;
         UpdateStatsFromWeaponType();
     }
@@ -77,14 +79,14 @@ public class PlayerWeapon : UdonSharpBehaviour
             if (weapon_type == (int)weapon_type_name.PunchingGlove) { animate_pct = 0.0f; }
         }
 
-        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) && !gameObject.GetComponent<VRCPickup>().IsHeld && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
+        
+        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             var localPlayerAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
-            if (localPlayerAttr.ply_state == (int)player_state_name.Alive || localPlayerAttr.ply_state == (int)player_state_name.Respawning) {
-                /*transform.SetPositionAndRotation(
-                    Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward)
-                    , Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation
-                );*/
+            
+            // Reposition the object if we're not holding it
+            if (!gameObject.GetComponent<VRCPickup>().IsHeld && (localPlayerAttr.ply_state == (int)player_state_name.Alive || localPlayerAttr.ply_state == (int)player_state_name.Respawning)) {
+                
                 if (Networking.LocalPlayer.IsUserInVR())
                 {
                     transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward * 0.5f);
@@ -93,8 +95,10 @@ public class PlayerWeapon : UdonSharpBehaviour
                 {
                     transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).rotation * Vector3.forward);
                 }
-                //transform.position = Networking.LocalPlayer.GetTrackingData(TrackingDataType.Head).position + Vector3.forward * 1.0f;
             }
+            // Regardless of if we're holding it or not, scale the object with ourselves
+            float playerVisualScale = localPlayerAttr.plyEyeHeight_desired / localPlayerAttr.plyEyeHeight_default;
+            transform.localScale = new Vector3(scale_inital * playerVisualScale, scale_inital * playerVisualScale, scale_inital * playerVisualScale);
         }
 
         if (!transform.GetComponent<VRCPickup>().pickupable && Networking.GetOwner(gameObject) == Networking.LocalPlayer) {
@@ -109,6 +113,35 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             weapon_mdl[weapon_type].GetComponent<Animator>().SetFloat("AnimationTimer", animate_pct);
         }
+
+        var playerAttributes = gameController.FindPlayerAttributes(Networking.LocalPlayer);
+        var m_Renderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        if (m_Renderer != null && playerAttributes.gameController.team_colors != null && playerAttributes.ply_team >= 0)
+        {
+            if (playerAttributes.gameController.option_teamplay)
+            {
+                m_Renderer.material.SetColor("_Color",
+                    new Color32(
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                    (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+                m_Renderer.material.EnableKeyword("_EMISSION");
+                m_Renderer.material.SetColor("_EmissionColor",
+                    new Color32(
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].r),
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].g),
+                    (byte)Mathf.Min(255, 80 + playerAttributes.gameController.team_colors[playerAttributes.ply_team].b),
+                    (byte)playerAttributes.gameController.team_colors[playerAttributes.ply_team].a));
+            }
+            else
+            {
+                m_Renderer.material.SetColor("_Color",new Color32(255,255,255,255));
+                m_Renderer.material.EnableKeyword("_EMISSION");
+                m_Renderer.material.SetColor("_EmissionColor", new Color32(255,255,255,255));
+            }
+        }
+
     }
     public override void OnPickupUseUp()
     {
@@ -150,15 +183,17 @@ public class PlayerWeapon : UdonSharpBehaviour
                             * transform.InverseTransformDirection(Networking.LocalPlayer.GetVelocity()).x);
             }
 
+            var plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
             //NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, float distance, double fire_start_ms, int player_id)
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateProjectile"
                 , weapon_type
                 , transform.position 
                 , transform.rotation //, Networking.LocalPlayer.GetTrackingData(handdt).rotation
-                , distance // scale distance with velocity
+                , distance * plyAttr.ply_scale // scale distance with player size
                 , Networking.GetServerTimeInSeconds()
                 , keep_parent
+                , plyAttr.ply_scale
                 , Networking.LocalPlayer.playerId);
 
             
