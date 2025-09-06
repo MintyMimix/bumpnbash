@@ -5,7 +5,6 @@ using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.UIElements;
 using UnityEngine.Windows;
 using VRC.SDK3.Components;
 using VRC.SDK3.UdonNetworkCalling;
@@ -127,6 +126,8 @@ public class GameController : GlobalHelperFunctions
     [SerializeField] public TMP_InputField ui_adv_option_boss_speed_mod;
     [SerializeField] public TMP_InputField ui_adv_option_boss_scale_mod;
     [SerializeField] public UnityEngine.UI.Toggle ui_adv_option_item_debuff_toggle;
+
+    [SerializeField] public UnityEngine.UI.Button ui_ppp_reset_pos_button;
 
     [SerializeField] public Room_Ready room_ready_script;
     [SerializeField] public GameObject room_ready_spawn;
@@ -262,11 +263,14 @@ public class GameController : GlobalHelperFunctions
     [UdonSynced] public bool option_teamplay = false;
     [UdonSynced] public byte team_count = 1;
     [UdonSynced] public bool option_personal_teams = true;
-    [SerializeField] public Color32[] team_colors; // Assign in inspector
+    [SerializeField] public Color32[] team_colors; // Active colors. In inspector, consider this base
     [SerializeField] public Color32[] team_colors_protanopia; // Can't distinguish reds
     [SerializeField] public Color32[] team_colors_deuteranopia; // Can't distinguish greens
     [SerializeField] public Color32[] team_colors_tritanopia; // Can't distinguish blues
-    [NonSerialized] public Color32[] team_colors_bright;
+    [SerializeField] public Color32[] team_colors_achromatopsia; // Can't distinguish hues
+    [NonSerialized] public Color32[] team_colors_bright; // Active text colors
+    [NonSerialized] public Color32[] team_colors_base;
+    [NonSerialized] public Color32[][] team_colors_all_options_arr;
 
     [SerializeField] public string[] team_names; // MUST MATCH SIZE OF team_colors
     [SerializeField] public Sprite[] team_sprites; // MUST MATCH SIZE OF team_colors
@@ -276,16 +280,19 @@ public class GameController : GlobalHelperFunctions
 
     //[NonSerialized] public int[][] ply_teams_arr;
 
+    // Player tracking
     [NonSerialized] public int[] ply_tracking_dict_keys_arr;
     [NonSerialized][UdonSynced] public string ply_tracking_dict_keys_str = "";
     [NonSerialized] public int[] ply_tracking_dict_values_arr;
     [NonSerialized][UdonSynced] public string ply_tracking_dict_values_str = "";
 
+    // Player owned objects
     [NonSerialized] public int[] ply_object_owners;
     [NonSerialized] public int ply_owners_cnt = 0;
     [NonSerialized] public PlayerAttributes[] ply_object_plyattr;
     [NonSerialized] public PlayerHitbox[] ply_object_plyhitbox;
     [NonSerialized] public PlayerWeapon[] ply_object_plyweapon;
+    [NonSerialized] public UIPlyToOthers[] ply_object_uiplytoothers;
 
     [NonSerialized] public int[][] ply_in_game_auto_dict;
 
@@ -323,6 +330,7 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized] public int[][] koth_progress_dict;
     [NonSerialized][UdonSynced] public byte infection_zombigs_spawned = 0;
     [NonSerialized][UdonSynced] public bool infection_zombig_active = false;
+    [NonSerialized][UdonSynced] public int round_extra_data = 0; // Extra tracking data for a gamemode, such as number of Survivor deaths in Infected
 
     [NonSerialized] public bool ui_initialized = false;
     [NonSerialized] public bool ui_updating = false;
@@ -358,7 +366,23 @@ public class GameController : GlobalHelperFunctions
     {
         ui_initialized = false;
         skybox.mainTexture = default_skybox_tex;
-        
+
+        // Initialize team colors
+        // We want to store the base colors from the inspector. Due to legacy issues, we have to do in this strnage order (colors -> base -> colors)
+        team_colors_base = new Color32[team_colors.Length];
+        for (int j = 0; j < team_colors.Length; j++)
+        {
+            team_colors_base[j] = team_colors[j];
+        }
+        team_colors_all_options_arr = new Color32[5][];
+        team_colors_all_options_arr[0] = team_colors_base;
+        team_colors_all_options_arr[1] = team_colors_protanopia;
+        team_colors_all_options_arr[2] = team_colors_deuteranopia;
+        team_colors_all_options_arr[3] = team_colors_tritanopia;
+        team_colors_all_options_arr[4] = team_colors_achromatopsia;
+
+        SetColorOptions(0);
+
         //DebugTestDictFunctions();
         //item_spawns = new ItemSpawner[0];
         //ply_ready_arr = new int[0];
@@ -377,6 +401,7 @@ public class GameController : GlobalHelperFunctions
         ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
         ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
         ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
 
         ply_master_id = Networking.LocalPlayer.playerId; // To-do: should this be here?
 
@@ -390,15 +415,7 @@ public class GameController : GlobalHelperFunctions
         //room_training.SetActive(false);
         room_training_portal.SetActive(false);
 
-        team_colors_bright = new Color32[team_colors.Length];
-        for (int j = 0; j < team_colors.Length; j++)
-        {
-            team_colors_bright[j] = new Color32(
-                        (byte)Mathf.Max(0, Mathf.Min((byte)255, 80 + team_colors[j].r)),
-                        (byte)Mathf.Max(0, Mathf.Min((byte)255, 80 + team_colors[j].g)),
-                        (byte)Mathf.Max(0, Mathf.Min((byte)255, 80 + team_colors[j].b)),
-                        (byte)team_colors[j].a);
-        }
+
 
         if (Networking.IsOwner(gameObject))
         {
@@ -487,6 +504,33 @@ public class GameController : GlobalHelperFunctions
         return return_index;
     }
 
+    public void SetColorOptions(int color_type)
+    {
+        team_colors = new Color32[team_colors_base.Length];
+        for (int j = 0; j < team_colors.Length; j++)
+        {
+            team_colors[j] = team_colors_all_options_arr[color_type][j];
+        }
+        ProcessBrightColors(color_type);
+    }
+
+    private void ProcessBrightColors(int color_type)
+    {
+        team_colors_bright = new Color32[team_colors.Length];
+        byte brightness_add = 80; // default
+        if (color_type == 1) { brightness_add = 35; } // protranopia has trouble distinguishing at too bright colors
+        else if (color_type == 4) { brightness_add = 35; } // achromatopsia becomes all bright grays at default level
+
+        for (int j = 0; j < team_colors.Length; j++)
+        {
+            team_colors_bright[j] = new Color32(
+                        (byte)Mathf.Max(0, Mathf.Min((byte)255, brightness_add + team_colors[j].r)),
+                        (byte)Mathf.Max(0, Mathf.Min((byte)255, brightness_add + team_colors[j].g)),
+                        (byte)Mathf.Max(0, Mathf.Min((byte)255, brightness_add + team_colors[j].b)),
+                        (byte)team_colors[j].a);
+        }
+    }
+
     // -- Continously Running --
     private void Update()
     {
@@ -534,6 +578,19 @@ public class GameController : GlobalHelperFunctions
                 highlight_cameras_snapped[i] = true;
                 highlightCameras[i].gameObject.SetActive(false);
                 highlight_cameras_active[i] = false;
+            }
+        }
+
+        // UI handling
+        if (local_uiplytoself != null)
+        {
+            // To-do: check to see if this is too many updates or not
+            local_uiplytoself.UI_Timer();
+            local_uiplytoself.UI_Powerups();
+            local_uiplytoself.UI_Weapons();
+            if (option_gamemode == (int)gamemode_name.KingOfTheHill)
+            {
+                local_uiplytoself.UI_Capturezones();
             }
         }
 
@@ -786,6 +843,7 @@ public class GameController : GlobalHelperFunctions
                 }
             }
         }
+       
     }
 
     [NetworkCallable]
@@ -1455,8 +1513,9 @@ public class GameController : GlobalHelperFunctions
         ply_object_plyhitbox[ply_owners_cnt].owner = player;
         ply_object_plyhitbox[ply_owners_cnt].playerAttributes = plyAttributesComponent;
         Networking.SetOwner(player, plyUIToOthers);
-        plyUIToOthers.GetComponent<UIPlyToOthers>().owner = player;
-        plyUIToOthers.GetComponent<UIPlyToOthers>().playerAttributes = plyAttributesComponent;
+        ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>();
+        ply_object_uiplytoothers[ply_owners_cnt].owner = player;
+        ply_object_uiplytoothers[ply_owners_cnt].playerAttributes = plyAttributesComponent;
         Networking.SetOwner(player, plyUIToSelf);
         plyUIToSelf.GetComponent<UIPlyToSelf>().owner = player;
         plyUIToSelf.GetComponent<UIPlyToSelf>().playerAttributes = plyAttributesComponent;
@@ -1481,6 +1540,7 @@ public class GameController : GlobalHelperFunctions
             }
             local_plyhitbox = ply_object_plyhitbox[ply_owners_cnt];
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
+            local_ppp_options.ColorblindTemplateInit();
             local_ppp_options.RefreshAllOptions();
 
             template_ItemSpawner = FindPlayerOwnedObject(player, "ItemSpawnerTemplate");
@@ -1741,6 +1801,9 @@ public class GameController : GlobalHelperFunctions
                 }*/
             }
 
+            UIPlyToOthers plytoothers = GetUIPlyToOthersFromID(player.playerId);
+            if (plytoothers != null) { plytoothers.ResetCache(); }
+
             if (!player.isLocal) { continue; }
             local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
             local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
@@ -1751,9 +1814,7 @@ public class GameController : GlobalHelperFunctions
             PlayerAttributes playerData = FindPlayerAttributes(player);
             playerData.ply_training = false;
             playerData.ResetTutorialMessage();
-            //UnityEngine.Debug.Log("You are in the game! After all, you, " + player.playerId + ", have the key " + ply_parent_arr[0][i] + " and value of " + ply_parent_arr[1][i] + "!");
-            TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length);
-            ToggleReadyRoomCollisions(false);
+            
             playerData.ply_deaths = 0;
             playerData.ply_dp = plysettings_dp;
             playerData.ply_dp_default = plysettings_dp;
@@ -1799,6 +1860,13 @@ public class GameController : GlobalHelperFunctions
             playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
             playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
             playerData.plyEyeHeight_change = true;
+            
+            if (local_uiplytoself != null) {
+                local_uiplytoself.ResetCache();
+            }
+
+            TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length);
+            ToggleReadyRoomCollisions(false);
         }
 
         if (local_plyAttr.ply_team < 0) { room_training_portal.SetActive(true); }
@@ -1896,6 +1964,7 @@ public class GameController : GlobalHelperFunctions
         largest_ply_scale = plysettings_scale;
         infection_zombigs_spawned = 0;
         infection_zombig_active = false;
+        round_extra_data = 0;
 
         RequestSerialization();
     }
@@ -1981,6 +2050,19 @@ public class GameController : GlobalHelperFunctions
     [NetworkCallable]
     public void UpdateLargestPlayer(float in_ply_scale)
     {
+        if (ply_object_owners != null && ply_owners_cnt > 0)
+        {
+            float refreshed_largest_scale = -1.0f;
+            for (int i = 0; i < ply_owners_cnt; i++)
+            {
+                if (i < 0 || i >= ply_object_owners.Length || ply_object_owners[i] < 0) { break; }
+                PlayerAttributes plyAttr = GetPlayerAttributesFromID(ply_object_owners[i]);
+                if (plyAttr == null) { continue; }
+                if (plyAttr.ply_scale > refreshed_largest_scale) { refreshed_largest_scale = plyAttr.ply_scale; }
+            }
+            largest_ply_scale = refreshed_largest_scale;
+        }
+
         if (in_ply_scale > largest_ply_scale)
         {
             largest_ply_scale = in_ply_scale;
@@ -2005,7 +2087,7 @@ public class GameController : GlobalHelperFunctions
         {
             // Spectators should hear voices much more clearly
             Networking.LocalPlayer.SetVoiceDistanceNear(voice_distance_far * largest_voice_scale);
-            Networking.LocalPlayer.SetVoiceGain(voice_gain * largest_ply_scale + 5.0f); 
+            Networking.LocalPlayer.SetVoiceGain(voice_gain * largest_ply_scale + 2.5f); 
         }
     }
 
@@ -2070,11 +2152,11 @@ public class GameController : GlobalHelperFunctions
             VRCPlayerApi player = VRCPlayerApi.GetPlayerById(players_in_game_dict[0][i]);
             if (player == null) { continue; }
             PlayerAttributes plyAttributes = FindPlayerAttributes(player);
+            if (plyAttributes == null) { continue; }
 
             int ply_point_value = plyAttributes.ply_points;
             if (check_deaths_instead) { ply_point_value = plyAttributes.ply_deaths; }
 
-            if (plyAttributes == null) { continue; }
             if (players_in_game_dict[1][i] > team_count) { UnityEngine.Debug.LogError("Player is on team " + players_in_game_dict[1][i] + ", but the game only has " + team_count + " teams!"); continue; }
             if (players_in_game_dict[1][i] >= 0) { plyPointsPerTeam[players_in_game_dict[1][i]] += ply_point_value; }
 
@@ -2537,7 +2619,7 @@ public class GameController : GlobalHelperFunctions
         {
             spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex];
             if (spawnzone == null
-                || (option_teamplay && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0)
+                || (option_teamplay && !option_force_teamplay && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0 )
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || !spawnzone.gameObject.activeInHierarchy || !spawnzone.gameObject.activeSelf
                 ) { spawnZoneIndex = -1; }
@@ -2634,6 +2716,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.ply_scale = 1.0f;
             local_plyAttr.plyEyeHeight_desired = local_plyAttr.plyEyeHeight_default;
             local_plyAttr.plyEyeHeight_change = true;
+            local_plyAttr.ply_dp = local_plyAttr.ply_dp_default;
             UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Ready Room with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
         }
         ToggleReadyRoomCollisions(true);
@@ -2671,6 +2754,7 @@ public class GameController : GlobalHelperFunctions
         //var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
         if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.GetComponent<PlayerWeapon>().UpdateStatsFromWeaponType(); }
         if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
+        if (local_uiplytoself != null) { local_uiplytoself.UI_Damage(); }
         ToggleReadyRoomCollisions(false);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
@@ -2822,6 +2906,7 @@ public class GameController : GlobalHelperFunctions
                 // Infection has odd behavior with the initial respawn, but has proper distance on subsequent. We'll respawn a newly Infected player twice as a failsafe.
                 PlayerAttributes plyAttr = FindPlayerAttributes(VRCPlayerApi.GetPlayerById(player_id));
                 if (plyAttr != null && !plyAttr.ply_training) { plyAttr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "TeleportLocalPlayerToGameSpawnZone"); }
+                if (Networking.IsOwner(gameObject)) { round_extra_data++; RequestSerialization(); }
             }
         }
 
@@ -3009,7 +3094,7 @@ public class GameController : GlobalHelperFunctions
         {
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
             if (spawnzone == null
-                || (option_teamplay && option_gamemode != (int)gamemode_name.Infection && option_gamemode != (int)gamemode_name.BossBash && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
+                || (option_teamplay && !option_force_teamplay && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
                 ) { continue; }
@@ -3046,7 +3131,7 @@ public class GameController : GlobalHelperFunctions
             for (int j = 0; j < plyInGame[0].Length; j++)
             {
                 VRCPlayerApi test_player = VRCPlayerApi.GetPlayerById(plyInGame[0][j]);
-                if (test_player == null || test_player == player || (option_teamplay && plyInGame[1][j] == team_id)) { continue; }
+                if (test_player == null || test_player == player || (option_teamplay && !option_force_teamplay && plyInGame[1][j] == team_id)) { continue; }
                 float testDistance = Mathf.Abs(Vector3.Distance(spawnzone.transform.position, test_player.GetPosition()));
                 if (plyDistanceMinInZone > testDistance || plyDistanceMinInZone < 0) { plyDistanceMinInZone = testDistance; }
                 debug_test_list[j] = Mathf.RoundToInt(testDistance);
@@ -3229,8 +3314,17 @@ public class GameController : GlobalHelperFunctions
         if (owner_index < 0) { return; }
 
         if (ply_owners_cnt > 1) 
-        { 
+        {
+            ply_object_plyattr[owner_index] = ply_object_plyattr[ply_owners_cnt - 1];
+            ply_object_plyweapon[owner_index] = ply_object_plyweapon[ply_owners_cnt - 1];
+            ply_object_plyhitbox[owner_index] = ply_object_plyhitbox[ply_owners_cnt - 1];
+            ply_object_uiplytoothers[owner_index] = ply_object_uiplytoothers[ply_owners_cnt - 1];
             ply_object_owners[owner_index] = ply_object_owners[ply_owners_cnt - 1];
+
+            ply_object_plyattr[ply_owners_cnt - 1] = ply_object_plyattr[ply_owners_cnt - 1];
+            ply_object_plyweapon[ply_owners_cnt - 1] = ply_object_plyweapon[ply_owners_cnt - 1];
+            ply_object_plyhitbox[ply_owners_cnt - 1] = ply_object_plyhitbox[ply_owners_cnt - 1];
+            ply_object_uiplytoothers[ply_owners_cnt - 1] = ply_object_uiplytoothers[ply_owners_cnt - 1];
             ply_object_owners[ply_owners_cnt - 1] = -1;
         }
 
@@ -3240,10 +3334,10 @@ public class GameController : GlobalHelperFunctions
     public int GetPlayerObjIndexFromID(int player_id)
     {
         // if (ply_object_owners == null) { return -1; }
-        if (player_id < 0) { return -1; } // Player IDs are always positive
+        if (player_id < 0 || ply_owners_cnt <= 0) { return -1; } // Player IDs are always positive
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
         if (player == null) { return -1; } // Make sure the player is still connected to the game
-        for (int i = 0; i < ply_object_owners.Length; i++)
+        for (int i = 0; i < ply_owners_cnt; i++)
         {
             if (ply_object_owners[i] == player_id) { return i; }
         }
@@ -3253,6 +3347,7 @@ public class GameController : GlobalHelperFunctions
 
     public PlayerAttributes FindPlayerAttributes(VRCPlayerApi player)
     {
+        //UnityEngine.Debug.Log("FindPlayerAttributes() attempted; ply_object_owners != null && ply_owners_cnt > 0 = " + (ply_object_owners != null && ply_owners_cnt > 0));
         if (ply_object_owners != null && ply_owners_cnt > 0) { return GetPlayerAttributesFromID(player.playerId); }
         else
         {
@@ -3274,9 +3369,13 @@ public class GameController : GlobalHelperFunctions
     public PlayerAttributes GetPlayerAttributesFromID(int player_id)
     {
         // if (ply_object_owners == null) { return null; }
+        //UnityEngine.Debug.Log("GetPlayerAttributesFromID() attempted for " + player_id + "; ply_object_owners = " + ConvertIntArrayToString(ply_object_owners));
+
         int ply_obj_index = GetPlayerObjIndexFromID(player_id);
         if (ply_obj_index < 0) { return null; }
         PlayerAttributes plyAttr = ply_object_plyattr[ply_obj_index];
+        //UnityEngine.Debug.Log("GetPlayerAttributesFromID() fetched player attributes from index " + ply_obj_index + ": " + ply_object_plyattr[ply_obj_index]);
+
         return plyAttr;
     }
     
@@ -3296,6 +3395,23 @@ public class GameController : GlobalHelperFunctions
         if (ply_obj_index < 0) { return null; }
         PlayerHitbox plyHitbox = ply_object_plyhitbox[ply_obj_index];
         return plyHitbox;
+    }
+
+    public UIPlyToOthers GetUIPlyToOthersFromID(int player_id)
+    {
+        // if (ply_object_owners == null) { return null; }
+        int ply_obj_index = GetPlayerObjIndexFromID(player_id);
+        if (ply_obj_index < 0) { return null; }
+        UIPlyToOthers plyToOthers = ply_object_uiplytoothers[ply_obj_index];
+        return plyToOthers;
+    }
+
+    public void ResetPPPCanvasGlobal()
+    {
+        if (local_ppp_options != null)
+        {
+            local_ppp_options.ResetPPPCanvas();
+        }
     }
 }
 

@@ -28,8 +28,35 @@ public class ItemWeapon : ItemGeneric
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
         CheckForSpawnerParent();
+        CheckForRender();
     }
-   
+
+    internal override void SetTeamColor(int team_id)
+    {
+        base.SetTeamColor(team_id);
+        CheckForRender();
+    }
+
+    private void CheckForRender()
+    {
+        var m_Renderer = GetComponentInChildren<Renderer>();
+
+        // If powerup is a template, make sure it doesn't render in the world
+        if (m_Renderer.enabled && (item_is_template || !render_iweapon))
+        {
+            m_Renderer.enabled = false;
+            foreach (Transform child in transform)
+            {
+                if (child.name.Contains("ItemSprite"))
+                {
+                    var m_Renderer_child = child.GetComponent<Renderer>();
+                    m_Renderer_child.enabled = false;
+                }
+            }
+        }
+
+    }
+
     public void SetiWeaponStats()
     {
         if (iweapon_type >= 0 & iweapon_type < iweapon_sprites.Length)
@@ -50,22 +77,6 @@ public class ItemWeapon : ItemGeneric
 
     private void Update()
     {
-        var m_Renderer = GetComponentInChildren<Renderer>();
-
-        // If powerup is a template, make sure it doesn't render in the world
-        if (m_Renderer.enabled && (item_is_template || !render_iweapon))
-        {
-            m_Renderer.enabled = false;
-            foreach (Transform child in transform)
-            {
-                if (child.name.Contains("ItemSprite"))
-                {
-                    var m_Renderer_child = child.GetComponent<Renderer>();
-                    m_Renderer_child.enabled = false;
-                }
-            }
-        }
-
         // Events which only run when the timer ticks to zero below
         if (item_state == (int)item_state_name.Disabled) { return; }
         if (item_state == (int)item_state_name.Destroyed)

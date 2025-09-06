@@ -82,6 +82,8 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public byte infection_special = 0;
     [NonSerialized] public float local_tick_timer = 0.0f;
 
+    [NonSerialized] public bool tutorial_messages_ready = false;
+
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
     void Start()
@@ -118,23 +120,28 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void Update()
     {
 
-        // Only the owner should run the following:
+        // -- Only the owner should run the following --
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
             else { return; }
         }
+        
         if (!Networking.IsOwner(gameObject)) { return; }
 
         // Handle player state
         if (ply_respawn_timer < ply_respawn_duration)
         {
             ply_respawn_timer += Time.deltaTime;
+            // Update the UI accordingly
+            if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
             ply_state = (int)player_state_name.Alive;
+            // Update the UI accordingly
+            if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
         }
         else if (ply_state == (int)player_state_name.Dead && gameController.round_state == (int)round_state_name.Ongoing)
         {
@@ -385,6 +392,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             //itemSpawnerTemplate.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
             //gameController.template_ItemSpawner.SetActive(false);
         }
+        
+        // Update the UI accordingly
+        if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
     }
 
     [NetworkCallable]
@@ -478,7 +488,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             UnityEngine.Debug.Log("Requesting game master to change team to Infected...");
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, 1, false);
             ply_team = 1;
-            ply_points = 0;
+            //ply_points = 0;
             InfectionStatReset();
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1)
@@ -726,6 +736,8 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public void SetupTutorialMessages()
     {
+        if (gameController == null || gameController.local_plyweapon == null) { return; }
+
         local_tutorial_message_bool = new bool[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
         local_tutorial_message_str_desktop = new string[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
         local_tutorial_message_str_vr = new string[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
@@ -773,6 +785,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your Trigger to charge it up and fire a huge beam!";
         local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Toss it by releasing your Grip! (Contains: $NAME)";
 
+        tutorial_messages_ready = true;
     }
 
     public void ResetTutorialMessage(int item_type = -1)
@@ -794,8 +807,10 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public void SendTutorialMessage(int item_type)
     {
+        if (!tutorial_messages_ready && Networking.IsOwner(gameObject) && gameController != null) { SetupTutorialMessages(); }
+
         // Send a tutorial message
-        if (Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        if (tutorial_messages_ready && Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
             string display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }

@@ -29,6 +29,13 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [SerializeField] public GameObject PTOVictoryStar;
 
     [NonSerialized] public PlayerAttributes playerAttributes;
+    // Cached stats for UI update referencing
+    [NonSerialized] public int cached_respawn_timer_int = -1; 
+    [NonSerialized] public int cached_team = -1;
+    [NonSerialized] public float cached_dp = -1.0f; 
+    [NonSerialized] public float cached_scale = -1.0f; 
+    [NonSerialized] public float cached_atk = -1.0f;
+    [NonSerialized] public float cached_def = -1.0f;
 
     private void Start()
     {
@@ -54,14 +61,48 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         if (owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
 
-        var ref_uiplytoself = gameController.local_uiplytoself;
+        UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         // Sort out better without all the debug
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
         round_ready = round_ready && !playerAttributes.ply_training;
         if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
         else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
-
+        
+        if (gameController.local_tick_timer == 0.0f) // We use 0.0f since it will never reach a point where the GameController will output at the end time for another object, so this is a shorthand for "the frame after its LocalPerTickUpdate()"
+        {
+            LocalPerTickUpdate();
+        }
+        if (gameController.local_uiplytoself != null && gameController.local_uiplytoself.ui_check_gamevars_timer == 0.0f) // Ditto for UIPlyToSelf's game variables refresh rate
+        {
+            UI_Lives();
+        }
+    }
+    
+    private void LocalPerTickUpdate() 
+    {
+        // Checked cached variables; if there is a mismatch, update the UI element accordingly
+        if (playerAttributes == null) { return; }
+        if (cached_team != playerAttributes.ply_team) { UI_Flag(); cached_team = playerAttributes.ply_team; }
+        if (cached_scale != playerAttributes.ply_scale) {UI_Attack(); UI_Defense(); cached_scale = playerAttributes.ply_scale; }
+        if (cached_atk != playerAttributes.ply_atk) { UI_Attack(); cached_atk = playerAttributes.ply_atk; }
+        if (cached_def != playerAttributes.ply_def) { UI_Defense(); cached_def = playerAttributes.ply_def; }
+        if (cached_dp != playerAttributes.ply_dp) { UI_Damage(); cached_dp = playerAttributes.ply_dp; }
+        if (cached_respawn_timer_int != Mathf.CeilToInt(playerAttributes.ply_respawn_timer)) { UI_Damage(); cached_respawn_timer_int = Mathf.RoundToInt(playerAttributes.ply_respawn_timer); }
+    }
+    
+    public void ResetCache()
+    {
+        cached_team = -1;
+        cached_atk = -1;
+        cached_def = -1;
+        cached_dp = -1;
+        cached_respawn_timer_int = -1;
+        cached_scale = -1;
+    }
+    
+    public void UI_Damage() 
+    {
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
@@ -80,7 +121,10 @@ public class UIPlyToOthers : UdonSharpBehaviour
             PTODamage.gameObject.transform.parent.gameObject.SetActive(false);
         }
         PTOInvul.text = InvulText;
-
+    }
+    
+    public void UI_Attack() 
+    {
         var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var AttackText = AttackVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { AttackText = ""; }
@@ -88,7 +132,10 @@ public class UIPlyToOthers : UdonSharpBehaviour
         else if (AttackVal < gameController.plysettings_atk) { PTOAttack.color = new Color32(255, 60, 60, 255); }
         else { PTOAttack.color = new Color32(255, 255, 255, 255); }
         PTOAttack.text = AttackText;
-
+    }
+    
+    public void UI_Defense()
+    {
         var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var DefenseText = DefenseVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { DefenseText = ""; }
@@ -96,7 +143,10 @@ public class UIPlyToOthers : UdonSharpBehaviour
         else if (DefenseVal < gameController.plysettings_def) { PTODefense.color = new Color32(255, 60, 60, 255); }
         else { PTODefense.color = new Color32(255, 255, 255, 255); }
         PTODefense.text = DefenseText;
-
+    }
+    
+    public void UI_Flag()
+    {
         if (playerAttributes.ply_team < gameController.team_colors.Length) 
         {
             int team = Mathf.Max(0, playerAttributes.ply_team);
@@ -121,6 +171,11 @@ public class UIPlyToOthers : UdonSharpBehaviour
                 PTOTeamPoleImage.enabled = PTOTeamFlagImage.enabled;
             }
         }
+    }
+    
+    public void UI_Lives()
+    {
+        UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         var LivesText = "";
         if (gameController.round_state == (int)round_state_name.Start) { LivesText = ""; }
@@ -175,6 +230,11 @@ public class UIPlyToOthers : UdonSharpBehaviour
             PTOLivesImage.color = PTOTeamFlagImage.color;
         }
         PTOLives.text = LivesText;
+    }
+    
+    public void UI_Victory()
+    {
+        UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         // Display victory star if in first place
         if (ref_uiplytoself != null && ref_uiplytoself.gamevars_leaderboard_arr != null && ref_uiplytoself.gamevars_leaderboard_arr.Length > 0)

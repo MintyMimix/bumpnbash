@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Diagnostics.PerformanceData;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -22,7 +23,15 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public PPP_Pickup ppp_pickup;
     [SerializeField] public UnityEngine.UI.Button close_button;
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
-    [SerializeField] public UnityEngine.UI.Toggle ui_colorblindtoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_hitboxtoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_colorblind_toggle;
+    [SerializeField] public TMP_Dropdown ui_colorblind_dropdown;
+    [SerializeField] public TMP_Text ui_colorblind_dropdown_caption;
+    [SerializeField] public string[] ui_colorblind_dropdown_names;
+    [SerializeField] public GameObject template_colorblind_flag;
+    [SerializeField] public UnityEngine.UI.GridLayoutGroup ui_colorblind_grid;
+    [SerializeField] public Sprite ui_flag_base_sprite;
+    [NonSerialized] public GameObject[] colorblind_flags;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_n;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_l;
     [SerializeField] public UnityEngine.UI.Toggle ui_wristtoggle_r;
@@ -45,8 +54,10 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
+    [NonSerialized] public bool hitbox_show = true;
     [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
+    [NonSerialized] public int colorblind_choice = 0;
     [NonSerialized] public bool haptics_on = true;
     [NonSerialized] public bool intend_to_be_spectator = false;
     [NonSerialized] public int force_weapon_hand = 0; // 0 = None, 1 = Left, 2 = Right
@@ -75,9 +86,18 @@ public class PPP_Options : UdonSharpBehaviour
         Transform harmtester_transform = GlobalHelperFunctions.GetChildTransformByName(transform, "HarmTester");
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
+        // Make sure our placeholder newline character is replaced with the real version (inspector doesn't interpret it correctly when manually typed)
+        for (int i = 0; i < ui_colorblind_dropdown_names.Length; i++)
+        {
+            ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("#", "  ");
+        }
+        ui_colorblind_dropdown.ClearOptions();
+        ui_colorblind_dropdown.AddOptions(ui_colorblind_dropdown_names);
+
         canvas_pos_init = transform.position;
         canvas_rot_init = transform.rotation;
         close_button.gameObject.SetActive(false);
+        if (gameController != null && gameController.ui_ppp_reset_pos_button != null) { gameController.ui_ppp_reset_pos_button.interactable = false; }
     }
 
     private void Update()
@@ -146,6 +166,7 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateUIDistance();
         UpdateUIWrist();
         UpdateSpectatorIntent();
+        UpdateHitbox();
         UpdateHurtbox();
         UpdateColorblind();
         UpdateParticles();
@@ -208,10 +229,22 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateSoundVolume();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "Colorblind"))
+                if (!PlayerData.HasKey(player, "ColorblindSprite"))
                 {
-                    ui_colorblindtoggle.isOn = false;
+                    ui_colorblind_toggle.isOn = false;
                     UpdateColorblind();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "ColorblindChoice"))
+                {
+                    ui_colorblind_dropdown.value = 0;
+                    UpdateColorblind();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "HitboxShow"))
+                {
+                    ui_hitboxtoggle.isOn = true;
+                    UpdateHitbox();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "HurtboxShow"))
@@ -363,15 +396,37 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateSoundVolume();
         }
 
-        bool out_Colorblind;
-        if (PlayerData.TryGetBool(Networking.LocalPlayer, "Colorblind", out out_Colorblind))
+        bool out_Colorblind_sprite;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "ColorblindSprite", out out_Colorblind_sprite))
         {
-            ui_colorblindtoggle.isOn = out_Colorblind;
+            ui_colorblind_toggle.isOn = out_Colorblind_sprite;
         }
         else
         {
-            ui_colorblindtoggle.isOn = false;
+            ui_colorblind_toggle.isOn = false;
             UpdateColorblind();
+        }
+
+        int out_Colorblind_choice;
+        if (PlayerData.TryGetInt(Networking.LocalPlayer, "ColorblindChoice", out out_Colorblind_choice))
+        {
+            ui_colorblind_dropdown.value = out_Colorblind_choice;
+        }
+        else
+        {
+            ui_colorblind_dropdown.value = out_Colorblind_choice;
+            UpdateColorblind();
+        }
+
+        bool out_HitboxShow;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "HitboxShow", out out_HitboxShow))
+        {
+            ui_hitboxtoggle.isOn = out_HitboxShow;
+        }
+        else
+        {
+            ui_hitboxtoggle.isOn = true;
+            UpdateHitbox();
         }
 
         bool out_HurtboxShow;
@@ -462,7 +517,9 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
-        PlayerData.SetBool("Colorblind", ui_colorblindtoggle.isOn);
+        PlayerData.SetBool("ColorblindSprite", ui_colorblind_toggle.isOn);
+        PlayerData.SetInt("ColorblindChoice", ui_colorblind_dropdown.value);
+        PlayerData.SetBool("HitboxShow", ui_hitboxtoggle.isOn);
         PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
         if (!gameController.flag_for_mobile_vr.activeInHierarchy) { PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn); }
         if (Networking.LocalPlayer.IsUserInVR()) { PlayerData.SetBool("HapticsOn", ui_haptictoggle.isOn); }
@@ -581,9 +638,31 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateColorblind()
     {
-        colorblind = ui_colorblindtoggle.isOn;
+        colorblind_choice = ui_colorblind_dropdown.value;
+        colorblind = ui_colorblind_toggle.isOn;
+        gameController.SetColorOptions(colorblind_choice);
+        SetColorblindFlagColors();
         gameController.RefreshSetupUI();
-        ShowDemoUI();
+        //ShowDemoUI();
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateHitbox()
+    {
+        hitbox_show = ui_hitboxtoggle.isOn;
+        gameController.RefreshSetupUI();
+
+        if (gameController.ply_object_plyhitbox != null && gameController.ply_object_plyhitbox.Length > gameController.ply_owners_cnt)
+        {
+            for (int i = 0; i < gameController.ply_owners_cnt; i++)
+            {
+                if (gameController.ply_object_plyhitbox[i] == null) { continue; }
+                gameController.ply_object_plyhitbox[i].ToggleMaterial(hitbox_show);
+            }
+        }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -716,6 +795,7 @@ public class PPP_Options : UdonSharpBehaviour
         transform.position = canvas_pos_init;
         transform.rotation = canvas_rot_init;
         close_button.gameObject.SetActive(false);
+        if (gameController != null && gameController.ui_ppp_reset_pos_button != null) { gameController.ui_ppp_reset_pos_button.interactable = false; }
     }
 
     public void PushPPPCanvas()
@@ -729,6 +809,8 @@ public class PPP_Options : UdonSharpBehaviour
             , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
         );
         close_button.gameObject.SetActive(true);
+        if (gameController != null && gameController.ui_ppp_reset_pos_button != null) { gameController.ui_ppp_reset_pos_button.interactable = true; }
+
     }
 
     // Spectator does not require persistence
@@ -748,4 +830,40 @@ public class PPP_Options : UdonSharpBehaviour
         }
         gameController.RefreshSetupUI();
     }*/
+
+    public void ColorblindTemplateInit()
+    {
+        // Setup the colorblind flag objects for demonstration
+        colorblind_flags = new GameObject[gameController.team_colors_base.Length];
+        for (int j = 0; j < gameController.team_colors_base.Length; j++)
+        {
+            colorblind_flags[j] = Instantiate(template_colorblind_flag, ui_colorblind_grid.transform);
+            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.team_names[j].Split(' ')[0];
+        }
+        SetColorblindFlagColors();
+        // After making the copies, set the template to be inactive
+        template_colorblind_flag.SetActive(false);
+    }
+
+    public void SetColorblindFlagColors()
+    {
+        ui_colorblind_dropdown_caption.text = ui_colorblind_dropdown_caption.text.Replace("  ", "\n");
+
+        if (colorblind_flags == null) { return; }
+        for (int j = 0; j < colorblind_flags.Length; j++)
+        {
+            colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().color = gameController.team_colors[j];
+            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().color = gameController.team_colors_bright[j];
+            if (colorblind)
+            {
+                colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().sprite = gameController.team_sprites[j];
+                colorblind_flags[j].transform.GetChild(0).gameObject.SetActive(false);
+            }
+            else
+            {
+                colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().sprite = ui_flag_base_sprite;
+                colorblind_flags[j].transform.GetChild(0).gameObject.SetActive(true);
+            }
+        }
+    }
 }

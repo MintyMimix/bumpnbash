@@ -75,6 +75,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     // Misc Local variables
     [NonSerialized] private float tick_timer = 0.0f;
     [NonSerialized] public float[][] all_weapon_stats;
+    [NonSerialized] private float cached_scale = -1.0f;
 
     private void Start()
     {
@@ -132,6 +133,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     private void OnEnable()
     {
+        UpdateStatsFromWeaponType();
         if (!Networking.IsOwner(gameObject)) { return; }
         network_active = true;
     }
@@ -246,6 +248,12 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             pickup_rb.velocity = Vector3.zero;
             pickup_rb.angularVelocity = Vector3.zero;
+        }
+        
+        if (owner_attributes != null && cached_scale != owner_attributes.ply_scale)
+        {
+            ScaleWeapon();
+            cached_scale = owner_attributes.ply_scale;
         }
 
         ProcessAnimations();
@@ -497,13 +505,6 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH);  // ENUM_LENGTH is used for weapon fire
 
-        // After throwing an item, reroll the item on it, if it has more than 1 ammo
-        if (weapon_type == (int)weapon_type_name.ThrowableItem)
-        {
-            weapon_extra_data = RollForPowerupBombExtraData();
-            OnDeserialization();
-        }
-
         if (use_melee)
         {
             float damage = gameController.local_plyweapon.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
@@ -512,7 +513,6 @@ public class PlayerWeapon : UdonSharpBehaviour
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
                 , transform.position
-                , pos_start
                 , transform.rotation
                 , new Vector4(damage, owner_attributes.ply_scale, 1.0f, weapon_extra_data)
                 , use_melee
@@ -532,6 +532,13 @@ public class PlayerWeapon : UdonSharpBehaviour
             , use_melee
             , Networking.LocalPlayer.playerId
             );
+        }
+
+        // After throwing an item, reroll the item on it, if it has more than 1 ammo
+        if (weapon_type == (int)weapon_type_name.ThrowableItem)
+        {
+            weapon_extra_data = RollForPowerupBombExtraData();
+            OnDeserialization();
         }
     }
 
@@ -590,7 +597,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateHurtBox(Vector3 position, Vector3 origin, Quaternion rotation, Vector4 float_in, bool is_melee, int player_id, int weapon_type)
+    public void NetworkCreateHurtBox(Vector3 position, Quaternion rotation, Vector4 float_in, bool is_melee, int player_id, int weapon_type)
     {
         float damage = float_in.x;
         float player_scale = float_in.y;
@@ -617,14 +624,26 @@ public class PlayerWeapon : UdonSharpBehaviour
         // Explosive type weapons should not be resized as harshly as other hurtbox types
         if (weapon_type == (int)weapon_type_name.Rocket) { scaleBias = 0.5f; }
         else if (weapon_type == (int)weapon_type_name.Bomb) { scaleBias = 0.75f; }
+        // And melee weapons should not have any additional scaling whatsoever, since that's handled by the parent
+        else if (is_melee) { scaleBias = 0.0f; }
         newHurtboxObj.transform.localScale = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Size] * Mathf.Lerp(1.0f, player_scale, scaleBias) * new Vector3(Mathf.Max(1.0f, dist_scale), 1.0f, 1.0f);
-        if (!is_melee)
+        if (is_melee)
+        {
+            newHurtboxObj.transform.position = transform.position;
+            newHurtboxObj.transform.rotation = transform.rotation;
+            newHurtboxObj.transform.localPosition = Vector3.zero;
+            newHurtboxObj.transform.localRotation = Quaternion.identity;
+            //hurtbox.hurtbox_rb.MovePosition(transform.position);
+            //hurtbox.hurtbox_rb.MoveRotation(transform.rotation);
+        }
+        else
         {
             newHurtboxObj.transform.position = position;
             newHurtboxObj.transform.rotation = rotation;
-            hurtbox.hurtbox_rb.MovePosition(position);
-            hurtbox.hurtbox_rb.MoveRotation(rotation);
+            //hurtbox.hurtbox_rb.MovePosition(position);
+            //hurtbox.hurtbox_rb.MoveRotation(rotation);
         }
+     
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
         hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
@@ -636,6 +655,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         hurtbox.is_melee = is_melee;
         hurtbox.SetMesh();
         newHurtboxObj.SetActive(true);
+        
+        UnityEngine.Debug.Log("[HURTBOX_TEST] duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
     }
 
     public byte RollForPowerupBombExtraData()
@@ -674,6 +695,16 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
     }
 
+    private void ScaleWeapon()
+    {
+        // Scale the object with the owner's size
+        if (owner_attributes != null && owner_attributes.plyEyeHeight_default > 0.0f && scale_inital > 0.0f)
+        {
+            //float playerVisualScale = owner_attributes.plyEyeHeight_desired / owner_attributes.plyEyeHeight_default;
+            //transform.localScale = new Vector3(scale_inital * playerVisualScale, scale_inital * playerVisualScale, scale_inital * playerVisualScale);
+            transform.localScale = new Vector3(scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale);
+        }
+    }
 
     public void PlayHapticEvent(int event_type)
     {
@@ -870,7 +901,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             pickup_rb.angularVelocity = Vector3.zero;
         }
 
-        if (local_weapon_type != weapon_type)
+        if (local_weapon_type != weapon_type || local_extra_data != weapon_extra_data)
         {
             UpdateWeaponModel();
         }
@@ -899,6 +930,8 @@ public class PlayerWeapon : UdonSharpBehaviour
                     * GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
             }
         }
+
+        ScaleWeapon();
 
         // Must be the last lines
         local_weapon_type = weapon_type;

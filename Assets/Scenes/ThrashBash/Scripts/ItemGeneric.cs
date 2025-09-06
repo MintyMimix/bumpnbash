@@ -101,7 +101,7 @@ public class ItemGeneric : UdonSharpBehaviour
 
     }
 
-    internal void SetTeamColor(int team_id)
+    internal virtual void SetTeamColor(int team_id)
     {
         CheckForSpawnerParent();
         Renderer main_Renderer = GetComponent<MeshRenderer>();

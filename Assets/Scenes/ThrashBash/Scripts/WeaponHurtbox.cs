@@ -5,6 +5,7 @@ using UdonSharp;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.ProBuilder;
+using UnityEngine.UIElements;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -32,7 +33,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [SerializeField] public GameObject[] hurtbox_meshes; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
     [SerializeField] public Collider[] hurtbox_colliders; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
     // Owner Data
-    [NonSerialized] public int owner_id;
     [NonSerialized] public int damage_type;
     [NonSerialized] public float source_weapon_type;
     // Hurtbox Data
@@ -61,7 +61,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
     {
         tick_timer += Time.deltaTime;
 
-        if (hurtbox_duration > 0.0f && hurtbox_start_ms > 0.0f)
+        if (hurtbox_duration > 0.0f && hurtbox_start_ms != 0.0f && gameObject.activeInHierarchy)
         {
             double server_ms = Networking.GetServerTimeInSeconds();
             hurtbox_timer_network = Networking.CalculateServerDeltaTime(server_ms, hurtbox_start_ms);
@@ -69,6 +69,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             if (hurtbox_timer_network > hurtbox_duration)
             {
                 // Fire off events for hurtbox expiration here
+                UnityEngine.Debug.Log("[HURTBOX_TEST] hurtbox expired. duration = " + hurtbox_duration + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network);
                 OnStop();
             }
         }
@@ -82,15 +83,25 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void OnEnable()
     {
-        if (active_particle != null && active_particle.GetComponent<ParticleSystem>() != null)
+        if (gameController != null && gameController.local_ppp_options != null && active_mesh != null)
         {
-            active_particle.GetComponent<ParticleSystem>().Play();
+            Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
+            m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
         }
+        Physics.SyncTransforms();
+        if (is_melee)
+        {
+            transform.localPosition = Vector3.zero;
+            transform.localRotation = Quaternion.identity;
+        }
+        //hurtbox_rb.MovePosition(transform.position);
+        //hurtbox_rb.MoveRotation(transform.rotation);
     }
 
     public void OnReset()
     {
         tick_timer = 0.0f;
+        hurtbox_start_ms = 0.0f;
         hurtbox_timer_network = 0.0f;
         if (active_particle != null)
         {
@@ -173,9 +184,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
+        //UnityEngine.Debug.Log("[HURTBOX_TEST] hitbox was entered into its trigger, and also duration = " + hurtbox_duration + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network);
+
+
         if (other == null || players_struck_prealloc == null) { return; }
         // Run this only if we are the owner of the hurtbox
-        if (owner_id != Networking.LocalPlayer.playerId) { return; }
+        if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
         // Check we're not colliding a hitbox we've already processed
         VRCPlayerApi colliderOwner = Networking.GetOwner(other.gameObject);
         if (colliderOwner == null) { return; }
@@ -192,7 +206,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
         players_struck_cnt++;
 
         bool hit_self = false;
-        if (colliderOwner.playerId == Networking.LocalPlayer.playerId)
+        if (colliderOwner == Networking.LocalPlayer)
         {
             // The hurtbox must be from an explosive weapon
             hit_self = !is_melee && (damage_type == (int)damage_type_name.ForceExplosion || damage_type == (int)damage_type_name.ItemHit);
@@ -203,11 +217,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
         // Ensure hurtbox is not on a teammate (unless it's a throwable item)
         if (
             gameController.GetGlobalTeam(colliderOwner.playerId)
-            == gameController.GetGlobalTeam(owner_id)
+            == gameController.GetGlobalTeam(Networking.LocalPlayer.playerId)
             && gameController.option_teamplay
             && !hit_self
             && damage_type != (int)damage_type_name.ItemHit
             ) { return; }
+
 
         // Finally, calculate the force direction and tell the player they've been hit
         Vector3 force_dir = Vector3.zero; Vector3 hitSpot = Vector3.zero;
@@ -225,16 +240,17 @@ public class WeaponHurtbox : UdonSharpBehaviour
         if (!hit_self) {
             PlayerAttributes ply_attr = gameController.FindPlayerAttributes(colliderOwner);
             if (ply_attr == null) { return; }
-            ply_attr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, hitSpot, owner_id, damage_type, false, hurtbox_extra_data); 
+            ply_attr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "ReceiveDamage", hurtbox_damage, force_dir, hitSpot, Networking.LocalPlayer.playerId, damage_type, false, hurtbox_extra_data);
         }
         else
         {
-            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, hitSpot, owner_id, damage_type, true, hurtbox_extra_data);
+            gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, hitSpot, Networking.LocalPlayer.playerId, damage_type, true, hurtbox_extra_data);
             var plyWeapon = gameController.local_plyweapon;
             gameController.PlaySFXFromArray(
                 plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type
             );
         }
+
     }
 
     public void SetMesh()
@@ -256,16 +272,11 @@ public class WeaponHurtbox : UdonSharpBehaviour
                 else if (damage_type == (int)damage_type_name.ItemHit) { active_particle = GlobalHelperFunctions.GetChildTransformByName(active_mesh.transform, "ParticleItemExplosion"); }
                 if (active_particle != null)
                 {
-                    active_particle.gameObject.SetActive(true);
+                    //active_particle.gameObject.SetActive(true);
                     var main = active_particle.GetComponent<ParticleSystem>().main;
                     main.startLifetime = hurtbox_duration;
                     main.duration = hurtbox_duration;
-                    if (gameController != null && gameController.local_ppp_options != null)
-                    {
-                        var particle_emission = active_particle.GetComponent<ParticleSystem>().emission;
-                        particle_emission.enabled = gameController.local_ppp_options.particles_on;
-                    }
-                    active_particle.GetComponent<ParticleSystem>().Play();
+                    //active_particle.GetComponent<ParticleSystem>().Play();
                     //Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
                     //if (m_Renderer != null) { m_renderer.enabled = false; }
 
@@ -299,12 +310,12 @@ public class WeaponHurtbox : UdonSharpBehaviour
                     active_particle = GlobalHelperFunctions.GetChildTransformByName(active_mesh.transform, "ParticleLaser");
                     if (active_particle != null)
                     {
-                        active_particle.gameObject.SetActive(true);
+                        //active_particle.gameObject.SetActive(true);
                         var main = active_particle.GetComponent<ParticleSystem>().main;
                         main.startLifetime = hurtbox_duration;
                         main.duration = hurtbox_duration;
                         main.startSpeed = transform.localScale.x * 40.0f;
-                        active_particle.GetComponent<ParticleSystem>().Play();
+                        //active_particle.GetComponent<ParticleSystem>().Play();
                         //Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
                         //if (m_Renderer != null) { m_renderer.enabled = false; }
                     }
@@ -312,7 +323,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
             }
         }
         else { active_mesh = gameObject; }
-
         SetTeamColor();
 
     }
@@ -321,7 +331,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
     {
         Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
         PlayerAttributes owner_plyAttr = gameController.FindPlayerAttributes(Networking.GetOwner(gameObject));
-        if (owner_plyAttr == null || m_Renderer != null || owner_plyAttr.gameController.team_colors != null) { return; }
+        if (owner_plyAttr == null || m_Renderer == null || owner_plyAttr.gameController.team_colors == null) { return; }
 
         int team = Mathf.Max(0, owner_plyAttr.ply_team);
         if (owner_plyAttr.gameController.option_teamplay)
@@ -351,6 +361,11 @@ public class WeaponHurtbox : UdonSharpBehaviour
             var particle_main = active_particle.GetComponent<ParticleSystem>().main;
             particle_main.startColor = new Color(m_Renderer.material.GetColor("_Color").r, m_Renderer.material.GetColor("_Color").g, m_Renderer.material.GetColor("_Color").b, 1.0f);
             var main = active_particle.GetComponent<ParticleSystem>().main;
+            if (gameController != null && gameController.local_ppp_options != null)
+            {
+                var particle_emission = active_particle.GetComponent<ParticleSystem>().emission;
+                particle_emission.enabled = gameController.local_ppp_options.particles_on;
+            }
             active_particle.gameObject.SetActive(true);
             active_particle.GetComponent<ParticleSystem>().Play();
         }

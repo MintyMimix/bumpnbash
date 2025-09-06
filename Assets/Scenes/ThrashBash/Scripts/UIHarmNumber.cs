@@ -43,9 +43,9 @@ public class UIHarmNumber : UdonSharpBehaviour
 
     public void ResetDisplay()
     {
-        duration = 0.0f;
-        display_value = 0;
         isOn = false;
+        timer = 0.0f;
+        display_value = 0;
         gameObject.SetActive(false);
     }
 
@@ -57,7 +57,7 @@ public class UIHarmNumber : UdonSharpBehaviour
         // Handle timer
         if (timer < duration) { timer += Time.deltaTime; }
         else if (ui_parent != null && !waiting_for_destruction) { ui_parent.GetComponent<UIPlyToSelf>().ReleaseHarmNumber(target_id, gameObject); waiting_for_destruction = true; } // timer = 0.0f;
-        // else if (ui_parent != null && waiting_for_destruction) { Destroy(gameObject); }
+        else if (ui_parent != null && waiting_for_destruction) { ResetDisplay(); } //{ Destroy(gameObject); }
         else if (ui_parent == null) { Destroy(gameObject); }
 
         // Handle alpha
@@ -71,8 +71,11 @@ public class UIHarmNumber : UdonSharpBehaviour
         float x_offset = 0.0f; float y_offset = 0.0f; float lower_at_time = duration * (fade_at_pct - lower_at_pct);
         //if (timer < lower_at_time) { y_offset = offset * (timer / lower_at_time); }
         //else { y_offset = offset - Mathf.Pow((offset * ((timer - lower_at_time) / (duration - lower_at_time))), 2); }
-        x_offset = 0.5f * offset * (timer / fade_at_time);
-        y_offset = -0.5f * Mathf.Pow((offset * (timer / fade_at_time)) - (offset * (lower_at_time / fade_at_time)), 2) + Mathf.Pow(offset, 2);
+        if (fade_at_time > 0)
+        {
+            x_offset = 0.5f * offset * (timer / fade_at_time);
+            y_offset = -0.5f * Mathf.Pow((offset * (timer / fade_at_time)) - (offset * (lower_at_time / fade_at_time)), 2) + Mathf.Pow(offset, 2);
+        }
         transform.position = origin + new Vector3(x_offset, y_offset, 0.0f);
 
         // Handle billboard
@@ -88,7 +91,7 @@ public class UIHarmNumber : UdonSharpBehaviour
             float ply_scale = 1.0f;
             if (gameController != null && gameController.local_plyAttr != null)
             {
-                ply_scale = gameController.local_plyAttr.ply_scale;
+                ply_scale = Mathf.Max(0.01f, gameController.local_plyAttr.ply_scale);
             }
             calc_ui_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position +
                 (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * (0.5f * (1 / ply_scale) * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f)));

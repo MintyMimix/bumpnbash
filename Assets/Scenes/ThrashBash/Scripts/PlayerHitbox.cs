@@ -17,6 +17,7 @@ public class PlayerHitbox : UdonSharpBehaviour
     [SerializeField] public Material[] hitboxMats;
     [SerializeField] public float default_hitbox_size = 2.0f;
     [NonSerialized] [UdonSynced] public bool network_active = false;
+    //[NonSerialized] public bool local_ppp_toggle = false;
     [NonSerialized] public int material_id;
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
@@ -67,6 +68,12 @@ public class PlayerHitbox : UdonSharpBehaviour
         gameObject.SetActive(toggle);
         network_active = toggle;
         if (Networking.IsOwner(gameObject)) { RequestSerialization(); }
+    }
+
+    public void ToggleMaterial(bool toggle)
+    {
+        Renderer m_Renderer = GetComponent<Renderer>();
+        m_Renderer.enabled = toggle;
     }
 
     public void SetMaterial(int index)
