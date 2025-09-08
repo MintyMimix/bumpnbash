@@ -273,6 +273,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         //GameObject weapon_obj = gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
         //PlayerWeapon weapon_script = null; 
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.PlayHapticEvent(haptic_event_type); } //Debug.Log("TRY HAPTIC: " + haptic_event_type); }
+        if (gameController.local_secondaryweapon != null) { gameController.local_secondaryweapon.PlayHapticEvent(haptic_event_type); } //Debug.Log("TRY HAPTIC: " + haptic_event_type); }
+
     }
 
     [NetworkCallable]
@@ -432,9 +434,12 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.AddToLocalTextQueue("You knocked out " + VRCPlayerApi.GetPlayerById(defenderPlyId).displayName + "!");
         TryHapticEvent((int)game_sfx_name.Kill);
 
-        if (gameController.highlight_cameras_snapped[1] == false)
+        if (gameController.highlight_cameras_snapped != null && gameController.highlight_cameras_snapped.Length > 1
+            && gameController.highlight_cameras_waiting_on_sync != null && gameController.highlight_cameras_waiting_on_sync.Length > 1
+            && gameController.highlight_cameras_snapped[1] == false && gameController.highlight_cameras_waiting_on_sync[1] == false)
         {
-            gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "SnapHighlightPhoto", 1, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.right, ply_scale);
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.forward, true, ply_scale);
+            gameController.highlight_cameras_waiting_on_sync[1] = true;
         }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
@@ -481,6 +486,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         ResetPowerups();
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
+        if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); }
 
         // Manage behavior based on gamemode
         if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team != 1)
@@ -546,6 +552,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         if (gameController != null && gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
+        if (gameController != null && gameController.local_secondaryweapon != null) { gameController.local_secondaryweapon.ResetWeaponToDefault(); }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
         if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
@@ -939,7 +946,8 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_def = gameController.plysettings_def + gameController.plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
             ply_speed = gameController.plysettings_speed + gameController.plysettings_boss_speed_mod;
         }
-        else
+
+        if (gameController.local_plyweapon != null)
         {
             gameController.local_plyweapon.weapon_type_default = gameController.plysettings_weapon;
             gameController.local_plyweapon.weapon_type = gameController.local_plyweapon.weapon_type_default;
@@ -948,8 +956,22 @@ public class PlayerAttributes : UdonSharpBehaviour
                 gameController.local_plyweapon.weapon_temp_ammo = -1;
                 gameController.local_plyweapon.weapon_temp_duration = -1;
             }
+            gameController.local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+
         }
-        gameController.local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+
+        if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy)
+        {
+            gameController.local_secondaryweapon.weapon_type_default = gameController.plysettings_weapon;
+            gameController.local_secondaryweapon.weapon_type = gameController.local_secondaryweapon.weapon_type_default;
+            if (gameController.local_secondaryweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+            {
+                gameController.local_secondaryweapon.weapon_temp_ammo = -1;
+                gameController.local_secondaryweapon.weapon_temp_duration = -1;
+            }
+            gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
+        }
+
         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
         plyEyeHeight_change = true;

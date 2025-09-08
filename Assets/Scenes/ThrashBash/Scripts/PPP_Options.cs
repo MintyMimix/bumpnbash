@@ -46,6 +46,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uisoundslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uivovolumelider;
     [SerializeField] public TMP_Text ui_uiscaletext;
     [SerializeField] public TMP_Text ui_uiseparationtext;
     [SerializeField] public TMP_Text ui_uistretchtext;
@@ -54,6 +55,10 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
+    [SerializeField] public TMP_Text ui_uivovolumetext;
+    [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_a_toggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_b_toggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_c_toggle;
     [NonSerialized] public bool hitbox_show = true;
     [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
@@ -71,9 +76,12 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public bool waiting_on_playerdata = true;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
+    [NonSerialized] public float voiceover_volume = 1.0f;
+    [NonSerialized] public bool vo_pref_a = true;
+    [NonSerialized] public bool vo_pref_b = true;
+    [NonSerialized] public bool vo_pref_c = true;
     [NonSerialized] public bool particles_on = true;
     [NonSerialized] public bool lock_wrist = false;
-
     [NonSerialized] public bool render_in_front = false;
 
     private void Start()
@@ -172,6 +180,8 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateParticles();
         UpdateMusicVolume();
         UpdateSoundVolume();
+        UpdateVOVolume();
+        UpdateVOPreferences();
     }
 
     public override void OnPlayerDataUpdated(VRCPlayerApi player, PlayerData.Info[] infos)
@@ -227,6 +237,30 @@ public class PPP_Options : UdonSharpBehaviour
                 {
                     ui_uisoundslider.value = 10.0f;
                     UpdateSoundVolume();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "VOVolume"))
+                {
+                    ui_uivovolumelider.value = 10.0f;
+                    UpdateVOVolume();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "VOPrefA"))
+                {
+                    ui_vo_pref_a_toggle.isOn = true;
+                    UpdateVOPreferences();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "VOPrefB"))
+                {
+                    ui_vo_pref_b_toggle.isOn = true;
+                    UpdateVOPreferences();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "VOPrefC"))
+                {
+                    ui_vo_pref_c_toggle.isOn = true;
+                    UpdateVOPreferences();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "ColorblindSprite"))
@@ -396,6 +430,50 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateSoundVolume();
         }
 
+        float out_VOVolume;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "VOVolume", out out_VOVolume))
+        {
+            ui_uivovolumelider.value = out_VOVolume;
+        }
+        else
+        {
+            ui_uivovolumelider.value = 10.0f;
+            UpdateVOVolume();
+        }
+
+        bool out_VOPrefA;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefA", out out_VOPrefA))
+        {
+            ui_vo_pref_a_toggle.isOn = out_VOPrefA;
+        }
+        else
+        {
+            ui_vo_pref_a_toggle.isOn = false;
+            UpdateVOPreferences();
+        }
+
+        bool out_VOPrefB;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefB", out out_VOPrefB))
+        {
+            ui_vo_pref_b_toggle.isOn = out_VOPrefB;
+        }
+        else
+        {
+            ui_vo_pref_b_toggle.isOn = false;
+            UpdateVOPreferences();
+        }
+
+        bool out_VOPrefC;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefC", out out_VOPrefC))
+        {
+            ui_vo_pref_c_toggle.isOn = out_VOPrefC;
+        }
+        else
+        {
+            ui_vo_pref_c_toggle.isOn = false;
+            UpdateVOPreferences();
+        }
+
         bool out_Colorblind_sprite;
         if (PlayerData.TryGetBool(Networking.LocalPlayer, "ColorblindSprite", out out_Colorblind_sprite))
         {
@@ -517,6 +595,10 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
+        PlayerData.SetFloat("VOVolume", ui_uivovolumelider.value);
+        PlayerData.SetBool("VOPrefA", ui_vo_pref_a_toggle.isOn);
+        PlayerData.SetBool("VOPrefB", ui_vo_pref_b_toggle.isOn);
+        PlayerData.SetBool("VOPrefC", ui_vo_pref_c_toggle.isOn);
         PlayerData.SetBool("ColorblindSprite", ui_colorblind_toggle.isOn);
         PlayerData.SetInt("ColorblindChoice", ui_colorblind_dropdown.value);
         PlayerData.SetBool("HitboxShow", ui_hitboxtoggle.isOn);
@@ -707,14 +789,21 @@ public class PPP_Options : UdonSharpBehaviour
         if (ui_wristtoggle_l.isOn)
         {
             ui_wrist = 1;
+            ui_wristtoggle_r.isOn = false;
+            ui_wristtoggle_n.isOn = false;
         }
         else if (ui_wristtoggle_r.isOn)
         {
             ui_wrist = 2;
+            ui_wristtoggle_l.isOn = false;
+            ui_wristtoggle_n.isOn = false;
         }
         else
         {
             ui_wrist = 0;
+            ui_wristtoggle_l.isOn = false;
+            ui_wristtoggle_r.isOn = false;
+            ui_wristtoggle_n.isOn = true;
         }
 
         gameController.RefreshSetupUI();
@@ -763,6 +852,31 @@ public class PPP_Options : UdonSharpBehaviour
             } 
             UpdateUIWrist();
         }
+    }
+
+    public void UpdateVOVolume()
+    {
+        voiceover_volume = ui_uivovolumelider.value / 10.0f;
+
+        ui_uivovolumetext.text = "Announcer Volume: " + (voiceover_volume * 100.0f) + "%";
+        if ((voiceover_volume * 10.0f) <= ui_uivovolumelider.minValue) { ui_uivovolumetext.color = Color.red; }
+        else { ui_uivovolumetext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateVOPreferences()
+    {
+        vo_pref_a = ui_vo_pref_a_toggle.isOn;
+        vo_pref_b = ui_vo_pref_b_toggle.isOn;
+        vo_pref_c = ui_vo_pref_c_toggle.isOn;
+        // To-do: set voiceover toggles in gameController
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
     }
 
     public void UpdateSpectatorIntent()

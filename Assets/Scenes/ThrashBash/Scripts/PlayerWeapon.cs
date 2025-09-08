@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Android;
+using UnityEngine.ProBuilder;
 using UnityEngine.UIElements;
 using VRC.SDK3.Components;
 using VRC.SDK3.UdonNetworkCalling;
@@ -37,6 +38,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized][UdonSynced] public int weapon_type_default;
     [NonSerialized][UdonSynced] public byte weapon_extra_data = 0;
     [NonSerialized] public byte local_extra_data = 0;
+    [SerializeField][UdonSynced] public bool is_secondary = false;
     // Cooldown variables
     [NonSerialized] public float use_cooldown;
     [NonSerialized] public float use_timer;
@@ -71,11 +73,12 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float scale_inital = -1;
     // Misc Networked variables
     [NonSerialized][UdonSynced] public Vector3 velocity_stored = Vector3.zero;
-    [NonSerialized][UdonSynced] public bool network_active = true;
+    [NonSerialized][UdonSynced] public bool network_active = false;
     // Misc Local variables
     [NonSerialized] private float tick_timer = 0.0f;
     [NonSerialized] public float[][] all_weapon_stats;
     [NonSerialized] private float cached_scale = -1.0f;
+    [NonSerialized] private int cached_team = -1;
 
     private void Start()
     {
@@ -147,6 +150,8 @@ public class PlayerWeapon : UdonSharpBehaviour
     public override void OnDeserialization()
     {
         if (local_weapon_type != weapon_type || local_extra_data != weapon_extra_data) { UpdateStatsFromWeaponType(); }
+        if (owner_attributes != null && cached_team != owner_attributes.ply_team) { SetTeamColor();  }
+        gameObject.SetActive(network_active);
     }
 
     private void Update()
@@ -338,11 +343,21 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_scale != 1.0f) { ply_scale_offset = gameController.local_plyAttr.ply_scale; }
         if (Networking.LocalPlayer.IsUserInVR())
         {
-            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * ply_scale_offset);
+            if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy)
+            {
+                transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * ply_scale_offset);
+                transform.position = transform.position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.right * 0.2f * ply_scale_offset);
+                if (is_secondary) { transform.position = transform.position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.right * (-0.2f * 2.0f) * ply_scale_offset); }
+            }
+            else
+            {
+                transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * ply_scale_offset);
+            }
         }
         else if (!Networking.LocalPlayer.IsUserInVR())
         {
             transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.0f);
+            if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
         }
         pickup_rb.velocity = Vector3.zero;
         pickup_rb.angularVelocity = Vector3.zero;
@@ -371,6 +386,8 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NetworkCallable]
     public void ToggleActive(bool toggle)
     {
+        if (pickup_component != null && pickup_component.IsHeld) { pickup_component.Drop(); }
+        network_active = toggle;
         gameObject.SetActive(toggle);
     }
 
@@ -507,7 +524,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (use_melee)
         {
-            float damage = gameController.local_plyweapon.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
+            float damage = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
             damage *= owner_attributes.ply_atk * (owner_attributes.ply_scale * gameController.scale_damage_factor);
             SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
@@ -518,6 +535,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                 , use_melee
                 , Networking.LocalPlayer.playerId
                 , weapon_type
+                , is_secondary
                 );
         }
         else
@@ -578,6 +596,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         projectile.projectile_distance = distance;
         projectile.owner_scale = player_scale;
         projectile.extra_data = extra_data;
+        PlayerWeapon source_weaponScript = gameController.GetPlayerWeaponFromID(player_id);
+        projectile.weapon_script = source_weaponScript;
+
         if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem) { projectile.rb.velocity = Vector3.zero; }
 
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
@@ -587,9 +608,11 @@ public class PlayerWeapon : UdonSharpBehaviour
             projectile.rb.useGravity = true;
             projectile.GetComponent<Collider>().isTrigger = false;
 
-            PlayerWeapon source_weaponScript = gameController.GetPlayerWeaponFromID(player_id);
-            source_weaponScript.pickup_rb.useGravity = false;
-            source_weaponScript.pickup_rb.velocity = Vector3.zero;
+            if (source_weaponScript != null)
+            {
+                source_weaponScript.pickup_rb.useGravity = false;
+                source_weaponScript.pickup_rb.velocity = Vector3.zero;
+            }
         }
 
         projectile.UpdateProjectileModel();
@@ -597,7 +620,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateHurtBox(Vector3 position, Quaternion rotation, Vector4 float_in, bool is_melee, int player_id, int weapon_type)
+    public void NetworkCreateHurtBox(Vector3 position, Quaternion rotation, Vector4 float_in, bool is_melee, int player_id, int weapon_type, bool from_secondary)
     {
         float damage = float_in.x;
         float player_scale = float_in.y;
@@ -618,7 +641,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (hurtbox == null) { return; }
 
         GameObject newHurtboxObj = hurtbox.gameObject;
-        hurtbox.OnReset();
+        hurtbox.OnReset(false);
 
         float scaleBias = 1.0f;
         // Explosive type weapons should not be resized as harshly as other hurtbox types
@@ -643,9 +666,12 @@ public class PlayerWeapon : UdonSharpBehaviour
             //hurtbox.hurtbox_rb.MovePosition(position);
             //hurtbox.hurtbox_rb.MoveRotation(rotation);
         }
-     
+
+        bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
+
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
+        if (is_boss && !Networking.LocalPlayer.IsUserInVR()) { hurtbox.hurtbox_damage *= 2.0f; }
         hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
         hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
         hurtbox.hurtbox_timer_network = 0.0f;
@@ -653,10 +679,15 @@ public class PlayerWeapon : UdonSharpBehaviour
         hurtbox.source_weapon_type = weapon_type;
         hurtbox.hurtbox_extra_data = extra_data;
         hurtbox.is_melee = is_melee;
+        PlayerWeapon source_weaponScript = null;
+        if (from_secondary) { source_weaponScript = gameController.GetSecondaryWeaponFromID(player_id); }
+        else { source_weaponScript = gameController.GetPlayerWeaponFromID(player_id); }
+        hurtbox.weapon_script = source_weaponScript;
+        //hurtbox.can_collide = !is_melee;
         hurtbox.SetMesh();
         newHurtboxObj.SetActive(true);
         
-        UnityEngine.Debug.Log("[HURTBOX_TEST] duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
+        UnityEngine.Debug.Log("[HURTBOX_TEST] " + newHurtboxObj.name + " created. position = " + newHurtboxObj.transform.position + "; duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
     }
 
     public byte RollForPowerupBombExtraData()
@@ -754,119 +785,10 @@ public class PlayerWeapon : UdonSharpBehaviour
         return all_weapon_stats;
     }
 
-    private float[] SetupWeaponStat(int weapon_in_type)
-    {
-        float[] weapon_stats = new float[(int)weapon_stats_name.ENUM_LENGTH];
-        if (weapon_in_type == (int)weapon_type_name.PunchingGlove || weapon_in_type == (int)weapon_type_name.BossGlove || weapon_in_type == (int)weapon_type_name.HyperGlove || weapon_in_type == (int)weapon_type_name.MegaGlove)
-        {
-            weapon_stats[(int)weapon_stats_name.IsMelee] = 1;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.1f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.8f * 0.8f * 0.9f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 10.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 0.33f * 0.6f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 0.4f; //0.4f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-            if (weapon_in_type == (int)weapon_type_name.BossGlove)
-            {
-                //weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] *= 2.5f; //2.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 2.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
-            }
-            else if (weapon_in_type == (int)weapon_type_name.HyperGlove)
-            {
-                weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 0.4f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-            }
-            else if (weapon_in_type == (int)weapon_type_name.MegaGlove)
-            {
-                weapon_stats[(int)weapon_stats_name.Cooldown] *= 1.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 2.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
-            }
-        }
-        else if (weapon_in_type == (int)weapon_type_name.Rocket)
-        {
-            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            float projectile_speed = 14.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 10.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = projectile_speed * weapon_stats[(int)weapon_stats_name.Projectile_Duration];
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.0f; // 2.85
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
-        }
-        else if (weapon_in_type == (int)weapon_type_name.Bomb || weapon_in_type == (int)weapon_type_name.ThrowableItem)
-        {
-            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.5f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 100.0f;
-            if (weapon_in_type == (int)weapon_type_name.Bomb)
-            {
-                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
-                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
-            }
-            else if (weapon_in_type == (int)weapon_type_name.ThrowableItem)
-            {
-                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.ItemProjectile;
-                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 0.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ItemHit;
-            }
-        }
-        else if (weapon_in_type == (int)weapon_type_name.SuperLaser)
-        {
-            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 2.0f;
-            // To emulate a "projectile speed", we can determine the distance based on projectile time
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 200.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Laser;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0f
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.5f; // 2.0
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Laser;
-        }
-        else
-        {
-            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
-        }
-        return weapon_stats;
-    }
-
     public void ResetWeaponToDefault(bool play_sfx = false)
     {
+        if (!Networking.IsOwner(gameObject)) { return; }
+
         weapon_type = weapon_type_default;
         weapon_temp_ammo = -1;
         weapon_temp_duration = -1;
@@ -880,6 +802,14 @@ public class PlayerWeapon : UdonSharpBehaviour
             AudioClip[] temp_arr = new AudioClip[1];
             temp_arr[0] = snd_game_sfx_clip_weaponexpire;
             gameController.PlaySFXFromArray(snd_source_weaponcontact, temp_arr, 0);
+        }
+
+
+        if (is_secondary && gameObject.activeInHierarchy && gameController != null && owner_attributes != null)
+        {
+            bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1);
+            is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
+            if (!is_boss) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         }
     }
 
@@ -938,7 +868,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         local_extra_data = weapon_extra_data;
     }
 
-    private void UpdateWeaponModel()
+    public void UpdateWeaponModel()
     {
         if (weapon_type >= 0 && weapon_type < weapon_mdl.Length && weapon_mdl[weapon_type] != null)
         {
@@ -958,7 +888,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         SetTeamColor();
     }
 
-    private void SetTeamColor()
+    public void SetTeamColor()
     {
         
         weapon_renderer = GetComponentInChildren<SkinnedMeshRenderer>();
@@ -1063,5 +993,118 @@ public class PlayerWeapon : UdonSharpBehaviour
                 }
             }
         }
+
+        if (owner_attributes != null) { cached_team = owner_attributes.ply_team; }
+    }
+
+    private float[] SetupWeaponStat(int weapon_in_type)
+    {
+        float[] weapon_stats = new float[(int)weapon_stats_name.ENUM_LENGTH];
+        if (weapon_in_type == (int)weapon_type_name.PunchingGlove || weapon_in_type == (int)weapon_type_name.BossGlove || weapon_in_type == (int)weapon_type_name.HyperGlove || weapon_in_type == (int)weapon_type_name.MegaGlove)
+        {
+            weapon_stats[(int)weapon_stats_name.IsMelee] = 1;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.1f;
+            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.8f * 0.8f * 0.9f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
+            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 10.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 0.33f * 0.6f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 0.4f; //0.4f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
+            if (weapon_in_type == (int)weapon_type_name.BossGlove)
+            {
+                //weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] *= 2.5f; //2.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
+            }
+            else if (weapon_in_type == (int)weapon_type_name.HyperGlove)
+            {
+                weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 0.4f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
+            }
+            else if (weapon_in_type == (int)weapon_type_name.MegaGlove)
+            {
+                weapon_stats[(int)weapon_stats_name.Cooldown] *= 1.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 2.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
+            }
+        }
+        else if (weapon_in_type == (int)weapon_type_name.Rocket)
+        {
+            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
+            // To emulate a "projectile speed", we can determine the distance based on projectile time
+            float projectile_speed = 14.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 10.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = projectile_speed * weapon_stats[(int)weapon_stats_name.Projectile_Duration];
+            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
+            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.0f; // 2.85
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
+        }
+        else if (weapon_in_type == (int)weapon_type_name.Bomb || weapon_in_type == (int)weapon_type_name.ThrowableItem)
+        {
+            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.5f;
+            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
+            // To emulate a "projectile speed", we can determine the distance based on projectile time
+            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 100.0f;
+            if (weapon_in_type == (int)weapon_type_name.Bomb)
+            {
+                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
+                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
+            }
+            else if (weapon_in_type == (int)weapon_type_name.ThrowableItem)
+            {
+                weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.ItemProjectile;
+                weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 0.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ItemHit;
+            }
+        }
+        else if (weapon_in_type == (int)weapon_type_name.SuperLaser)
+        {
+            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.ChargeTime] = 2.0f;
+            // To emulate a "projectile speed", we can determine the distance based on projectile time
+            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 0.05f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 200.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Laser;
+            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.05f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0f
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.5f; // 2.0
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Laser;
+        }
+        else
+        {
+            weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
+            weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Strike;
+        }
+        return weapon_stats;
     }
 }

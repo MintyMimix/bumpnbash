@@ -33,7 +33,7 @@ TagManager:
   - WeaponProjectile
   - WeaponHurtbox
   - BouncePad
-  - Ramp
+  - HUD
   - Ice
   - LocalPlayerHitbox
   - CaptureZone

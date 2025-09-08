@@ -28,7 +28,6 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [SerializeField] public LayerMask layers_to_hit;
     // References
     [SerializeField] public GameController gameController;
-    [SerializeField] public PlayerWeapon weapon_script;
     [SerializeField] public Rigidbody hurtbox_rb;
     [SerializeField] public GameObject[] hurtbox_meshes; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
     [SerializeField] public Collider[] hurtbox_colliders; // NEEDS TO MATCH LENGTH OF damage_mesh_type_name
@@ -50,15 +49,21 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [NonSerialized] public int[] players_struck_prealloc;
     [NonSerialized] public ushort players_struck_cnt;
     [NonSerialized] public Vector3 start_scale;
+    [NonSerialized] public PlayerWeapon weapon_script;
+    [NonSerialized] public bool in_reset_state = true;
 
     private void Start()
     {
-        players_struck_prealloc = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS]; // 80 is the hard limit of players in a VRChat world
-        players_struck_cnt = 0;
+        // Because of Weird Networked Shit, we need to ensure the hurtboxes are active at the start, reset, and then are set to be inactive.
+        // Otherwise, the first time a ranged hurtbox is created, it will immediately expire, resulting in no strikes.
+        in_reset_state = true;
+        OnReset(true);
     }
 
     private void Update()
     {
+        if (in_reset_state) { return; }
+
         tick_timer += Time.deltaTime;
 
         if (hurtbox_duration > 0.0f && hurtbox_start_ms != 0.0f && gameObject.activeInHierarchy)
@@ -69,7 +74,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             if (hurtbox_timer_network > hurtbox_duration)
             {
                 // Fire off events for hurtbox expiration here
-                UnityEngine.Debug.Log("[HURTBOX_TEST] hurtbox expired. duration = " + hurtbox_duration + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network);
+                UnityEngine.Debug.Log("[HURTBOX_TEST] " + gameObject.name + " expired. server_ms = " + server_ms + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network + "; duration = " + hurtbox_duration);
                 OnStop();
             }
         }
@@ -86,22 +91,27 @@ public class WeaponHurtbox : UdonSharpBehaviour
         if (gameController != null && gameController.local_ppp_options != null && active_mesh != null)
         {
             Renderer m_Renderer = active_mesh.GetComponent<Renderer>();
-            m_Renderer.enabled = gameController.local_ppp_options.hurtbox_show;
+            bool show_renderer = gameController.local_ppp_options.hurtbox_show;
+            m_Renderer.enabled = show_renderer || damage_type == (int)damage_type_name.ForceExplosion || damage_type == (int)damage_type_name.ItemHit || (gameController.flag_for_mobile_vr.activeInHierarchy && damage_type == (int)damage_type_name.Laser);
         }
-        Physics.SyncTransforms();
         if (is_melee)
         {
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
         }
+        Physics.SyncTransforms();
         //hurtbox_rb.MovePosition(transform.position);
         //hurtbox_rb.MoveRotation(transform.rotation);
     }
 
-    public void OnReset()
+    public void OnReset(bool full_reset)
     {
+        in_reset_state = true;
+        if (full_reset)
+        {
+            hurtbox_start_ms = 0.0f;
+        }
         tick_timer = 0.0f;
-        hurtbox_start_ms = 0.0f;
         hurtbox_timer_network = 0.0f;
         if (active_particle != null)
         {
@@ -109,7 +119,13 @@ public class WeaponHurtbox : UdonSharpBehaviour
             active_particle.GetComponent<ParticleSystem>().Stop();
             active_particle.gameObject.SetActive(false);
         }
-        Start();
+        players_struck_prealloc = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS]; // 80 is the hard limit of players in a VRChat world
+        players_struck_cnt = 0;
+        in_reset_state = false;
+        if (full_reset)
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     public void OnStop()
@@ -124,6 +140,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void UpdateMeleePosition()
     {
+        if (weapon_rb == null) { return; }
         Transform point_end_tf = null;
         Vector3 origin = weapon_rb.position;
 
@@ -171,6 +188,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             {
                 transform.localScale = Vector3.Lerp(start_scale, start_scale * Vector3.Distance(origin, end_pos), 1.0f - (float)(hurtbox_timer_network / hurtbox_duration));
             }
+            
         }
     }
 
@@ -184,22 +202,18 @@ public class WeaponHurtbox : UdonSharpBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        //UnityEngine.Debug.Log("[HURTBOX_TEST] hitbox was entered into its trigger, and also duration = " + hurtbox_duration + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network);
-
-
         if (other == null || players_struck_prealloc == null) { return; }
         // Run this only if we are the owner of the hurtbox
         if (Networking.GetOwner(gameObject) != Networking.LocalPlayer) { return; }
-        // Check we're not colliding a hitbox we've already processed
+        // And that we're striking player hitbox to begin with
+        if (other.GetComponent<PlayerHitbox>() == null) { return; }
+        // And that we're not colliding with a hitbox we've already processed
         VRCPlayerApi colliderOwner = Networking.GetOwner(other.gameObject);
         if (colliderOwner == null) { return; }
         for (int i = 0; i < players_struck_cnt; i++)
         {
             if (players_struck_prealloc[i] == colliderOwner.playerId) { return; }
         }
-        // And that it's a player hitbox to begin with
-        PlayerHitbox plyHitbox = gameController.GetPlayerHitboxFromID(colliderOwner.playerId);
-        if (plyHitbox == null) { return; }
 
         // If all that checks out, we can add the player to the exclusion list
         players_struck_prealloc[players_struck_cnt] = colliderOwner.playerId;
@@ -208,7 +222,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
         bool hit_self = false;
         if (colliderOwner == Networking.LocalPlayer)
         {
-            // The hurtbox must be from an explosive weapon
+            // If we are hitting ourselves, the hurtbox must be from an explosive weapon
             hit_self = !is_melee && (damage_type == (int)damage_type_name.ForceExplosion || damage_type == (int)damage_type_name.ItemHit);
             // Otherwise, we should stop processing here. We mark ourselves as excluded from the hurtbox so we don't need to check again
             if (!hit_self) { return; }
@@ -245,9 +259,9 @@ public class WeaponHurtbox : UdonSharpBehaviour
         else
         {
             gameController.local_plyAttr.ReceiveDamage(hurtbox_damage, force_dir, hitSpot, Networking.LocalPlayer.playerId, damage_type, true, hurtbox_extra_data);
-            var plyWeapon = gameController.local_plyweapon;
+            if (weapon_script == null) { weapon_script = gameController.local_plyweapon; }
             gameController.PlaySFXFromArray(
-                plyWeapon.snd_source_weaponcontact, plyWeapon.snd_game_sfx_clips_weaponcontact, plyWeapon.weapon_type
+                weapon_script.snd_source_weaponcontact, weapon_script.snd_game_sfx_clips_weaponcontact, weapon_script.weapon_type
             );
         }
 

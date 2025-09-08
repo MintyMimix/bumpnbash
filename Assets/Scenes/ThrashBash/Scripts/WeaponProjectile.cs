@@ -40,6 +40,7 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] private float tick_timer = 0.0f;
     [NonSerialized] private Transform cached_trail;
     [NonSerialized] private Transform cached_particle;
+    [NonSerialized] public PlayerWeapon weapon_script;
 
     private void Start()
     {
@@ -210,7 +211,7 @@ public class WeaponProjectile : UdonSharpBehaviour
             Vector3 rayPos = RaycastToNextPos(projectile_timer_network);
             if (Mathf.FloorToInt(rayPos.x) != Mathf.FloorToInt(INVALID_HIT_POS.x) && !projectile_hit_on_this_frame)
             {
-                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration  " + projectile_duration + " hit target at " + rayPos.ToString() + " which was not invalid: " + rayPos.x + " vs " + INVALID_HIT_POS.x);
                 pos_end = rayPos;
                 projectile_hit_on_this_frame = true;
                 contact_made = true;
@@ -220,7 +221,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                 rb.MovePosition(lerpPos);
                 if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
                 {
-                    UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                    //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                     pos_end = CalcPosAtTime(projectile_duration);
                     projectile_hit_on_this_frame = true;
                     contact_made = false;
@@ -232,7 +233,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             if (!projectile_hit_on_this_frame && (projectile_timer_network >= projectile_duration))
             {
-                UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
+                //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " expired due to timer " + projectile_timer_network);
                 pos_end = rb.position;
                 projectile_hit_on_this_frame = true;
                 contact_made = false;
@@ -246,7 +247,8 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
 
             PlayerAttributes plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
-            float damage = gameController.local_plyweapon.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
+            if (weapon_script == null) { weapon_script = gameController.local_plyweapon; }
+            float damage = weapon_script.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
             damage *= plyAttr.ply_atk * (owner_scale * gameController.scale_damage_factor);
             float dist_scale = 1.0f;
             // For a Laser type projectile, we want to instead position the hurtbox at the midway point between start and current, and scale it according to that distance
@@ -260,16 +262,16 @@ public class WeaponProjectile : UdonSharpBehaviour
                 else 
                 {
                     dist_scale = Vector3.Distance(pos_start, position) / owner_scale;
-                    UnityEngine.Debug.Log("[LASER_TEST]: positioning laser at midpoint between " + pos_start.ToString() + " and " + position.ToString() + " based on distance " + projectile_distance + " (result: " + Vector3.Lerp(pos_start, position, 0.5f).ToString() + ")");
+                    //UnityEngine.Debug.Log("[LASER_TEST]: positioning laser at midpoint between " + pos_start.ToString() + " and " + position.ToString() + " based on distance " + projectile_distance + " (result: " + Vector3.Lerp(pos_start, position, 0.5f).ToString() + ")");
                     position = Vector3.Lerp(pos_start, position, 0.5f); 
                 }
 
             }
 
-            gameController.local_plyweapon.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); // ENUM_LENGTH is used for weapon fire
+            weapon_script.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); // ENUM_LENGTH is used for weapon fire
 
-            UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating projectile at " + position + " (pos_start = " + pos_start + ")");
-            gameController.local_plyweapon.SendCustomNetworkEvent(
+            UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating hurtbox at " + position + " (pos_start = " + pos_start + ")");
+            weapon_script.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
                 , position
@@ -278,6 +280,7 @@ public class WeaponProjectile : UdonSharpBehaviour
                 , false
                 , Networking.LocalPlayer.playerId
                 , weapon_type
+                , weapon_script.is_secondary
                 );
         }
 

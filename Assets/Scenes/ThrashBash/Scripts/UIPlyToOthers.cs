@@ -88,7 +88,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
         if (cached_atk != playerAttributes.ply_atk) { UI_Attack(); cached_atk = playerAttributes.ply_atk; }
         if (cached_def != playerAttributes.ply_def) { UI_Defense(); cached_def = playerAttributes.ply_def; }
         if (cached_dp != playerAttributes.ply_dp) { UI_Damage(); cached_dp = playerAttributes.ply_dp; }
-        if (cached_respawn_timer_int != Mathf.CeilToInt(playerAttributes.ply_respawn_timer)) { UI_Damage(); cached_respawn_timer_int = Mathf.RoundToInt(playerAttributes.ply_respawn_timer); }
+        if (cached_respawn_timer_int != Mathf.CeilToInt(playerAttributes.ply_respawn_timer)) { UI_Damage(); cached_respawn_timer_int = Mathf.CeilToInt(playerAttributes.ply_respawn_timer); }
     }
     
     public void ResetCache()

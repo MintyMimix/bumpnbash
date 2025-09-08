@@ -1,0 +1,202 @@
+{
+  "LocalOptions_UIScale": {
+    "LastUpdated": "2025-07-19T10:20:59.962788-04:00",
+    "Key": "LocalOptions_UIScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "LocalOptions_Colorblind": {
+    "LastUpdated": "2025-07-17T16:28:22.050012-04:00",
+    "Key": "LocalOptions_Colorblind",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "LocalOptions_UISeparation": {
+    "LastUpdated": "2025-07-19T21:58:34.1526242-04:00",
+    "Key": "LocalOptions_UISeparation",
+    "Value": {
+      "type": "Float",
+      "value": 30.0
+    }
+  },
+  "LocalOptions_MusicVolume": {
+    "LastUpdated": "2025-07-17T20:41:21.9231316-04:00",
+    "Key": "LocalOptions_MusicVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "LocalOptions_SoundVolume": {
+    "LastUpdated": "2025-07-17T20:41:25.3605859-04:00",
+    "Key": "LocalOptions_SoundVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIScale": {
+    "LastUpdated": "2025-08-31T21:44:16.8077409-04:00",
+    "Key": "UIScale",
+    "Value": {
+      "type": "Float",
+      "value": 8.0
+    }
+  },
+  "UISeparation": {
+    "LastUpdated": "2025-08-05T00:02:08.2738616-04:00",
+    "Key": "UISeparation",
+    "Value": {
+      "type": "Float",
+      "value": 30.0
+    }
+  },
+  "MusicVolume": {
+    "LastUpdated": "2025-08-31T21:43:58.2843219-04:00",
+    "Key": "MusicVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "SoundVolume": {
+    "LastUpdated": "2025-08-31T17:43:58.248972-04:00",
+    "Key": "SoundVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "Colorblind": {
+    "LastUpdated": "2025-08-28T09:03:43.9911611-04:00",
+    "Key": "Colorblind",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "HurtboxShow": {
+    "LastUpdated": "2025-09-03T16:36:20.8954664-04:00",
+    "Key": "HurtboxShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "UIStretch": {
+    "LastUpdated": "2025-08-13T13:04:50.9249017-04:00",
+    "Key": "UIStretch",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIVertical": {
+    "LastUpdated": "2025-09-06T00:27:29.897241-04:00",
+    "Key": "UIVertical",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "ParticleShow": {
+    "LastUpdated": "2025-08-31T15:15:28.5702504-04:00",
+    "Key": "ParticleShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "UIHarmScale": {
+    "LastUpdated": "2025-09-06T00:47:09.4238865-04:00",
+    "Key": "UIHarmScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIOtherScale": {
+    "LastUpdated": "2025-09-03T16:36:36.4893727-04:00",
+    "Key": "UIOtherScale",
+    "Value": {
+      "type": "Float",
+      "value": 12.0
+    }
+  },
+  "UIWrist": {
+    "LastUpdated": "2025-08-13T16:20:38.0810114-04:00",
+    "Key": "UIWrist",
+    "Value": {
+      "type": "Int",
+      "value": 0
+    }
+  },
+  "UIDistance": {
+    "LastUpdated": "2025-09-02T22:05:52.7800193-04:00",
+    "Key": "UIDistance",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "ColorblindChoice": {
+    "LastUpdated": "2025-09-06T09:53:56.9990692-04:00",
+    "Key": "ColorblindChoice",
+    "Value": {
+      "type": "Int",
+      "value": 0
+    }
+  },
+  "HitboxShow": {
+    "LastUpdated": "2025-09-05T12:11:53.5108489-04:00",
+    "Key": "HitboxShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "ColorblindSprite": {
+    "LastUpdated": "2025-09-05T13:17:20.856289-04:00",
+    "Key": "ColorblindSprite",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "VOVolume": {
+    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "Key": "VOVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "VOPrefA": {
+    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "Key": "VOPrefA",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "VOPrefB": {
+    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "Key": "VOPrefB",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "VOPrefC": {
+    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "Key": "VOPrefC",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  }
+}

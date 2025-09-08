@@ -21,6 +21,7 @@ public class PlayerHitbox : UdonSharpBehaviour
     [NonSerialized] public int material_id;
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
+    [NonSerialized] public int cached_team = -1;
     //[NonSerialized] private Rigidbody rb;
 
     private void Start()
@@ -57,17 +58,21 @@ public class PlayerHitbox : UdonSharpBehaviour
             // Could be more sophiscated, such as flashing the material whenever they're hit
             else if (owner != Networking.LocalPlayer && playerAttributes.ply_state != (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Default)
             {
-                SetMaterial((int)hitbox_mat_name.Default); 
+                SetMaterial((int)hitbox_mat_name.Default);
+                UIPlyToOthers plytoothers = playerAttributes.gameController.GetUIPlyToOthersFromID(Networking.GetOwner(gameObject).playerId);
+                if (plytoothers != null) { plytoothers.UI_Damage(); }
             }
+
+            if (cached_team != playerAttributes.ply_team) { SetTeamColor(); }
         }
     }
 
     [NetworkCallable] 
     public void ToggleHitbox(bool toggle)
     {
-        gameObject.SetActive(toggle);
         network_active = toggle;
         if (Networking.IsOwner(gameObject)) { RequestSerialization(); }
+        gameObject.SetActive(toggle);
     }
 
     public void ToggleMaterial(bool toggle)
@@ -117,6 +122,8 @@ public class PlayerHitbox : UdonSharpBehaviour
                 m_Renderer.material.SetColor("_EmissionColor", new Color32(180, 180, 180, 255));
             }
         }
+
+        if (playerAttributes != null) { cached_team = playerAttributes.ply_team; }
     }
 
     /*private void OnTriggerEnter(Collider other)

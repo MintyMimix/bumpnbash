@@ -47,6 +47,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public TMP_Text PTSWeaponText;
     [SerializeField] public UnityEngine.UI.Image PTSChargeMeterFGSprite;
     [SerializeField] public UnityEngine.UI.Image PTSChargeMeterBGSprite;
+    [SerializeField] public UnityEngine.UI.Image PTSSecondaryWeaponSprite;
+    [SerializeField] public TMP_Text PTSSecondaryWeaponText;
+    [SerializeField] public UnityEngine.UI.Image PTSSecondaryChargeMeterFGSprite;
+    [SerializeField] public UnityEngine.UI.Image PTSSecondaryChargeMeterBGSprite;
 
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
@@ -180,6 +184,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
         if (PTSWeaponSprite != null) { PTSWeaponSprite.gameObject.SetActive(false); }
         if (PTSChargeMeterFGSprite != null) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
         if (PTSChargeMeterBGSprite != null) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
+        if (PTSSecondaryWeaponSprite != null) { PTSSecondaryWeaponSprite.gameObject.SetActive(false); }
+        if (PTSSecondaryChargeMeterFGSprite != null) { PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(false); }
+        if (PTSSecondaryChargeMeterBGSprite != null) { PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(false); }
 
         PTSHarmNumberList = new UIHarmNumber[0];
 
@@ -631,8 +638,12 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If we are in Boss Bash, display your team's KOs
             else if (gameController.option_gamemode == (int)gamemode_name.BossBash)
             {
-                FlagText = total_points.ToString() + " KO";
-                if (total_points != 1) { FlagText += "s"; }
+                FlagText = total_points.ToString();
+                // If we are the boss, we also want the total
+                bool is_boss = playerAttributes != null && playerAttributes.ply_team == 1;
+                if (is_boss) { FlagText += "/" + gameController.option_gm_goal; }
+                FlagText += " KO";
+                if (total_points != 1 || (is_boss && gameController.option_gm_goal != 1)) { FlagText += "s"; }
                 PTSTeamPoleImage.enabled = false;
                 PTSTeamFlagImage.sprite = PTSPointsSprite;
                 PTSTeamCBSpriteImage.sprite = PTSPointsSprite;
@@ -840,8 +851,61 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (PTSChargeMeterFGSprite != null && PTSChargeMeterFGSprite.gameObject.activeInHierarchy) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
             if (PTSChargeMeterBGSprite != null && PTSChargeMeterBGSprite.gameObject.activeInHierarchy) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
         }
+
+        UI_Secondary();
     }
-    
+
+    public void UI_Secondary()
+    {
+        // Handle weapon stats
+        if (gameController != null && gameController.local_secondaryweapon != null && PTSSecondaryWeaponSprite != null && PTSSecondaryWeaponText != null && gameController.local_secondaryweapon.weapon_type != gameController.local_secondaryweapon.weapon_type_default && gameController.local_secondaryweapon.gameObject.activeInHierarchy)
+        {
+            string weaponTxt = "";
+            PTSSecondaryWeaponText.color = Color.white;
+            if (gameController.local_secondaryweapon.weapon_temp_ammo > -1)
+            {
+                weaponTxt += gameController.local_secondaryweapon.weapon_temp_ammo.ToString();
+                if (gameController.local_secondaryweapon.weapon_temp_ammo < 3) { PTSSecondaryWeaponText.color = new Color(1.0f, 0.8f, 0.4f, 1.0f); }
+            }
+            if (gameController.local_secondaryweapon.weapon_temp_duration > -1)
+            {
+                if (weaponTxt.Length > 0) { weaponTxt += " (^)"; }
+                else { weaponTxt = "^"; }
+                float weapon_time_left = gameController.local_secondaryweapon.weapon_temp_duration - gameController.local_secondaryweapon.weapon_temp_timer;
+                if (weapon_time_left < 10.0f)
+                {
+                    weaponTxt = weaponTxt.Replace("^", (Mathf.Floor(weapon_time_left * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'));
+                }
+                else
+                {
+                    weaponTxt = weaponTxt.Replace("^", Mathf.Floor(weapon_time_left).ToString());
+                }
+                if (weapon_time_left <= 5.0f) { PTSSecondaryWeaponText.color = new Color(1.0f, 0.4f, 0.4f, 1.0f); }
+            }
+
+            PTSSecondaryWeaponText.text = weaponTxt;
+            if (!PTSSecondaryWeaponText.gameObject.activeInHierarchy) { PTSSecondaryWeaponText.gameObject.SetActive(true); }
+            if (!PTSSecondaryWeaponSprite.gameObject.activeInHierarchy) { PTSSecondaryWeaponSprite.gameObject.SetActive(true); }
+
+            if (PTSSecondaryChargeMeterFGSprite != null && PTSSecondaryChargeMeterBGSprite != null)
+            {
+                PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging);
+                PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging);
+                float offsetMax = PTSSecondaryChargeMeterBGSprite.rectTransform.rect.width;
+                float offsetPct = 0.0f;
+                if (gameController.local_secondaryweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(gameController.local_secondaryweapon.weapon_charge_timer / gameController.local_secondaryweapon.weapon_charge_duration); }
+                PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax.y);
+            }
+        }
+        else
+        {
+            if (PTSSecondaryWeaponText != null && PTSSecondaryWeaponText.gameObject.activeInHierarchy) { PTSSecondaryWeaponText.text = ""; PTSSecondaryWeaponText.gameObject.SetActive(false); }
+            if (PTSSecondaryWeaponSprite != null && PTSSecondaryWeaponSprite.gameObject.activeInHierarchy) { PTSSecondaryWeaponSprite.gameObject.SetActive(false); }
+            if (PTSSecondaryChargeMeterFGSprite != null && PTSSecondaryChargeMeterFGSprite.gameObject.activeInHierarchy) { PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(false); }
+            if (PTSSecondaryChargeMeterBGSprite != null && PTSSecondaryChargeMeterBGSprite.gameObject.activeInHierarchy) { PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(false); }
+        }
+    }
+
     public void UI_Capturezones()
     {
         // Handle capture zones
