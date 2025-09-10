@@ -268,7 +268,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
             posUI *= ((1.5f + ppp_options.ui_other_scale) / 2.5f);
         }
         //2.6f * posUI
-        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
+        transform.SetPositionAndRotation(owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
     }
 
