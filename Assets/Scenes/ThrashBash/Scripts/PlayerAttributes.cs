@@ -189,7 +189,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         // To-do: this more efficiently
         if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) {
             float koth_mod = 1.0f;
-            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training && ply_respawn_duration > gameController.plysettings_respawn_duration) { koth_mod = 0.01f; }
+            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training) { koth_mod = 0.01f; }
             Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
@@ -371,7 +371,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 last_hit_by_ply = VRCPlayerApi.GetPlayerById(attacker_id);
                 last_hit_by_timer = 0.0f;
                 var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
-                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, Networking.LocalPlayer.playerId, calcDmg, damage_type, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position);
+                plyAttr.SendCustomNetworkEvent(NetworkEventTarget.All, "HitOtherPlayer", attacker_id, Networking.LocalPlayer.playerId, calcDmg, damage_type, hitSpot); //Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position
             }
         }
         TryHapticEvent((int)game_sfx_name.HitReceive);
@@ -466,9 +466,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             { 
                 ply_lives--;
             }
-            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training)
             {
-                gameController.AddToLocalTextQueue("Slowed during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)", Color.cyan, ply_respawn_duration);
+                gameController.AddToLocalTextQueue("Frozen during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)", Color.cyan, ply_respawn_duration);
             }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
@@ -496,6 +496,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_team = 1;
             //ply_points = 0;
             InfectionStatReset();
+            gameController.AddToLocalTextQueue("-- You are now Infected! --");
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1)
         {
@@ -687,6 +688,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             powerups_active = GlobalHelperFunctions.RemoveEntryFromGameObjectArray(powerup.gameObject, powerups_active);
         }
 
+        if (gameController != null && gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
     }
 
     public void ResetPowerups()

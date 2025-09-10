@@ -103,7 +103,7 @@ public class ItemSpawner : UdonSharpBehaviour
             {
                 training_tutorial_name_txt.text = split_desc[0].Replace(": ", "");
                 training_tutorial_desc_text.text = split_desc[1].Replace(": ", "");
-                training_tutorial_ui_ready = true;
+                training_tutorial_ui_ready = !training_tutorial_name_txt.text.Contains("$NAME");
             }
         }
     }

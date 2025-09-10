@@ -14,6 +14,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
     [SerializeField] public GameController gameController;
     [SerializeField] public RectTransform PTMCanvas;
     [SerializeField] public RectTransform[] PTMTextStack;
+    [SerializeField] public TMP_Text PTMRespawnText;
 
     void Start()
     {
@@ -57,6 +58,10 @@ public class UIMessagesToSelf : UdonSharpBehaviour
             else { PTMTextStack[i].GetComponent<TMP_Text>().text = ""; }
         }
 
+        bool koth_respawning = gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning && !gameController.local_plyAttr.ply_training;
+        if (koth_respawning) { PTMRespawnText.text = Mathf.Floor(gameController.local_plyAttr.ply_respawn_duration - gameController.local_plyAttr.ply_respawn_timer + 1.0f).ToString(); }
+        else { PTMRespawnText.text = ""; }
+
     }
 
     public void TransferOwner(VRCPlayerApi newOwner)
@@ -93,7 +98,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
             distanceUI *= (ppp_options.ui_distance);
 
             heightUI *= (ppp_options.ui_scale);
-            PTMCanvas.sizeDelta = new Vector2(500, 300);
+            PTMCanvas.sizeDelta = new Vector2(500, 300) * 1.333f;
             PTMCanvas.sizeDelta = new Vector2(500 * ((1.0f + ppp_options.ui_stretch) / 2.0f), 300 * ((1.0f + ppp_options.ui_separation) / 2.0f));
 
             ((RectTransform)PTMTextStack[0].parent).sizeDelta = new Vector2(
@@ -127,7 +132,8 @@ public class UIMessagesToSelf : UdonSharpBehaviour
 
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
         Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
-        Vector3 posFinal = posOut; //+ velAdd;
+        Vector3 VROffset = new Vector3(0.0f, -0.1f, 0.0f) * GlobalHelperFunctions.BoolToInt(Networking.LocalPlayer.IsUserInVR());
+        Vector3 posFinal = posOut + VROffset;  //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
             posFinal

@@ -2,6 +2,7 @@
 using System;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Playables;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -22,6 +23,7 @@ public class PlayerHitbox : UdonSharpBehaviour
     [NonSerialized] public VRCPlayerApi owner;
     [NonSerialized] public PlayerAttributes playerAttributes;
     [NonSerialized] public int cached_team = -1;
+    [NonSerialized] public bool cached_teamplay = false;
     //[NonSerialized] private Rigidbody rb;
 
     private void Start()
@@ -49,6 +51,8 @@ public class PlayerHitbox : UdonSharpBehaviour
     {
         //rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by hurtboxes even when standing still
         if (playerAttributes != null) {
+            if (owner == Networking.LocalPlayer && gameObject.layer != LayerMask.NameToLayer("LocalPlayerHitbox")) { gameObject.layer = LayerMask.NameToLayer("LocalPlayerHitbox"); }
+
             if (owner == Networking.LocalPlayer && material_id != (int)hitbox_mat_name.Invisible) { SetMaterial((int)hitbox_mat_name.Invisible); }
             else if (owner == Networking.LocalPlayer && gameObject.layer != LayerMask.NameToLayer("LocalPlayerHitbox")) { gameObject.layer = LayerMask.NameToLayer("LocalPlayerHitbox"); }
             else if (owner != Networking.LocalPlayer && playerAttributes.ply_state == (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Respawning)
@@ -63,7 +67,7 @@ public class PlayerHitbox : UdonSharpBehaviour
                 if (plytoothers != null) { plytoothers.UI_Damage(); }
             }
 
-            if (cached_team != playerAttributes.ply_team) { SetTeamColor(); }
+            if (cached_team != playerAttributes.ply_team || cached_teamplay != playerAttributes.gameController.option_teamplay) { SetTeamColor(); }
         }
     }
 
@@ -123,7 +127,7 @@ public class PlayerHitbox : UdonSharpBehaviour
             }
         }
 
-        if (playerAttributes != null) { cached_team = playerAttributes.ply_team; }
+        if (playerAttributes != null) { cached_team = playerAttributes.ply_team; cached_teamplay = playerAttributes.gameController.option_teamplay; }
     }
 
     /*private void OnTriggerEnter(Collider other)

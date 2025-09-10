@@ -19,7 +19,7 @@ public class Mapscript : UdonSharpBehaviour
     [SerializeField] public float map_snd_radius;
     [SerializeField] public float map_gravity_scale = 1.0f;
     [SerializeField] public byte min_players_to_extend_room = 12;
-    [SerializeField] public int voice_distance = 500;
+    //[SerializeField] public int voice_distance = 500;
     [SerializeField] public Texture skybox_tex;
     [SerializeField] public Transform map_readyroom_center;
     [SerializeField] public AudioClip[] snd_game_music_clips;

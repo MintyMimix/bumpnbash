@@ -9,6 +9,11 @@ using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
 
+public enum language_type_name
+{
+    English, French, Japanese, SpanishLatin, SpanishEurope
+}
+
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class PPP_Options : UdonSharpBehaviour
 {
@@ -25,6 +30,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_hurtboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_hitboxtoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_colorblind_toggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_uiinvertedtoggle;
     [SerializeField] public TMP_Dropdown ui_colorblind_dropdown;
     [SerializeField] public TMP_Text ui_colorblind_dropdown_caption;
     [SerializeField] public string[] ui_colorblind_dropdown_names;
@@ -38,6 +44,8 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_spectatortoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_particletoggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_haptictoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_motionsicknessfloortoggle;
+    [SerializeField] public UnityEngine.UI.Toggle ui_motionsicknesscagetoggle;
     [SerializeField] public UnityEngine.UI.Slider ui_uiscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
@@ -56,9 +64,11 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uimusictext;
     [SerializeField] public TMP_Text ui_uisoundtext;
     [SerializeField] public TMP_Text ui_uivovolumetext;
+    [SerializeField] public TMP_Dropdown ui_uivotype_dropdown;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_a_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_b_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_c_toggle;
+    [SerializeField] public UnityEngine.UI.Toggle[] ui_language_toggles;
     [NonSerialized] public bool hitbox_show = true;
     [NonSerialized] public bool hurtbox_show = true;
     [NonSerialized] public bool colorblind = false;
@@ -73,16 +83,21 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_distance = 1.0f;
     [NonSerialized] public float ui_harm_scale = 1.0f;
     [NonSerialized] public float ui_other_scale = 1.0f;
+    [NonSerialized] public bool ui_inverted = false;
     [NonSerialized] public bool waiting_on_playerdata = true;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
     [NonSerialized] public float voiceover_volume = 1.0f;
+    [SerializeField] public int voiceover_type = 0;
+    [NonSerialized] public int language_type = (int)language_type_name.English;
     [NonSerialized] public bool vo_pref_a = true;
     [NonSerialized] public bool vo_pref_b = true;
     [NonSerialized] public bool vo_pref_c = true;
     [NonSerialized] public bool particles_on = true;
     [NonSerialized] public bool lock_wrist = false;
     [NonSerialized] public bool render_in_front = false;
+    [NonSerialized] public bool motion_sickness_floor = false;
+    [NonSerialized] public bool motion_sickness_cage = false;
 
     private void Start()
     {
@@ -173,6 +188,7 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateUIStretch();
         UpdateUIDistance();
         UpdateUIWrist();
+        UpdateUIInverted();
         UpdateSpectatorIntent();
         UpdateHitbox();
         UpdateHurtbox();
@@ -182,6 +198,8 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateSoundVolume();
         UpdateVOVolume();
         UpdateVOPreferences();
+        UpdateMotionSickness();
+        //UpdateLanguage();
     }
 
     public override void OnPlayerDataUpdated(VRCPlayerApi player, PlayerData.Info[] infos)
@@ -227,6 +245,12 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIHarmScale();
                     continue;
                 }
+                if (!PlayerData.HasKey(player, "UIInverted"))
+                {
+                    ui_uiinvertedtoggle.isOn = false;
+                    UpdateUIInverted();
+                    continue;
+                }
                 if (!PlayerData.HasKey(player, "MusicVolume"))
                 {
                     ui_uimusicslider.value = 10.0f;
@@ -260,6 +284,12 @@ public class PPP_Options : UdonSharpBehaviour
                 if (!PlayerData.HasKey(player, "VOPrefC"))
                 {
                     ui_vo_pref_c_toggle.isOn = true;
+                    UpdateVOPreferences();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "VOType"))
+                {
+                    ui_uivotype_dropdown.value = 0;
                     UpdateVOPreferences();
                     continue;
                 }
@@ -318,6 +348,23 @@ public class PPP_Options : UdonSharpBehaviour
                     ui_wristtoggle_l.isOn = false;
                     ui_wristtoggle_r.isOn = false;
                     UpdateUIWrist();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "LanguageType"))
+                {
+                    UpdateLangEnglish();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "MotionSicknessCage"))
+                {
+                    ui_motionsicknesscagetoggle.isOn = false;
+                    UpdateMotionSickness();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "MotionSicknessFloor"))
+                {
+                    ui_motionsicknessfloortoggle.isOn = false;
+                    UpdateMotionSickness();
                     continue;
                 }
                 if (infos[i].State == PlayerData.State.Restored) //|| infos[i].State == PlayerData.State.Changed
@@ -407,6 +454,17 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateUIHarmScale();
         }
 
+        bool out_UIInverted;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "UIInverted", out out_UIInverted))
+        {
+            ui_uiinvertedtoggle.isOn = out_UIInverted;
+        }
+        else
+        {
+            ui_uiinvertedtoggle.isOn = false;
+            UpdateUIInverted();
+        }
+
 
         float out_MusicVolume;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "MusicVolume", out out_MusicVolume))
@@ -474,6 +532,27 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateVOPreferences();
         }
 
+        int out_VOType;
+        if (PlayerData.TryGetInt(Networking.LocalPlayer, "VOType", out out_VOType))
+        {
+            ui_uivotype_dropdown.value = out_VOType;
+        }
+        else
+        {
+            ui_uivotype_dropdown.value = 0;
+            UpdateVOPreferences();
+        }
+
+        int out_LanguageType;
+        if (PlayerData.TryGetInt(Networking.LocalPlayer, "LanguageType", out out_LanguageType))
+        {
+            UpdateLanguage(out_LanguageType);
+        }
+        else
+        {
+            UpdateLangEnglish();
+        }
+
         bool out_Colorblind_sprite;
         if (PlayerData.TryGetBool(Networking.LocalPlayer, "ColorblindSprite", out out_Colorblind_sprite))
         {
@@ -494,6 +573,28 @@ public class PPP_Options : UdonSharpBehaviour
         {
             ui_colorblind_dropdown.value = out_Colorblind_choice;
             UpdateColorblind();
+        }
+
+        bool out_MotionSicknessCage;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "MotionSicknessCage", out out_MotionSicknessCage))
+        {
+            ui_motionsicknesscagetoggle.isOn = out_MotionSicknessCage;
+        }
+        else
+        {
+            ui_motionsicknesscagetoggle.isOn = false;
+            UpdateMotionSickness();
+        }
+
+        bool out_MotionSicknessFloor;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "MotionSicknessFloor", out out_MotionSicknessFloor))
+        {
+            ui_motionsicknessfloortoggle.isOn = out_MotionSicknessFloor;
+        }
+        else
+        {
+            ui_motionsicknessfloortoggle.isOn = false;
+            UpdateMotionSickness();
         }
 
         bool out_HitboxShow;
@@ -593,16 +694,21 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIDistance", ui_uidistanceslider.value);
         PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
+        PlayerData.SetBool("UIInverted", ui_uiinvertedtoggle.isOn);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
         PlayerData.SetFloat("VOVolume", ui_uivovolumelider.value);
         PlayerData.SetBool("VOPrefA", ui_vo_pref_a_toggle.isOn);
         PlayerData.SetBool("VOPrefB", ui_vo_pref_b_toggle.isOn);
         PlayerData.SetBool("VOPrefC", ui_vo_pref_c_toggle.isOn);
+        PlayerData.SetInt("VOType", ui_uivotype_dropdown.value);
         PlayerData.SetBool("ColorblindSprite", ui_colorblind_toggle.isOn);
         PlayerData.SetInt("ColorblindChoice", ui_colorblind_dropdown.value);
         PlayerData.SetBool("HitboxShow", ui_hitboxtoggle.isOn);
         PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
+        PlayerData.SetInt("LanguageType", language_type);
+        PlayerData.SetBool("MotionSicknessCage", ui_motionsicknesscagetoggle.isOn);
+        PlayerData.SetBool("MotionSicknessFloor", ui_motionsicknessfloortoggle.isOn);
         if (!gameController.flag_for_mobile_vr.activeInHierarchy) { PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn); }
         if (Networking.LocalPlayer.IsUserInVR()) { PlayerData.SetBool("HapticsOn", ui_haptictoggle.isOn); }
         if (Networking.LocalPlayer.IsUserInVR()) { PlayerData.SetInt("UIWrist", ui_wrist); }
@@ -689,6 +795,18 @@ public class PPP_Options : UdonSharpBehaviour
         should_sync = true;
         sync_timer = 0.0f;
     }
+
+    public void UpdateUIInverted()
+    {
+        ui_inverted = ui_uiinvertedtoggle.isOn;
+        if (gameController != null && gameController.local_uiplytoself != null) { gameController.local_uiplytoself.InvertUI(); }
+        ShowDemoUI();
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
 
     public void UpdateMusicVolume()
     {
@@ -778,6 +896,20 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.RefreshSetupUI();
 
         if (haptics_on && gameController.local_plyAttr != null) { gameController.local_plyAttr.TryHapticEvent((int)game_sfx_name.ENUM_LENGTH); }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateMotionSickness()
+    {
+        motion_sickness_cage = ui_motionsicknesscagetoggle.isOn;
+        motion_sickness_floor = ui_motionsicknessfloortoggle.isOn;
+        gameController.RefreshSetupUI();
+
+        gameController.localMotionSicknessHelper.helper_capsule_transform.gameObject.SetActive(motion_sickness_cage);
+        gameController.localMotionSicknessHelper.helper_cube_transform.gameObject.SetActive(motion_sickness_floor);
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -874,9 +1006,52 @@ public class PPP_Options : UdonSharpBehaviour
         vo_pref_c = ui_vo_pref_c_toggle.isOn;
         // To-do: set voiceover toggles in gameController
 
+        voiceover_type = ui_uivotype_dropdown.value;
+
         if (waiting_on_playerdata) { return; }
         should_sync = true;
         sync_timer = 0.0f;
+    }
+
+    public void UpdateLanguage(int in_language_type)
+    {
+        for (int i = 0; i < ui_language_toggles.Length; i++)
+        {
+            if (i == in_language_type) { ui_language_toggles[i].isOn = true; }
+            else { ui_language_toggles[i].isOn = false; }
+        }
+
+        // To-do: set language elements in langLocalizer
+        language_type = in_language_type;
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateLangEnglish()
+    {
+        UpdateLanguage((int)language_type_name.English);
+    }
+
+    public void UpdateLangFrench()
+    {
+        UpdateLanguage((int)language_type_name.French);
+    }
+
+    public void UpdateLangJapanese()
+    {
+        UpdateLanguage((int)language_type_name.Japanese);
+    }
+
+    public void UpdateLangSpanishLatin()
+    {
+        UpdateLanguage((int)language_type_name.SpanishLatin);
+    }
+
+    public void UpdateLangSpanishEurope()
+    {
+        UpdateLanguage((int)language_type_name.SpanishEurope);
     }
 
     public void UpdateSpectatorIntent()

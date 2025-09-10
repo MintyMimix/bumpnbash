@@ -155,14 +155,16 @@ public class CaptureZone : UdonSharpBehaviour
                 int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
                 if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
                 {
-                    gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
+                    // To-do: Make this not conflict with other capture zones
+                    //gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
+                    gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration; 
 
                     // Respawn duration is always longer for the holder
                     if ((
                         (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
                         || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
                         ))
-                    { gameController.local_plyAttr.ply_respawn_duration *= 2.5f; }
+                    { gameController.local_plyAttr.ply_respawn_duration *= 2.0f; }
                     // Respawn duration is slightly longer for the contestor
                     if ((
                         (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
@@ -405,7 +407,7 @@ public class CaptureZone : UdonSharpBehaviour
             activeImage.enabled = true;
             RecolorDisplayArea(Color.gray);
             displayText = "(LOCKED)\n";
-            timerText = (Mathf.Floor((initial_lock_duration - initial_lock_timer) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
+            timerText = string.Format("{0:F1}", initial_lock_duration - initial_lock_timer);
             activeImage.color = Color.gray;
             UITeamCBImage.sprite = gameController.team_sprites[0];
             UITeamText.color = Color.gray;
@@ -478,7 +480,7 @@ public class CaptureZone : UdonSharpBehaviour
             float timeLeft = gameController.option_gm_goal;
             if (hold_index >= 0) { timeLeft -= dict_points_values_arr[hold_index]; }
             //displayText += "\n ";
-            if (timeLeft < 0.0f) { timerText = (Mathf.Floor(timeLeft * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'); }
+            if (timeLeft < 0.0f) { timerText = string.Format("{0:F1}", timeLeft); } 
             else { timerText = timeLeft.ToString(); }
 
         }

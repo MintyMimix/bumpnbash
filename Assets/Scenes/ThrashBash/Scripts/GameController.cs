@@ -79,6 +79,7 @@ public class GameController : GlobalHelperFunctions
     [SerializeField] public GameObject flag_for_mobile_vr;
     //[SerializeField] public PlayerWeapon boss_weapon; // the boss's secondary weapon
     [SerializeField] public Megaphone megaphone;
+    [SerializeField] public LocalMotionSicknessHelper localMotionSicknessHelper;
 
     [SerializeField] public Camera[] highlightCameras;
     [SerializeField] public GameObject ui_spectatorcanvas;
@@ -88,6 +89,7 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized] public bool[] highlight_cameras_active;
     [NonSerialized] public bool[] highlight_cameras_snapped;
     [NonSerialized] public double[] highlight_cameras_ms;
+    [NonSerialized] public bool highlight_cameras_resetting = false;
 
     [SerializeField] public UnityEngine.UI.Button ui_round_start_button;
     [SerializeField] public UnityEngine.UI.Button ui_round_reset_button;
@@ -372,6 +374,9 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized] public int global_harmnumber_cnt = 0;
     [NonSerialized] public int global_lowest_available_harmnumber_index = 0;
 
+    [NonSerialized] public Color32 COLOR_CHARGE = new Color32(196, 227, 255, 255);
+    [NonSerialized] public Color32 COLOR_COOLDOWN = new Color32(170, 65, 65, 255);
+
     // -- Initialization --
     private void Start()
     {
@@ -550,10 +555,10 @@ public class GameController : GlobalHelperFunctions
         // Local handling
         double server_ms = Networking.GetServerTimeInSeconds();
         round_timer = (float)Networking.CalculateServerDeltaTime(server_ms, round_start_ms);
-        room_ready_txt.text = "Game State: " + round_state.ToString()
+        /*room_ready_txt.text = "Game State: " + round_state.ToString()
             + "\nPlayers: " + ply_tracking_dict_values_str
             + room_ready_status_text
-            ;
+            ;*/
 
         if (round_state == (int)round_state_name.Queued)
         {
@@ -582,18 +587,20 @@ public class GameController : GlobalHelperFunctions
         OOBFailsafe();
 
         double server_ms = Networking.GetServerTimeInSeconds();
-        float photo_timer = 0.0f;
+        float photo_timer = 0.0f; byte reset_count = 0;
         for (int i = 0; i < highlightCameras.Length; i++)
         {
             photo_timer = (float)Networking.CalculateServerDeltaTime(server_ms, highlight_cameras_ms[i]);
             if (highlight_cameras_active[i] && photo_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
             {
-                highlight_cameras_snapped[i] = true;
+                highlight_cameras_snapped[i] = !highlight_cameras_resetting;
                 highlightCameras[i].gameObject.SetActive(false);
                 highlight_cameras_active[i] = false;
                 highlight_cameras_waiting_on_sync[i] = false; // We received the network event, thus we are no longer waiting on sync (active & snapped instead do the work)
             }
+            if (highlight_cameras_resetting && !highlight_cameras_active[i] && !highlight_cameras_waiting_on_sync[i]) { reset_count++; }
         }
+        if (highlight_cameras_resetting && reset_count >= highlight_cameras_active.Length) { highlight_cameras_resetting = false; }
 
         // UI handling
         if (local_uiplytoself != null)
@@ -736,7 +743,16 @@ public class GameController : GlobalHelperFunctions
             // Photo Highlights
             if (Networking.IsOwner(gameObject))
             {
-                if (Mathf.RoundToInt(round_length - TimeLeft) >= 30 
+                if (round_length - TimeLeft >= 3
+                    && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 0
+                    && highlight_cameras_waiting_on_sync != null && highlight_cameras_waiting_on_sync.Length > 0
+                    && highlight_cameras_snapped[2] == false && highlight_cameras_waiting_on_sync[0] == false)
+                {
+                    // First 3 seconds
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 0, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f);
+                    highlight_cameras_waiting_on_sync[2] = true;
+                }
+                else if (round_length - TimeLeft >= 30 
                     && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 2 
                     && highlight_cameras_waiting_on_sync != null && highlight_cameras_waiting_on_sync.Length > 2 
                     && highlight_cameras_snapped[2] == false && highlight_cameras_waiting_on_sync[2] == false)
@@ -745,7 +761,7 @@ public class GameController : GlobalHelperFunctions
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 2, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f);
                                         highlight_cameras_waiting_on_sync[2] = true;
                 }
-                else if (Mathf.RoundToInt(TimeLeft) <= Mathf.RoundToInt(round_length / 2.0f) 
+                else if (TimeLeft <= Mathf.RoundToInt(round_length / 2.0f) 
                     && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 3 
                     && highlight_cameras_waiting_on_sync != null && highlight_cameras_waiting_on_sync.Length > 3
                     && highlight_cameras_snapped[3] == false && highlight_cameras_waiting_on_sync[3] == false)
@@ -754,7 +770,7 @@ public class GameController : GlobalHelperFunctions
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 3, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f);
                     highlight_cameras_waiting_on_sync[3] = true;
                 }
-                else if (Mathf.RoundToInt(TimeLeft) <= 30
+                else if (TimeLeft <= 30
                     && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 4 
                     && highlight_cameras_waiting_on_sync != null && highlight_cameras_waiting_on_sync.Length > 4 
                     && highlight_cameras_snapped[4] == false && highlight_cameras_waiting_on_sync[4] == false)
@@ -884,6 +900,7 @@ public class GameController : GlobalHelperFunctions
         //    );
        
     }
+
 
     [NetworkCallable]
     public void CheckForZombigs(int exclude_player_id)
@@ -1328,24 +1345,29 @@ public class GameController : GlobalHelperFunctions
         {
             goal_input_a = 3;
             ui_round_length_input.text = "240";
+            ui_adv_option_respawn_duration.text = "3";
         }
         else if (option_gamemode == (int)gamemode_name.Clash)
         {
             goal_input_a = 3 + Mathf.FloorToInt((float)ply_count / (float)3.0f);
             if (option_teamplay) { goal_input_a *= Mathf.Max(1, Mathf.RoundToInt(ply_count / team_count)); }
             ui_round_length_input.text = "240";
+            ui_adv_option_respawn_duration.text = "3";
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
             goal_input_a = Mathf.FloorToInt((float)Mathf.Pow((float)ply_count, 1.5f));
             goal_input_b = 2 + Mathf.FloorToInt((float)ply_count / (float)10.0f);
             ui_round_length_input.text = "300";
+            ui_adv_option_respawn_duration.text = "3";
         }
         else if (option_gamemode == (int)gamemode_name.Infection)
         {
             goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)8.0f);
             ui_round_length_input.text = "180";
             ui_round_length_toggle.isOn = true;
+            ui_adv_option_respawn_duration.text = "3";
+
         }
         else if (option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
@@ -1354,12 +1376,14 @@ public class GameController : GlobalHelperFunctions
             goal_input_b = 6;
             ui_round_length_input.text = "1200";
             ui_round_length_toggle.isOn = false;
+            ui_adv_option_respawn_duration.text = "6"; // Respawn duration will be higher on KOTH by default
         }
         else if (option_gamemode == (int)gamemode_name.FittingIn)
         {
             goal_input_a = 400;
             goal_input_b = 100;
             ui_round_length_input.text = "240";
+            ui_adv_option_respawn_duration.text = "3";
         }
         ui_round_option_goal_input_a.text = goal_input_a.ToString();
         ui_round_option_goal_input_b.text = goal_input_b.ToString();
@@ -1617,12 +1641,10 @@ public class GameController : GlobalHelperFunctions
             plyLandingCircleObj.SetActive(true);
             plyUIMessagesToSelf.SetActive(true);
             plyPPPCanvas.SetActive(true);
-            ply_object_plyhitbox[ply_owners_cnt].ToggleHitbox(false);
-            for (int i = 0; i < ply_owners_cnt; i++)
+            if (ply_object_plyhitbox != null && ply_owners_cnt < ply_object_plyhitbox.Length && ply_owners_cnt >= 0)
             {
-                if (ply_object_plyhitbox[i] != null) { ply_object_plyhitbox[i].gameObject.SetActive(ply_object_plyhitbox[i].network_active); }
-                if (ply_object_plyweapon[i] != null) { ply_object_plyweapon[i].gameObject.SetActive(ply_object_plyweapon[i].network_active); }
-                if (ply_object_secondaryweapon[i] != null) { ply_object_secondaryweapon[i].gameObject.SetActive(ply_object_secondaryweapon[i].network_active); }
+                ply_object_plyhitbox[ply_owners_cnt].ToggleHitbox(false);
+                //CheckPlyObjsActive();
             }
         }
         else
@@ -1822,12 +1844,12 @@ public class GameController : GlobalHelperFunctions
 
         map_selected_local = map_selected;
 
-        if (mapscript_list[map_selected].voice_distance >= 0)
-        {
-            voice_distance_near = mapscript_list[map_selected].voice_distance;
-            voice_distance_far = (1 + voice_distance_near) * 25;
+        //if (mapscript_list[map_selected].voice_distance >= 0)
+        //{
+            //voice_distance_near = mapscript_list[map_selected].voice_distance;
+            //voice_distance_far = (1 + voice_distance_near) * 25;
             AdjustVoiceRange();
-        }
+        //}
 
         mapscript_list[map_selected].room_spectator_area.SetActive(false);
 
@@ -1946,6 +1968,12 @@ public class GameController : GlobalHelperFunctions
                     plyWeapon.weapon_temp_ammo = -1;
                     plyWeapon.weapon_temp_duration = -1;
                 }
+                secondaryWeapon.weapon_type = secondaryWeapon.weapon_type_default;
+                if (secondaryWeapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+                {
+                    secondaryWeapon.weapon_temp_ammo = -1;
+                    secondaryWeapon.weapon_temp_duration = -1;
+                }
             }
             plyWeapon.UpdateStatsFromWeaponType();
             if (secondaryWeapon != null && secondaryWeapon.gameObject.activeInHierarchy) { secondaryWeapon.UpdateStatsFromWeaponType(); }
@@ -2040,14 +2068,11 @@ public class GameController : GlobalHelperFunctions
         // Reset the highlight cameras 
         for (int i = 0; i < highlight_cameras_snapped.Length; i++)
         {
+            highlight_cameras_resetting = true;
             highlight_cameras_active[i] = false;
             highlight_cameras_snapped[i] = false;
             // Ensure they don't have photos from the previous round and that they're reset after
             SnapHighlightPhoto(i, Vector3.zero, Quaternion.identity, Vector3.zero, Vector3.zero, false, 1.0f);
-            highlight_cameras_active[i] = false;
-            highlight_cameras_snapped[i] = false;
-            highlight_cameras_waiting_on_sync[i] = false;
-            highlightCameras[i].gameObject.SetActive(false);
         }
 
         room_spectator_portal.SetActive(true);
@@ -2141,15 +2166,33 @@ public class GameController : GlobalHelperFunctions
                 if (player == null) { continue; }
                 var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
                 var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
+                var plySecondaryWeaponObj = FindPlayerOwnedObject(player, "SecondaryWeapon");
+                
                 plyWeaponObj.SetActive(true);
                 plyHitboxObj.SetActive(true);
+                if (plySecondaryWeaponObj != null && plySecondaryWeaponObj.GetComponent<PlayerWeapon>() != null)
+                {
+                    bool is_boss = plyWeaponObj.GetComponent<PlayerWeapon>().weapon_type == (int)weapon_type_name.BossGlove || (option_gamemode == (int)gamemode_name.BossBash && GetGlobalTeam(player.playerId) == 1);
+                    if (is_boss) { plySecondaryWeaponObj.SetActive(true); }
+                    else { plySecondaryWeaponObj.SetActive(false); }
+                }
+
             }
         }
-
-        if (Networking.IsOwner(gameObject)) {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 0, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f); 
-        }
+        //CheckPlyObjsActive();
     }
+
+    /*public void CheckPlyObjsActive()
+    {
+        for (int i = 0; i < ply_owners_cnt; i++)
+        {
+            if (ply_object_owners == null || ply_object_owners.Length < i) { return; }
+            if (ply_object_owners[i] == Networking.LocalPlayer.playerId) { continue; }
+            if (ply_object_plyhitbox != null && i < ply_object_plyhitbox.Length && ply_object_plyhitbox[i] != null) { ply_object_plyhitbox[i].gameObject.SetActive(ply_object_plyhitbox[i].network_active); }
+            if (ply_object_plyweapon != null && i < ply_object_plyweapon.Length && ply_object_plyweapon[i] != null) { ply_object_plyweapon[i].gameObject.SetActive(ply_object_plyweapon[i].network_active); }
+            if (ply_object_secondaryweapon != null && i < ply_object_secondaryweapon.Length && ply_object_secondaryweapon[i] != null) { ply_object_secondaryweapon[i].gameObject.SetActive(ply_object_secondaryweapon[i].network_active); }
+        }
+    }*/
 
     [NetworkCallable]
     public void UpdateLargestPlayer(float in_ply_scale)
@@ -2200,7 +2243,7 @@ public class GameController : GlobalHelperFunctions
                 else
                 {
                     player.SetVoiceDistanceNear(0); // default 0
-                    player.SetVoiceDistanceFar(0); // default 25
+                    player.SetVoiceDistanceFar(1); // default 25
                     //player.SetVoiceGain(0); //default 15
                 }
             }
@@ -2220,7 +2263,7 @@ public class GameController : GlobalHelperFunctions
                 player.SetVoiceDistanceFar(voice_distance_far * largest_voice_scale); // default 25
                 //player.SetVoiceGain(15); //default 15
             }
-            UnityEngine.Debug.Log("[MEGAPHONE_TEST]: distanceNear = " + (voice_distance_near * largest_voice_scale) + "; distanceFar = " + (voice_distance_far * largest_voice_scale));
+            //UnityEngine.Debug.Log("[MEGAPHONE_TEST]: distanceNear = " + (voice_distance_near * largest_voice_scale) + "; distanceFar = " + (voice_distance_far * largest_voice_scale));
 
         }
         local_megaphone_active = megaphone_active;

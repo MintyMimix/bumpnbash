@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Android;
+using UnityEngine.Playables;
 using UnityEngine.ProBuilder;
 using UnityEngine.UIElements;
 using VRC.SDK3.Components;
@@ -32,6 +33,8 @@ public class PlayerWeapon : UdonSharpBehaviour
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponfire; // NOTE: Corresponds to weapon_type
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponcharge; // NOTE: Corresponds to weapon_type
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponcontact; // NOTE: Corresponds to weapon_type
+    [SerializeField] public UnityEngine.UI.Image ui_cooldown_fg;
+    [SerializeField] public TMPro.TMP_Text ui_cooldown_txt;
     // Weapon type
     [NonSerialized][UdonSynced] public int weapon_type;
     [NonSerialized] public int local_weapon_type = -1;
@@ -79,6 +82,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float[][] all_weapon_stats;
     [NonSerialized] private float cached_scale = -1.0f;
     [NonSerialized] private int cached_team = -1;
+    [NonSerialized] private bool cached_teamplay = false;
 
     private void Start()
     {
@@ -150,8 +154,15 @@ public class PlayerWeapon : UdonSharpBehaviour
     public override void OnDeserialization()
     {
         if (local_weapon_type != weapon_type || local_extra_data != weapon_extra_data) { UpdateStatsFromWeaponType(); }
-        if (owner_attributes != null && cached_team != owner_attributes.ply_team) { SetTeamColor();  }
+        if ((owner_attributes != null && cached_team != owner_attributes.ply_team)
+            || (gameController != null && cached_teamplay != gameController.option_teamplay))
+        { SetTeamColor();  }
         gameObject.SetActive(network_active);
+
+        if (!Networking.IsOwner(gameObject))
+        {
+            if (ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
+        }
     }
 
     private void Update()
@@ -168,25 +179,38 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (owner_attributes == null) { return; }
 
         // Weapon use timer
+        bool koth_respawning = (owner_attributes.ply_state == (int)player_state_name.Respawning && gameController.option_gamemode == (int)gamemode_name.KingOfTheHill);
         if (use_timer < use_cooldown)
         {
             use_timer += Time.deltaTime;
             use_ready = false;
+            if (Networking.IsOwner(gameObject))
+            {
+                if (!ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+                ui_cooldown_fg.fillAmount = 1.0f - (use_timer / use_cooldown);
+                ui_cooldown_txt.text = string.Format("{0:F1}", use_cooldown - use_timer);
+                if (ui_cooldown_fg.color != gameController.COLOR_COOLDOWN) { ui_cooldown_fg.color = gameController.COLOR_COOLDOWN; }
+            }
         }
-        else if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !use_ready)
+        else if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !koth_respawning && !use_ready)
         {
             animate_active = false;
             use_ready = true;
             ToggleParticle(true);
+            if (ui_cooldown_fg.gameObject.activeInHierarchy && Networking.IsOwner(gameObject)) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
             // For bombs, we use the charge sound as the "ready to be thrown again" SFX, but only if we are the owner
             if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
             { gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f); }
         }
-        else if (!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && use_ready)
+        else if ((!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) || koth_respawning) && use_ready)
         {
             animate_active = false;
             use_ready = false;
             ToggleParticle(false);
+            if (!ui_cooldown_fg.gameObject.activeInHierarchy && Networking.IsOwner(gameObject)) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+            if (ui_cooldown_fg.color != gameController.COLOR_COOLDOWN) { ui_cooldown_fg.color = gameController.COLOR_COOLDOWN; }
+            ui_cooldown_fg.fillAmount = 1.0f;
+            ui_cooldown_txt.text = "X";
         }
 
         // Animation variables
@@ -238,6 +262,14 @@ public class PlayerWeapon : UdonSharpBehaviour
                 weapon_is_charging = false;
                 weapon_charge_timer = 0.0f;
                 if (weapon_type == (int)weapon_type_name.SuperLaser) { animate_state = 2; }
+            }
+
+            if (Networking.IsOwner(gameObject))
+            {
+                if (!ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+                ui_cooldown_fg.fillAmount = (float)(weapon_charge_timer / weapon_charge_duration);
+                ui_cooldown_txt.text = string.Format("{0:F1}", weapon_charge_duration - weapon_charge_timer);
+                if (ui_cooldown_fg.color != gameController.COLOR_CHARGE) { ui_cooldown_fg.color = gameController.COLOR_CHARGE; }
             }
         }
     }
@@ -389,6 +421,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (pickup_component != null && pickup_component.IsHeld) { pickup_component.Drop(); }
         network_active = toggle;
         gameObject.SetActive(toggle);
+        //gameController.CheckPlyObjsActive();
     }
 
     public override void OnPickup()
@@ -397,7 +430,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (pickup_component != null && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             pickup_component.pickupable = false;
-            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
+            //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
         }
         pickup_rb.velocity = Vector3.zero;
         pickup_rb.angularVelocity = Vector3.zero;
@@ -412,8 +445,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (pickup_component != null && Networking.IsOwner(gameObject))
         {
             pickup_component.pickupable = true;
-            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
-            { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
+            //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
+            //{ gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
         }
     }
 
@@ -442,12 +475,13 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 waiting_for_toss = true;
                 if (pickup_rb != null) { pickup_rb.useGravity = true; }
-                if (!Networking.GetOwner(gameObject).IsUserInVR())
-                {
-                    // If we are a desktop user, just have it left click toss after the cooldown
-                    TossWeapon();
-                }
+                //if (!Networking.GetOwner(gameObject).IsUserInVR())
+                //{
+                // If we are a desktop user or just want an accessible means in VR, just have it left click toss after the cooldown
+                //  TossWeapon();
+                //}
             }
+            TossWeapon();
             return;
         }
         else if (weapon_type == (int)weapon_type_name.SuperLaser)
@@ -459,6 +493,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                 weapon_charge_timer = 0.0f;
                 weapon_is_charging = true;
                 animate_state = 1;
+                if (Networking.IsOwner(gameObject) && use_ready && ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false);  }
             }
             return;
         }
@@ -995,6 +1030,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
 
         if (owner_attributes != null) { cached_team = owner_attributes.ply_team; }
+        if (gameController != null) { cached_teamplay = gameController.option_teamplay; }
     }
 
     private float[] SetupWeaponStat(int weapon_in_type)

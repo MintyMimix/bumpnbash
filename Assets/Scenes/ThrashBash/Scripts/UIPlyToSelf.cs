@@ -17,6 +17,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
     [SerializeField] public RectTransform PTSCanvas;
+    [SerializeField] public RectTransform PTSTextStackParent;
     [SerializeField] public RectTransform[] PTSTextStack;
     [SerializeField] public TMP_Text[] PTSTextStack_Label;
     [SerializeField] public GameObject PTSTopPanel;
@@ -43,6 +44,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public RectTransform PTSTeamTransform;
     [SerializeField] public UnityEngine.UI.Image PTSTeamCBSpriteImage;
     [SerializeField] public TMP_Text PTSPlacementText;
+
+    [SerializeField] public Transform PTSWeaponPanel;
     [SerializeField] public UnityEngine.UI.Image PTSWeaponSprite;
     [SerializeField] public TMP_Text PTSWeaponText;
     [SerializeField] public UnityEngine.UI.Image PTSChargeMeterFGSprite;
@@ -108,11 +111,21 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public int gamevars_local_team_members_alive;
     [NonSerialized] public byte gamevars_local_players_alive;
     [NonSerialized] public byte gamevars_local_teams_alive;
-    
+
+    // Stored positions for inverted UI arrangement
+    [SerializeField] private Vector2 stored_local_sizedelta_ptscanvas;
+    [SerializeField] private Vector3 stored_local_pos_ptsweaponpanel;
+    [SerializeField] private Vector3 stored_local_pos_ptscapturepanel;
+    [SerializeField] private Vector3 stored_local_pos_ptspoweruppanel;
+    [SerializeField] private Vector3 stored_local_pos_ptstoppanel;
+    [SerializeField] private Vector3 stored_local_pos_ptstextstackparent;
+    [SerializeField] private Vector3[] stored_local_pos_ptstextstack;
+
     // Cached stats for UI update referencing
     [NonSerialized] public float cached_scale = -1.0f; 
     [NonSerialized] public float cached_atk = -1.0f;
     [NonSerialized] public float cached_def = -1.0f;
+
 
     void Start()
     {
@@ -123,6 +136,38 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         SetRenderQueueFromParent(transform);
+
+        stored_local_sizedelta_ptscanvas = PTSCanvas.sizeDelta;
+        stored_local_pos_ptsweaponpanel = PTSWeaponPanel.localPosition;
+        stored_local_pos_ptscapturepanel = PTSCapturePanel.localPosition;
+        stored_local_pos_ptspoweruppanel = PTSPowerupPanel.localPosition;
+        stored_local_pos_ptstoppanel = PTSTopPanel.transform.localPosition;
+        stored_local_pos_ptstextstackparent = PTSTextStackParent.localPosition;
+        stored_local_pos_ptstextstack = new Vector3[PTSTextStack.Length];
+        for (int i = 0; i < text_queue_limited_lines; i++)
+        {
+            //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
+            float size_delta = PTSCanvas.sizeDelta.y / 10.0f;
+            float half_line = (text_queue_limited_lines / 2);
+            if (i < half_line)
+            {
+                PTSTextStack[i].localPosition = new Vector3(
+                    PTSTextStack[i].localPosition.x
+                    , ((half_line - i) * size_delta) - (size_delta / 2)
+                    , PTSTextStack[i].localPosition.z);
+            }
+            else
+            {
+                PTSTextStack[i].localPosition = new Vector3(
+                    PTSTextStack[i].localPosition.x
+                    , (-(i - half_line) * size_delta) - (size_delta / 2)
+                    , PTSTextStack[i].localPosition.z);
+            }
+        }
+        for (int i = 0; i < PTSTextStack.Length; i++)
+        {
+            stored_local_pos_ptstextstack[i] = PTSTextStack[i].transform.localPosition;
+        }
 
         text_queue_limited_timers = new float[text_queue_limited_lines];
         for (int t = 0; t < text_queue_limited_timers.Length; t++)
@@ -833,26 +878,15 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSWeaponText.text = weaponTxt;
             if (!PTSWeaponText.gameObject.activeInHierarchy) { PTSWeaponText.gameObject.SetActive(true); }
             if (!PTSWeaponSprite.gameObject.activeInHierarchy) { PTSWeaponSprite.gameObject.SetActive(true); }
-
-            if (PTSChargeMeterFGSprite != null && PTSChargeMeterBGSprite != null)
-            {
-                PTSChargeMeterFGSprite.gameObject.SetActive(gameController.local_plyweapon.weapon_is_charging);
-                PTSChargeMeterBGSprite.gameObject.SetActive(gameController.local_plyweapon.weapon_is_charging);
-                float offsetMax = PTSChargeMeterBGSprite.rectTransform.rect.width;
-                float offsetPct = 0.0f;
-                if (gameController.local_plyweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(gameController.local_plyweapon.weapon_charge_timer / gameController.local_plyweapon.weapon_charge_duration); }
-                PTSChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSChargeMeterFGSprite.rectTransform.offsetMax.y);
-            }
         }
         else
         {
             if (PTSWeaponText != null && PTSWeaponText.gameObject.activeInHierarchy) { PTSWeaponText.text = "";  PTSWeaponText.gameObject.SetActive(false); }
             if (PTSWeaponSprite != null && PTSWeaponSprite.gameObject.activeInHierarchy) { PTSWeaponSprite.gameObject.SetActive(false); }
-            if (PTSChargeMeterFGSprite != null && PTSChargeMeterFGSprite.gameObject.activeInHierarchy) { PTSChargeMeterFGSprite.gameObject.SetActive(false); }
-            if (PTSChargeMeterBGSprite != null && PTSChargeMeterBGSprite.gameObject.activeInHierarchy) { PTSChargeMeterBGSprite.gameObject.SetActive(false); }
         }
 
         UI_Secondary();
+        UI_Charge();
     }
 
     public void UI_Secondary()
@@ -886,23 +920,66 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSSecondaryWeaponText.text = weaponTxt;
             if (!PTSSecondaryWeaponText.gameObject.activeInHierarchy) { PTSSecondaryWeaponText.gameObject.SetActive(true); }
             if (!PTSSecondaryWeaponSprite.gameObject.activeInHierarchy) { PTSSecondaryWeaponSprite.gameObject.SetActive(true); }
-
-            if (PTSSecondaryChargeMeterFGSprite != null && PTSSecondaryChargeMeterBGSprite != null)
-            {
-                PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging);
-                PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging);
-                float offsetMax = PTSSecondaryChargeMeterBGSprite.rectTransform.rect.width;
-                float offsetPct = 0.0f;
-                if (gameController.local_secondaryweapon.weapon_charge_duration > 0.0f) { offsetPct = System.Convert.ToSingle(gameController.local_secondaryweapon.weapon_charge_timer / gameController.local_secondaryweapon.weapon_charge_duration); }
-                PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax.y);
-            }
         }
         else
         {
             if (PTSSecondaryWeaponText != null && PTSSecondaryWeaponText.gameObject.activeInHierarchy) { PTSSecondaryWeaponText.text = ""; PTSSecondaryWeaponText.gameObject.SetActive(false); }
             if (PTSSecondaryWeaponSprite != null && PTSSecondaryWeaponSprite.gameObject.activeInHierarchy) { PTSSecondaryWeaponSprite.gameObject.SetActive(false); }
-            if (PTSSecondaryChargeMeterFGSprite != null && PTSSecondaryChargeMeterFGSprite.gameObject.activeInHierarchy) { PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(false); }
-            if (PTSSecondaryChargeMeterBGSprite != null && PTSSecondaryChargeMeterBGSprite.gameObject.activeInHierarchy) { PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(false); }
+        }
+        UI_Charge_Secondary();
+    }
+
+    public void UI_Charge()
+    {
+        if (PTSChargeMeterFGSprite != null && PTSChargeMeterBGSprite != null && gameController.local_plyweapon != null && gameController.local_plyweapon.gameObject.activeInHierarchy)
+        {
+            PTSChargeMeterFGSprite.gameObject.SetActive(gameController.local_plyweapon.weapon_is_charging || (gameController.local_plyweapon.use_timer < gameController.local_plyweapon.use_cooldown));
+            PTSChargeMeterBGSprite.gameObject.SetActive(gameController.local_plyweapon.weapon_is_charging || (gameController.local_plyweapon.use_timer < gameController.local_plyweapon.use_cooldown));
+            float offsetMax = PTSChargeMeterBGSprite.rectTransform.rect.width;
+            float offsetPct = 0.0f;
+            if (gameController.local_plyweapon.weapon_is_charging && gameController.local_plyweapon.weapon_charge_duration > 0.0f) 
+            { 
+                offsetPct = System.Convert.ToSingle(gameController.local_plyweapon.weapon_charge_timer / gameController.local_plyweapon.weapon_charge_duration);
+                if (PTSChargeMeterFGSprite.color != gameController.COLOR_CHARGE) { PTSChargeMeterFGSprite.color = gameController.COLOR_CHARGE; }
+            }
+            else if (gameController.local_plyweapon.use_timer < gameController.local_plyweapon.use_cooldown && gameController.local_plyweapon.use_cooldown > 0.0f) 
+            { 
+                offsetPct = 1.0f - System.Convert.ToSingle(gameController.local_plyweapon.use_timer / gameController.local_plyweapon.use_cooldown);
+                if (PTSChargeMeterFGSprite.color != gameController.COLOR_COOLDOWN) { PTSChargeMeterFGSprite.color = gameController.COLOR_COOLDOWN; }
+            }
+            PTSChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSChargeMeterFGSprite.rectTransform.offsetMax.y);
+        }
+        else
+        {
+            PTSChargeMeterFGSprite.gameObject.SetActive(false);
+            PTSChargeMeterBGSprite.gameObject.SetActive(false);
+        }
+    }
+
+    public void UI_Charge_Secondary()
+    {
+        if (PTSSecondaryChargeMeterFGSprite != null && PTSSecondaryChargeMeterBGSprite != null && gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy)
+        {
+            PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging || (gameController.local_secondaryweapon.use_timer < gameController.local_secondaryweapon.use_cooldown));
+            PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(gameController.local_secondaryweapon.weapon_is_charging || (gameController.local_secondaryweapon.use_timer < gameController.local_secondaryweapon.use_cooldown));
+            float offsetMax = PTSSecondaryChargeMeterBGSprite.rectTransform.rect.width;
+            float offsetPct = 0.0f;
+            if (gameController.local_secondaryweapon.weapon_is_charging && gameController.local_secondaryweapon.weapon_charge_duration > 0.0f) 
+            { 
+                offsetPct = System.Convert.ToSingle(gameController.local_secondaryweapon.weapon_charge_timer / gameController.local_secondaryweapon.weapon_charge_duration);
+                if (PTSSecondaryChargeMeterFGSprite.color != gameController.COLOR_CHARGE) { PTSSecondaryChargeMeterFGSprite.color = gameController.COLOR_CHARGE; }
+            }
+            else if (gameController.local_secondaryweapon.use_timer < gameController.local_secondaryweapon.use_cooldown && gameController.local_secondaryweapon.use_cooldown > 0.0f) 
+            { 
+                offsetPct = 1.0f - System.Convert.ToSingle(gameController.local_secondaryweapon.use_timer / gameController.local_secondaryweapon.use_cooldown);
+                if (PTSSecondaryChargeMeterFGSprite.color != gameController.COLOR_COOLDOWN) { PTSSecondaryChargeMeterFGSprite.color = gameController.COLOR_COOLDOWN;  }
+            }
+            PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSSecondaryChargeMeterFGSprite.rectTransform.offsetMax.y);
+        }
+        else
+        {
+            PTSSecondaryChargeMeterFGSprite.gameObject.SetActive(false);
+            PTSSecondaryChargeMeterBGSprite.gameObject.SetActive(false);
         }
     }
 
@@ -1104,7 +1181,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }*/
 
         Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
-        Vector3 posFinal = posOut; //+ velAdd;
+        Vector3 VROffset = new Vector3(0.0f, -0.1f, 0.0f) * GlobalHelperFunctions.BoolToInt(Networking.LocalPlayer.IsUserInVR());
+        Vector3 posFinal = posOut + VROffset; //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
             posFinal
@@ -1117,8 +1195,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             Quaternion wrist_rot;
             float offset_height = 0.10f * playerAttributes.ply_scale;
             if (gameController != null && gameController.local_ppp_options != null) { offset_height *= gameController.local_ppp_options.ui_separation; }
-            Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
             Quaternion offset_rot = Quaternion.Euler(180.0f, -55.0f, 0.0f);
+            Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
+            Vector3 distance_pos = new Vector3(0.0f, 0.0f, 0.20f * (distanceUI - 1.0f));
             if (useWrist == 1) 
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
@@ -1132,7 +1211,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             }
 
             transform.SetPositionAndRotation(
-                wrist_pos + (wrist_rot * offset_rot * offset_pos) 
+                wrist_pos + (wrist_rot * offset_rot * offset_pos) + (wrist_rot * offset_rot * distance_pos)
                 , wrist_rot * offset_rot
                 );
 
@@ -1337,6 +1416,77 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 component.material.renderQueue = (int)RenderQueue.Overlay;
             }
         }*/
+    }
+
+    public void InvertUI()
+    {
+        if (gameController == null || gameController.local_ppp_options == null) { return; }
+
+        Vector2 hold_sizedelta = PTSCanvas.sizeDelta;
+        PTSCanvas.sizeDelta = stored_local_sizedelta_ptscanvas;
+        if (gameController.local_ppp_options.ui_inverted)
+        {
+            // Bottom stretch
+            Vector3 working_pos = stored_local_pos_ptstoppanel;
+            ((RectTransform)PTSTopPanel.transform).anchorMin = new Vector2(0, 0);
+            ((RectTransform)PTSTopPanel.transform).anchorMax = new Vector2(1, 0);
+            working_pos.y = -working_pos.y;
+            PTSTopPanel.transform.localPosition = working_pos;
+            // Top stretch
+            working_pos = stored_local_pos_ptspoweruppanel;
+            ((RectTransform)PTSPowerupPanel).anchorMin = new Vector2(0, 1);
+            ((RectTransform)PTSPowerupPanel).anchorMax = new Vector2(1, 1);
+            working_pos.y = -working_pos.y;
+            PTSPowerupPanel.localPosition = working_pos;
+            // Offset all elements by the inverse of their Y
+            working_pos = stored_local_pos_ptsweaponpanel;
+            //((RectTransform)PTSWeaponPanel).anchorMin = new Vector2(0, 0.5f);
+            //((RectTransform)PTSWeaponPanel).anchorMax = new Vector2(0, 0.5f);
+            working_pos.y = -working_pos.y;
+            PTSWeaponPanel.localPosition = working_pos;
+            // Right position
+            working_pos = stored_local_pos_ptscapturepanel;
+            //((RectTransform)PTSWeaponPanel).anchorMin = new Vector2(1, 0.5f);
+            //((RectTransform)PTSWeaponPanel).anchorMax = new Vector2(1, 0.5f);
+            working_pos.y = -working_pos.y;
+            PTSCapturePanel.localPosition = working_pos;
+            // Middle with offset of bottom
+            working_pos = stored_local_pos_ptstextstackparent;
+            working_pos.y = -working_pos.y;
+            PTSTextStackParent.localPosition = working_pos;
+            for (int i = 0; i < PTSTextStack.Length; i++)
+            {
+                // Invert the order of the text stack
+                PTSTextStack[i].transform.localPosition = stored_local_pos_ptstextstack[PTSTextStack.Length - 1 - i];
+            }
+        }
+        else
+        {
+            // Top stretch
+            ((RectTransform)PTSTopPanel.transform).anchorMin = new Vector2(0, 1);
+            ((RectTransform)PTSTopPanel.transform).anchorMax = new Vector2(1, 1);
+            PTSTopPanel.transform.localPosition = stored_local_pos_ptstoppanel;
+            // Bottom stretch
+            ((RectTransform)PTSPowerupPanel).anchorMin = new Vector2(0, 0);
+            ((RectTransform)PTSPowerupPanel).anchorMax = new Vector2(1, 0);
+            PTSPowerupPanel.localPosition = stored_local_pos_ptspoweruppanel;
+            // Left position
+            //((RectTransform)PTSWeaponPanel).anchorMin = new Vector2(0, 0.5f);
+            //((RectTransform)PTSWeaponPanel).anchorMax = new Vector2(0, 0.5f);
+            PTSWeaponPanel.localPosition = stored_local_pos_ptsweaponpanel;
+            // Right position
+            //RectTransform)PTSWeaponPanel).anchorMin = new Vector2(1, 0.5f);
+            //((RectTransform)PTSWeaponPanel).anchorMax = new Vector2(1, 0.5f);
+            PTSCapturePanel.localPosition = stored_local_pos_ptscapturepanel;
+            // Middle with offset of bottom
+            PTSTextStackParent.localPosition = stored_local_pos_ptstextstackparent;
+            for (int i = 0; i < PTSTextStack.Length; i++)
+            {
+                PTSTextStack[i].transform.localPosition = stored_local_pos_ptstextstack[i];
+            }
+        }
+        PTSCanvas.sizeDelta = hold_sizedelta;
+        SetUIForward();
     }
 
 }

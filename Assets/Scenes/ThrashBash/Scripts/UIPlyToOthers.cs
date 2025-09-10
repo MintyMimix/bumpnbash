@@ -76,6 +76,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
         if (gameController.local_uiplytoself != null && gameController.local_uiplytoself.ui_check_gamevars_timer == 0.0f) // Ditto for UIPlyToSelf's game variables refresh rate
         {
             UI_Lives();
+            UI_Victory();
         }
     }
     
@@ -266,7 +267,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
             scaleUI *= ((0.0f + ppp_options.ui_other_scale) / 1.0f);
             posUI *= ((1.5f + ppp_options.ui_other_scale) / 2.5f);
         }
-        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
+        //2.6f * posUI
+        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
     }
 
