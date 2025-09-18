@@ -9,11 +9,6 @@ using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public enum language_type_name
-{
-    English, French, Japanese, SpanishLatin, SpanishEurope
-}
-
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class PPP_Options : UdonSharpBehaviour
 {
@@ -21,6 +16,8 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float sync_timer = 0.0f;
     [NonSerialized] public bool should_sync = false;
     [SerializeField] public GameController gameController;
+    [SerializeField] public DebuggerPanel debuggerPanel;
+    [SerializeField] public Localizer localizer;
     [NonSerialized] public GameObject harmTester;
     [NonSerialized] public Vector3 canvas_pos_init;
     [NonSerialized] public Quaternion canvas_rot_init;
@@ -65,6 +62,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uisoundtext;
     [SerializeField] public TMP_Text ui_uivovolumetext;
     [SerializeField] public TMP_Dropdown ui_uivotype_dropdown;
+    [SerializeField] public TMP_Dropdown ui_musicoverride_dropdown;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_a_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_b_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_c_toggle;
@@ -85,11 +83,11 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_other_scale = 1.0f;
     [NonSerialized] public bool ui_inverted = false;
     [NonSerialized] public bool waiting_on_playerdata = true;
+    [NonSerialized] public int music_override = -1;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
     [NonSerialized] public float voiceover_volume = 1.0f;
     [SerializeField] public int voiceover_type = 0;
-    [NonSerialized] public int language_type = (int)language_type_name.English;
     [NonSerialized] public bool vo_pref_a = true;
     [NonSerialized] public bool vo_pref_b = true;
     [NonSerialized] public bool vo_pref_c = true;
@@ -116,6 +114,14 @@ public class PPP_Options : UdonSharpBehaviour
         }
         ui_colorblind_dropdown.ClearOptions();
         ui_colorblind_dropdown.AddOptions(ui_colorblind_dropdown_names);
+        ui_musicoverride_dropdown.ClearOptions();
+        string[] music_override_names = new string[gameController.snd_override_music_names.Length + 1];
+        music_override_names[0] = "(Default)";
+        for (int i = 0; i < gameController.snd_override_music_names.Length; i++)
+        {
+            music_override_names[i + 1] = gameController.snd_override_music_names[i];
+        }
+        ui_musicoverride_dropdown.AddOptions(music_override_names);
 
         canvas_pos_init = transform.position;
         canvas_rot_init = transform.rotation;
@@ -175,8 +181,8 @@ public class PPP_Options : UdonSharpBehaviour
         RefreshAllOptions();
         waiting_on_playerdata = false;
 
-        string tutorial_method = "pushing your E or F key";
-        if (Networking.LocalPlayer.IsUserInVR()) { tutorial_method = "grabbing behind your head"; }
+        string tutorial_method = gameController.localizer.FetchText("LOCALOPTIONS_TUTORIAL_DESKTOP", "pushing your E or F key");
+        if (Networking.LocalPlayer.IsUserInVR()) { tutorial_method = gameController.localizer.FetchText("LOCALOPTIONS_TUTORIAL_VR", "grabbing behind your head"); }
         tutorial_text.text = tutorial_text.text.Replace("$METHOD", tutorial_method);
     }
 
@@ -196,6 +202,7 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateParticles();
         UpdateMusicVolume();
         UpdateSoundVolume();
+        UpdateMusicOverride();
         UpdateVOVolume();
         UpdateVOPreferences();
         UpdateMotionSickness();
@@ -263,25 +270,31 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateSoundVolume();
                     continue;
                 }
+                if (!PlayerData.HasKey(player, "MusicOverride"))
+                {
+                    ui_musicoverride_dropdown.value = 0;
+                    UpdateMusicOverride();
+                    continue;
+                }
                 if (!PlayerData.HasKey(player, "VOVolume"))
                 {
                     ui_uivovolumelider.value = 10.0f;
                     UpdateVOVolume();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "VOPrefA"))
+                if (!PlayerData.HasKey(player, "VOPref_A"))
                 {
                     ui_vo_pref_a_toggle.isOn = true;
                     UpdateVOPreferences();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "VOPrefB"))
+                if (!PlayerData.HasKey(player, "VOPref_B"))
                 {
                     ui_vo_pref_b_toggle.isOn = true;
                     UpdateVOPreferences();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "VOPrefC"))
+                if (!PlayerData.HasKey(player, "VOPref_C"))
                 {
                     ui_vo_pref_c_toggle.isOn = true;
                     UpdateVOPreferences();
@@ -488,6 +501,17 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateSoundVolume();
         }
 
+        int out_MusicOverride;
+        if (PlayerData.TryGetInt(Networking.LocalPlayer, "MusicOverride", out out_MusicOverride))
+        {
+            ui_musicoverride_dropdown.value = out_MusicOverride;
+        }
+        else
+        {
+            ui_musicoverride_dropdown.value = 0;
+            UpdateMusicOverride();
+        }
+
         float out_VOVolume;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "VOVolume", out out_VOVolume))
         {
@@ -499,36 +523,36 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateVOVolume();
         }
 
-        bool out_VOPrefA;
-        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefA", out out_VOPrefA))
+        bool out_VOPref_A;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPref_A", out out_VOPref_A))
         {
-            ui_vo_pref_a_toggle.isOn = out_VOPrefA;
+            ui_vo_pref_a_toggle.isOn = out_VOPref_A;
         }
         else
         {
-            ui_vo_pref_a_toggle.isOn = false;
+            ui_vo_pref_a_toggle.isOn = true;
             UpdateVOPreferences();
         }
 
-        bool out_VOPrefB;
-        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefB", out out_VOPrefB))
+        bool out_VOPref_B;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPref_B", out out_VOPref_B))
         {
-            ui_vo_pref_b_toggle.isOn = out_VOPrefB;
+            ui_vo_pref_b_toggle.isOn = out_VOPref_B;
         }
         else
         {
-            ui_vo_pref_b_toggle.isOn = false;
+            ui_vo_pref_b_toggle.isOn = true;
             UpdateVOPreferences();
         }
 
-        bool out_VOPrefC;
-        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPrefC", out out_VOPrefC))
+        bool out_VOPref_C;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "VOPref_C", out out_VOPref_C))
         {
-            ui_vo_pref_c_toggle.isOn = out_VOPrefC;
+            ui_vo_pref_c_toggle.isOn = out_VOPref_C;
         }
         else
         {
-            ui_vo_pref_c_toggle.isOn = false;
+            ui_vo_pref_c_toggle.isOn = true;
             UpdateVOPreferences();
         }
 
@@ -697,16 +721,17 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetBool("UIInverted", ui_uiinvertedtoggle.isOn);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
+        PlayerData.SetFloat("MusicOverride", ui_musicoverride_dropdown.value);
         PlayerData.SetFloat("VOVolume", ui_uivovolumelider.value);
-        PlayerData.SetBool("VOPrefA", ui_vo_pref_a_toggle.isOn);
-        PlayerData.SetBool("VOPrefB", ui_vo_pref_b_toggle.isOn);
-        PlayerData.SetBool("VOPrefC", ui_vo_pref_c_toggle.isOn);
+        PlayerData.SetBool("VOPref_A", ui_vo_pref_a_toggle.isOn);
+        PlayerData.SetBool("VOPref_B", ui_vo_pref_b_toggle.isOn);
+        PlayerData.SetBool("VOPref_C", ui_vo_pref_c_toggle.isOn);
         PlayerData.SetInt("VOType", ui_uivotype_dropdown.value);
         PlayerData.SetBool("ColorblindSprite", ui_colorblind_toggle.isOn);
         PlayerData.SetInt("ColorblindChoice", ui_colorblind_dropdown.value);
         PlayerData.SetBool("HitboxShow", ui_hitboxtoggle.isOn);
         PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
-        PlayerData.SetInt("LanguageType", language_type);
+        PlayerData.SetInt("LanguageType", localizer.language_type);
         PlayerData.SetBool("MotionSicknessCage", ui_motionsicknesscagetoggle.isOn);
         PlayerData.SetBool("MotionSicknessFloor", ui_motionsicknessfloortoggle.isOn);
         if (!gameController.flag_for_mobile_vr.activeInHierarchy) { PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn); }
@@ -721,7 +746,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_scale = ui_uiscaleslider.value / 10.0f;
         ShowDemoUI();
-        ui_uiscaletext.text = "UI Scale: " + (ui_scale * 100.0f) + "%";
+        ui_uiscaletext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_SCALE", "UI Scale: $ARG0%", (ui_scale * 100.0f).ToString());
         if ((ui_scale * 10.0f) <= ui_uiscaleslider.minValue) { ui_uiscaletext.color = Color.red; }
         else { ui_uiscaletext.color = Color.white; }
 
@@ -734,7 +759,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_separation = ui_uiseparationslider.value / 10.0f;
         ShowDemoUI();
-        ui_uiseparationtext.text = "UI Vertical: " + (ui_separation * 100.0f) + "%";
+        ui_uiseparationtext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_SEPARATION", "UI Vertical: $ARG0%", (ui_separation * 100.0f).ToString());
         if ((ui_separation * 10.0f) <= ui_uiseparationslider.minValue) { ui_uiseparationtext.color = Color.red; }
         else { ui_uiseparationtext.color = Color.white; }
 
@@ -747,7 +772,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_stretch = ui_uistretchslider.value / 10.0f;
         ShowDemoUI();
-        ui_uistretchtext.text = "UI Horizontal: " + (ui_stretch * 100.0f) + "%";
+        ui_uistretchtext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_STRETCH", "UI Horizontal: $ARG0%", (ui_stretch * 100.0f).ToString());
         if ((ui_stretch * 10.0f) <= ui_uistretchslider.minValue) { ui_uistretchtext.color = Color.red; }
         else { ui_uistretchtext.color = Color.white; }
 
@@ -760,7 +785,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_distance = ui_uidistanceslider.value / 10.0f;
         ShowDemoUI();
-        ui_uidistancetext.text = "UI Distance: " + (ui_distance * 100.0f) + "%";
+        ui_uidistancetext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_DISTANCE", "UI Distance: $ARG0%", (ui_distance * 100.0f).ToString());
         if ((ui_distance * 10.0f) <= ui_uidistanceslider.minValue) { ui_uidistancetext.color = Color.red; }
         else { ui_uidistancetext.color = Color.white; }
 
@@ -773,7 +798,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_other_scale = ui_uiotherscaleslider.value / 10.0f;
         ShowDemoUI();
-        ui_uiotherscaletext.text = "Overhead UI Scale: " + (ui_other_scale * 100.0f) + "%";
+        ui_uiotherscaletext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_OTHER", "Overhead UI Scale: $ARG0%", (ui_other_scale * 100.0f).ToString());
         if ((ui_other_scale * 10.0f) <= ui_uiotherscaleslider.minValue) { ui_uiotherscaletext.color = Color.red; }
         else { ui_uiotherscaletext.color = Color.white; }
 
@@ -787,7 +812,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         ui_harm_scale = ui_uiharmscaleslider.value / 10.0f;
         ShowDemoUI();
-        ui_uiharmscaletext.text = "Damage Display UI Scale: " + (ui_harm_scale * 100.0f) + "%";
+        ui_uiharmscaletext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_DAMAGE", "Damage Display UI Scale: $ARG0%", (ui_harm_scale * 100.0f).ToString());
         if ((ui_harm_scale * 10.0f) <= ui_uiharmscaleslider.minValue) { ui_uiharmscaletext.color = Color.red; }
         else { ui_uiharmscaletext.color = Color.white; }
 
@@ -812,7 +837,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         music_volume = ui_uimusicslider.value / 10.0f;
 
-        ui_uimusictext.text = "Music Volume: " + (music_volume * 100.0f) + "%";
+        ui_uimusictext.text = gameController.localizer.FetchText("LOCALOPTIONS_SOUND_VOLUME_MUSIC", "Music Volume: $ARG0%", (music_volume * 100.0f).ToString());
         if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) { ui_uimusictext.color = Color.red; }
         else { ui_uimusictext.color = Color.white; }
 
@@ -827,9 +852,29 @@ public class PPP_Options : UdonSharpBehaviour
     {
         sound_volume = ui_uisoundslider.value / 10.0f;
 
-        ui_uisoundtext.text = "Sound Volume: " + (sound_volume * 100.0f) + "%";
+        ui_uisoundtext.text = gameController.localizer.FetchText("LOCALOPTIONS_SOUND_VOLUME_SFX", "Sound Volume: $ARG0%", (sound_volume * 100.0f).ToString());
         if ((sound_volume * 10.0f) <= ui_uisoundslider.minValue) { ui_uisoundtext.color = Color.red; }
         else { ui_uisoundtext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateMusicOverride()
+    {
+        music_override = ui_musicoverride_dropdown.value - 1;
+
+        if (music_override >= 0)
+        {
+            gameController.PlaySFXFromArray(gameController.snd_game_music_source, gameController.snd_ready_music_clips, -1, 1, true);
+        }
+        else if (gameController.music_clip_playing != gameController.music_clip_desired)
+        {
+            AudioClip[] dummy_music_arr = new AudioClip[1];
+            dummy_music_arr[0] = gameController.music_clip_desired;
+            gameController.PlaySFXFromArray(gameController.snd_game_music_source, dummy_music_arr, 0, 1, true);
+        }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -989,14 +1034,20 @@ public class PPP_Options : UdonSharpBehaviour
     public void UpdateVOVolume()
     {
         voiceover_volume = ui_uivovolumelider.value / 10.0f;
-
-        ui_uivovolumetext.text = "Announcer Volume: " + (voiceover_volume * 100.0f) + "%";
+        ui_uivovolumetext.text = gameController.localizer.FetchText("LOCALOPTIONS_SOUND_VOLUME_VO", "Announcer Volume: $ARG0%", (voiceover_volume * 100.0f).ToString());
         if ((voiceover_volume * 10.0f) <= ui_uivovolumelider.minValue) { ui_uivovolumetext.color = Color.red; }
         else { ui_uivovolumetext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
         sync_timer = 0.0f;
+
+        if (gameController.local_plyAttr != null && gameController.local_plyAttr.in_ready_room && gameController.room_ready_script.warning_acknowledged)
+        {
+            // Play a test clip, scaled with announcer volume
+            gameController.snd_voiceover_sfx_source.volume = voiceover_volume;
+            gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_Overtime);
+        }
     }
 
     public void UpdateVOPreferences()
@@ -1007,6 +1058,10 @@ public class PPP_Options : UdonSharpBehaviour
         // To-do: set voiceover toggles in gameController
 
         voiceover_type = ui_uivotype_dropdown.value;
+        if (gameController.voiceover_packs != null && voiceover_type < gameController.voiceover_packs.Length)
+        {
+            gameController.vopack_selected = gameController.voiceover_packs[voiceover_type];
+        }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -1021,8 +1076,11 @@ public class PPP_Options : UdonSharpBehaviour
             else { ui_language_toggles[i].isOn = false; }
         }
 
-        // To-do: set language elements in langLocalizer
-        language_type = in_language_type;
+        if (in_language_type != localizer.language_type)
+        {
+            localizer.language_type = in_language_type;
+            localizer.SetLangDict();
+        }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -1078,6 +1136,20 @@ public class PPP_Options : UdonSharpBehaviour
         }
     }
 
+    public void ResetUI()
+    {
+        ui_uiscaleslider.value = 10.0f;
+        ui_uiseparationslider.value = 10.0f;
+        ui_uistretchslider.value = 10.0f;
+        ui_uidistanceslider.value = 10.0f;
+        ui_uiotherscaleslider.value = 10.0f;
+        ui_uiharmscaleslider.value = 10.0f;
+        ui_wristtoggle_n.isOn = true;
+        ui_wristtoggle_l.isOn = false;
+        ui_wristtoggle_r.isOn = false;
+        ui_uiinvertedtoggle.isOn = false;
+    }
+
     public void ResetPPPCanvas()
     {
         render_in_front = false;
@@ -1127,7 +1199,7 @@ public class PPP_Options : UdonSharpBehaviour
         for (int j = 0; j < gameController.team_colors_base.Length; j++)
         {
             colorblind_flags[j] = Instantiate(template_colorblind_flag, ui_colorblind_grid.transform);
-            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.team_names[j].Split(' ')[0];
+            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]); 
         }
         SetColorblindFlagColors();
         // After making the copies, set the template to be inactive
@@ -1155,4 +1227,5 @@ public class PPP_Options : UdonSharpBehaviour
             }
         }
     }
+
 }

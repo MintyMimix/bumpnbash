@@ -36,6 +36,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [NonSerialized] public float cached_scale = -1.0f; 
     [NonSerialized] public float cached_atk = -1.0f;
     [NonSerialized] public float cached_def = -1.0f;
+    [NonSerialized] public float local_tick_timer = 0.0f;
+    [NonSerialized] public byte local_tick_cnt = 0;
 
     private void Start()
     {
@@ -53,13 +55,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
     private void Update()
     {
-        if (gameController == null)
-        {
-            GameObject gcObj = GameObject.Find("GameController");
-            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
-        }
-
-        if (owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
+        if (gameController == null || owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
 
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
@@ -68,15 +64,21 @@ public class UIPlyToOthers : UdonSharpBehaviour
         round_ready = round_ready && !playerAttributes.ply_training;
         if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
         else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
-        
-        if (gameController.local_tick_timer == 0.0f) // We use 0.0f since it will never reach a point where the GameController will output at the end time for another object, so this is a shorthand for "the frame after its LocalPerTickUpdate()"
+
+
+        local_tick_timer += Time.deltaTime;
+        if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
         {
             LocalPerTickUpdate();
+            local_tick_timer = 0.0f;
+            local_tick_cnt++;
         }
-        if (gameController.local_uiplytoself != null && gameController.local_uiplytoself.ui_check_gamevars_timer == 0.0f) // Ditto for UIPlyToSelf's game variables refresh rate
+
+        if (local_tick_cnt >= 10) 
         {
             UI_Lives();
             UI_Victory();
+            local_tick_cnt = 0;
         }
     }
     
@@ -268,8 +270,17 @@ public class UIPlyToOthers : UdonSharpBehaviour
             posUI *= ((1.5f + ppp_options.ui_other_scale) / 2.5f);
         }
         //2.6f * posUI
-        transform.SetPositionAndRotation(owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
+        //transform.SetPositionAndRotation(owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
+
+        // Get the head tracking data of the owner and the local player
+        VRCPlayerApi.TrackingData headReference = owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+        VRCPlayerApi.TrackingData localHeadReference = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+
+        // Place the healthbar above the head of the owner
+        transform.position = headReference.position + new Vector3(0.0f, 1.6f * posUI, 0.0f);
+        transform.rotation = Quaternion.LookRotation(localHeadReference.position - headReference.position, Vector3.up) * Quaternion.Euler(0.0f, 180.0f, 0.0f);
+
     }
 
 }

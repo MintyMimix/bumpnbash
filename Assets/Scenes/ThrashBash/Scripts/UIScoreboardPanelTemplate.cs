@@ -18,12 +18,15 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
     [SerializeField] public GameObject points_obj;
     [SerializeField] public GameObject deaths_obj;
     [SerializeField] public GameObject lives_obj;
+    [SerializeField] public UnityEngine.UI.Image lives_image;
     [SerializeField] public UnityEngine.UI.Image points_image;
     [SerializeField] public UnityEngine.UI.Image flag_image;
     [SerializeField] public UnityEngine.UI.Image pole_image;
     [SerializeField] public UnityEngine.UI.Image cb_image;
     [SerializeField] public Sprite points_sprite;
     [SerializeField] public Sprite timer_sprite;
+    [SerializeField] public Sprite lives_sprite;
+    [SerializeField] public Sprite damage_sprite;
 
     [NonSerialized] public VRCPlayerApi player;
     [NonSerialized] public PlayerAttributes plyAttr;
@@ -59,21 +62,30 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
         cb_image.color = flag_image.color;
         points_image.color = flag_image.color;
 
-        if (gameController.option_gamemode == (int)gamemode_name.Survival || (plyAttr.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
+
+        if (gameController.option_gamemode == (int)gamemode_name.Survival || gameController.option_gamemode == (int)gamemode_name.BossBash)
         {
             lives_obj.SetActive(true);
-            points_image.sprite = points_sprite;
+            if (points_image.sprite != points_sprite) { points_image.sprite = points_sprite; }
+            if (gameController.option_gamemode == (int)gamemode_name.BossBash && plyAttr.ply_team == 0) 
+            {
+                if (lives_image.sprite != damage_sprite) { lives_image.sprite = damage_sprite; }
+                lives_text.text = plyAttr.ply_damage_dealt.ToString() + "%";
+            }
+            else if (lives_image.sprite != lives_sprite) { lives_image.sprite = lives_sprite; }
         }
         else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) 
         {
             lives_obj.SetActive(false);
-            points_image.sprite = timer_sprite;
+            if (lives_image.sprite != lives_sprite) { lives_image.sprite = lives_sprite; }
+            if (points_image.sprite != timer_sprite) { points_image.sprite = timer_sprite; }
             points_text.text = (gameController.option_gm_goal - plyAttr.ply_points).ToString();
         }
         else
         {
             lives_obj.SetActive(false);
-            points_image.sprite = points_sprite;
+            if (lives_image.sprite != lives_sprite) { lives_image.sprite = lives_sprite; }
+            if (points_image.sprite != points_sprite) { points_image.sprite = points_sprite; }
         }
     }
 }

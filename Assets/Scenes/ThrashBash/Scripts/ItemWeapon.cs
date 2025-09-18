@@ -2,6 +2,7 @@
 using System;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -121,15 +122,16 @@ public class ItemWeapon : ItemGeneric
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
         //bool player_is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
-        if (plyWeapon != null)
+        if (plyWeapon != null && gameController.local_plyAttr != null)
         {
             LocalApplyWeapon(plyWeapon);
-            bool is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+            bool is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_plyAttr.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
             is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
             if (is_boss && gameController.local_secondaryweapon != null) 
             {
                 if (!gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); }
                 LocalApplyWeapon(gameController.local_secondaryweapon); 
+                gameController.local_plyAttr.ply_dual_wield = true;
             }
             if (!is_boss && gameController.local_secondaryweapon != null)
             {

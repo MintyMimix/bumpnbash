@@ -47,8 +47,9 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float use_timer;
     [NonSerialized] public bool use_ready;
     [NonSerialized] public bool waiting_for_toss = false;
-    // Temporary ammo (from pickups)
-    [NonSerialized] public int weapon_temp_ammo = -1;
+	[NonSerialized] public bool weapon_was_tossed = false;
+	// Temporary ammo (from pickups)
+	[NonSerialized] public int weapon_temp_ammo = -1;
     [NonSerialized] public float weapon_temp_duration = -1.0f;
     [NonSerialized] public float weapon_temp_timer = 0.0f;
     // Charging variables (for laser)
@@ -83,9 +84,11 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] private float cached_scale = -1.0f;
     [NonSerialized] private int cached_team = -1;
     [NonSerialized] private bool cached_teamplay = false;
+    [NonSerialized] private Vector3 cached_desktop_offset_dir;
 
     private void Start()
     {
+        cached_desktop_offset_dir = Vector3.forward;
         scale_inital = transform.localScale.x;
         all_weapon_stats = SetupAllWeaponStats();
 
@@ -388,8 +391,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else if (!Networking.LocalPlayer.IsUserInVR())
         {
-            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.0f);
-            if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
+            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (cached_desktop_offset_dir * -1.0f * ply_scale_offset);
+            if (is_secondary) { transform.position = transform.position + new Vector3(1.0f, 0.0f, 0.0f); }
+            //if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
         }
         pickup_rb.velocity = Vector3.zero;
         pickup_rb.angularVelocity = Vector3.zero;
@@ -440,11 +444,17 @@ public class PlayerWeapon : UdonSharpBehaviour
     {
         if (waiting_for_toss && use_ready && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
         {
-            TossWeapon();
-        }
+			weapon_was_tossed = true;
+			TossWeapon();
+		}
         if (pickup_component != null && Networking.IsOwner(gameObject))
         {
             pickup_component.pickupable = true;
+            if (!Networking.LocalPlayer.IsUserInVR()) 
+            {
+                cached_desktop_offset_dir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position - transform.position;
+                cached_desktop_offset_dir = cached_desktop_offset_dir.normalized;
+            }
             //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
             //{ gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
         }
@@ -507,7 +517,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         // Only manually apply velocity in non-VR
         // If it's a throwable and has just been thrown, however, we want to create a flying projectile in its direction
         //if (pickup_rb != null) { pickup_rb.isKinematic = false; }
-        if (!Networking.GetOwner(gameObject).IsUserInVR())
+        if (!Networking.GetOwner(gameObject).IsUserInVR() || !weapon_was_tossed)
         {
             Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
             float throwForce = 11.0f;
@@ -517,7 +527,8 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         FireWeapon();
         waiting_for_toss = false;
-    }
+		weapon_was_tossed = false;
+	}
 
     private void FireWeapon()
     {
@@ -702,7 +713,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             //hurtbox.hurtbox_rb.MoveRotation(rotation);
         }
 
-        bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
+        bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
 
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
@@ -842,7 +853,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (is_secondary && gameObject.activeInHierarchy && gameController != null && owner_attributes != null)
         {
-            bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1);
+            bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1);
             is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
             if (!is_boss) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         }
@@ -888,10 +899,10 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else if (weapon_type == (int)weapon_type_name.BossGlove)
         {
-            if (gameController.ply_in_game_auto_dict != null && gameController.ply_in_game_auto_dict.Length > 0 && gameController.ply_in_game_auto_dict[0] != null)
+            if (gameController.cached_ply_in_game_dict != null && gameController.cached_ply_in_game_dict.Length > 0 && gameController.cached_ply_in_game_dict[0] != null)
             {
                 // Fire rate increases with number of players
-                use_cooldown = Mathf.Lerp(2.0f, 0.5f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 18.0f))
+                use_cooldown = Mathf.Lerp(2.0f, 0.5f, Mathf.Min(1.0f, gameController.cached_ply_in_game_dict[0].Length / 18.0f))
                     * GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
             }
         }

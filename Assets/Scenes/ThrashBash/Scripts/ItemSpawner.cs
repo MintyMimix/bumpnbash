@@ -330,7 +330,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered && child_powerup != null && child_powerup.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
-                gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
+                //gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
             }
             child_powerup.gameObject.SetActive(false);
         }
@@ -342,7 +342,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered && child_weapon != null && child_weapon.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
-                gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
+                //gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
             }
             child_weapon.gameObject.SetActive(false);
         }

@@ -12,9 +12,12 @@ public class HighlightCameraSphere : UdonSharpBehaviour
     [SerializeField] public GameObject cameraPlane;
     [SerializeField] public SphereCollider bubbleCollider;
     [NonSerialized] public float scale_from_prefab;
+    [NonSerialized] public Vector3 cameraplane_localscale_from_prefab;
+
     private void Start()
     {
         scale_from_prefab = transform.lossyScale.x;
+        cameraplane_localscale_from_prefab = cameraPlane.transform.localScale;
     }
 
     public override void PostLateUpdate()
@@ -44,7 +47,8 @@ public class HighlightCameraSphere : UdonSharpBehaviour
     public void ResetPhotoPos(VRCCameraSettings photoCam)
     {
         // Otherwise, reset the position
-        cameraPlane.transform.localScale = new Vector3(photoCam.PixelWidth * 0.00005f, 0.05f, photoCam.PixelHeight * 0.00005f);
+        //cameraPlane.transform.localScale = new Vector3(photoCam.PixelWidth * 0.00005f, 0.05f, photoCam.PixelHeight * 0.00005f);
+        cameraPlane.transform.localScale = cameraplane_localscale_from_prefab;
         cameraPlane.transform.position = transform.position;
         cameraPlane.transform.rotation = transform.rotation * Quaternion.Euler(90.0f, 180.0f, 0.0f);
     }

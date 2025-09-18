@@ -4,6 +4,7 @@ using System.Runtime.InteropServices.WindowsRuntime;
 using System.Xml.Linq;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 using UnityEngine.Windows;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
@@ -26,6 +27,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public ushort ply_lives;
     [NonSerialized] [UdonSynced] public ushort ply_points = 0;
     [NonSerialized] [UdonSynced] public ushort ply_deaths = 0;
+    [NonSerialized] [UdonSynced] public float ply_damage_dealt = 0.0f; // Total damage dealt tracker. Used only for Boss Bash.
     [NonSerialized] [UdonSynced] public int ply_team = (int)player_tracking_name.Unassigned;
     [NonSerialized] [UdonSynced] public bool ply_training = false;
     [NonSerialized] [UdonSynced] public bool in_spectator_area = false;
@@ -35,6 +37,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public ushort ply_points_local = 0;
     [NonSerialized] public ushort ply_deaths_local = 0;
     [NonSerialized] public int ply_team_local = 0;
+    [NonSerialized] public bool ply_dual_wield_local = false;
 
     // While we aren't syncing the stats below right now, we may want to in the future for UI purposes
     [NonSerialized] [UdonSynced] public float ply_scale = 1.0f; // This is the one stat that needs to be synced most because it affects visuals
@@ -46,6 +49,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public int ply_jumps_tracking = 0;
     [NonSerialized] public bool ply_jump_pressed = false;
     [NonSerialized] public float ply_firerate = 1.0f;
+    [NonSerialized][UdonSynced] public bool ply_dual_wield = false;
 
     [NonSerialized] public float ply_respawn_duration;
     [NonSerialized] public VRCPlayerApi last_hit_by_ply;
@@ -61,6 +65,11 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public int combo_receive, combo_send = 0;
     [NonSerialized] public float combo_send_duration = 2.0f;
     [NonSerialized] public float combo_send_timer = 0.0f;
+
+
+    [NonSerialized] public int killstreak, killbo = 0;
+    [NonSerialized] public float killbo_duration = 6.0f;
+    [NonSerialized] public float killbo_timer = 0.0f;
 
     [NonSerialized] public float hazard_cooldown = 0.5f;
     [NonSerialized] public float hazard_timer = 0.0f;
@@ -84,6 +93,12 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     [NonSerialized] public bool tutorial_messages_ready = false;
 
+    [SerializeField] public byte KILLSTREAK_THRESHOLD_0 = 3;
+    [SerializeField] public byte KILLSTREAK_THRESHOLD_1 = 5;
+    [SerializeField] public byte KILLSTREAK_THRESHOLD_2 = 7;
+    [SerializeField] public byte KILLSTREAK_THRESHOLD_3 = 10;
+    [SerializeField] public byte KILLSTREAK_THRESHOLD_4 = 15;
+
     // To-Do: Have all projectile damage scale to a configurable factor, which is then auto-scaled to the # of players
 
     void Start()
@@ -103,12 +118,14 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (gameController != null && gameController.round_state == (int)round_state_name.Ongoing)
         {
-            if (ply_lives_local != ply_lives || ply_points_local != ply_points || ply_deaths_local != ply_deaths || ply_team_local != ply_team)
+            if (ply_lives_local != ply_lives || ply_points_local != ply_points || ply_deaths_local != ply_deaths || ply_team_local != ply_team || ply_dual_wield_local != ply_dual_wield)
             {
                 ply_lives_local = ply_lives;
                 ply_points_local = ply_points;
                 ply_deaths_local = ply_deaths;
                 ply_team_local = ply_team;
+                if (ply_dual_wield_local != ply_dual_wield) { gameController.GetSecondaryWeaponFromID(Networking.GetOwner(gameObject).playerId).gameObject.SetActive(ply_dual_wield); }
+                ply_dual_wield_local = ply_dual_wield;
                 gameController.RefreshGameUI();
                 if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
             }
@@ -177,6 +194,16 @@ public class PlayerAttributes : UdonSharpBehaviour
         else if (combo_send_timer >= combo_send_duration && combo_send > 0)
         {
             combo_send = 0;
+        }
+
+        // Handle kill combos
+        if (killbo_timer < killbo_duration && killbo > 0)
+        {
+            killbo_timer += Time.deltaTime;
+        }
+        else if (killbo_timer >= killbo_duration && killbo > 0)
+        {
+            killbo = 0;
         }
 
         // Handle receive combos
@@ -303,6 +330,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], gameController.snd_game_sfx_clips[(int)game_sfx_name.HitSend], damage_type, 1 + 0.1f * (combo_send));
         combo_send++;
+        ply_damage_dealt += damage;
 
         TryHapticEvent((int)game_sfx_name.HitSend);
         // Damage indicator
@@ -413,27 +441,48 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_points++; 
             if (gameController.option_gamemode == (int)gamemode_name.Clash)
             {
-                if (!gameController.option_teamplay && ply_points == gameController.option_gm_goal - 1) 
+                if ((!gameController.option_teamplay || (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)) && ply_points == gameController.option_gm_goal - 1) 
                 { 
-                    gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", Networking.LocalPlayer.displayName + " is close to winning!", Color.red, 7.5f);
+                    gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_POINTSMODE_NEARWIN_FFA", "$ARG0 is close to winning!", Networking.LocalPlayer.displayName), Color.red, 7.5f);
                 }
                 else if (gameController.option_teamplay && ply_team >= 0 && ply_team < gameController.team_names.Length)
                 {
                     int team_points = 0;
-                    gameController.CheckSingleTeamPoints(ply_team, ref team_points);
+                    gameController.CheckSingleTeamPoints(ply_team, gameController.cached_ply_in_game_dict, ref team_points);
                     if (team_points == gameController.option_gm_goal - 1)
                     {
-                        gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.team_names[ply_team] + " are close to winning!", (Color)gameController.team_colors_bright[ply_team], 7.5f);
+                        gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_POINTSMODE_NEARWIN_TEAM", "$ARG0 are close to winning!", gameController.team_names[ply_team]), (Color)gameController.team_colors_bright[ply_team], 7.5f);
                     }
                 }
             }
         } 
         last_kill_timer = 0.0f;
         last_kill_ply = defenderPlyId;
+
+        // Add to the kill combo & killstreak, playing voicelines as appropriate
+        string KOtext = "";
+        if (VRCPlayerApi.GetPlayerById(defenderPlyId) != null) { KOtext = gameController.localizer.FetchText("NOTIFICATION_KILL", "You knocked out $ARG0!", VRCPlayerApi.GetPlayerById(defenderPlyId).displayName); }
+        killbo_timer = 0.0f; 
+        killbo++;
+        killstreak++;
+        if (killbo == 1) {
+            if (killstreak == KILLSTREAK_THRESHOLD_4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER4", "Bash Master! (Streak: $ARG0)", killstreak.ToString()); }
+            else if (killstreak == KILLSTREAK_THRESHOLD_3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER3", "Perfect Pummler! (Streak: $ARG0)", killstreak.ToString()); }
+            else if (killstreak == KILLSTREAK_THRESHOLD_2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER2", "Mega Menace! (Streak: $ARG0)", killstreak.ToString()); }
+            else if (killstreak == KILLSTREAK_THRESHOLD_1) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER1", "Bone Breaker! (Streak: $ARG0)", killstreak.ToString()); }
+            else if (killstreak == KILLSTREAK_THRESHOLD_0) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER0", "Knockout Spree! (Streak: $ARG0)", killstreak.ToString()); }
+        }
+        else if (killbo == 2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER0", "Double KO!!"); }
+        else if (killbo == 3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER1", "Triple KO!!!"); }
+        else if (killbo == 4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER2", "Quadtactular!!!!"); }
+        else if (killbo == 5) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER3", "Pentulimate!!!!!"); }
+        else if (killbo >= 6) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER4", "Outscension! (KO Combo: $ARG0)", killbo.ToString()); }
+
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
-        gameController.AddToLocalTextQueue("You knocked out " + VRCPlayerApi.GetPlayerById(defenderPlyId).displayName + "!");
+        gameController.AddToLocalTextQueue(KOtext);
         TryHapticEvent((int)game_sfx_name.Kill);
 
+        // if this is the first KO of the match, snap a highlight photo
         if (gameController.highlight_cameras_snapped != null && gameController.highlight_cameras_snapped.Length > 1
             && gameController.highlight_cameras_waiting_on_sync != null && gameController.highlight_cameras_waiting_on_sync.Length > 1
             && gameController.highlight_cameras_snapped[1] == false && gameController.highlight_cameras_waiting_on_sync[1] == false)
@@ -451,6 +500,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Death], gameController.snd_game_sfx_clips[(int)game_sfx_name.Death]);
         TryHapticEvent((int)game_sfx_name.Death);
         ply_respawn_timer = 0;
+        combo_receive = 0; combo_send = 0; killbo = 0; killstreak = 0; 
         if (ply_training)
         {
             // If we're in training mode, do nothing
@@ -468,7 +518,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
             else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training)
             {
-                gameController.AddToLocalTextQueue("Frozen during respawn invulnerability! (" + Mathf.RoundToInt(ply_respawn_duration) + " seconds)", Color.cyan, ply_respawn_duration);
+                gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_KOTH_RESPAWN_FREEZE", "Frozen during respawn invulnerability! ($ARG0 seconds)", Mathf.RoundToInt(ply_respawn_duration).ToString()), Color.cyan, ply_respawn_duration);
             }
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
@@ -488,6 +538,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
         if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); }
 
+        bool is_boss = gameController.local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+        is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
+        if (is_boss) { ply_dual_wield = true; }
+        else { ply_dual_wield = false; }
+
         // Manage behavior based on gamemode
         if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team != 1)
         {
@@ -496,7 +551,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_team = 1;
             //ply_points = 0;
             InfectionStatReset();
-            gameController.AddToLocalTextQueue("-- You are now Infected! --");
+            gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_DEATH", "-- You are now Infected! --"), Color.red);
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1)
         {
@@ -508,10 +563,10 @@ public class PlayerAttributes : UdonSharpBehaviour
             plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
             plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
             plyEyeHeight_change = true;
-            if (ply_scale > (float)((float)gameController.option_gm_goal / 100.0f)) 
-            { 
+            if (ply_scale > (float)((float)gameController.option_gm_goal / 100.0f))
+            {
                 ply_lives = 0;
-                gameController.AddToLocalTextQueue("You've grown too big! (" + ply_scale * 100.0f + "% vs max of " + gameController.option_gm_goal + "%)");
+                gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_FITTINGIN_DEFEAT", "You've grown too big! ($ARG0% vs max of $ARG1%)", (ply_scale * 100.0f).ToString(), gameController.option_gm_goal.ToString()));
             }
         }
 
@@ -523,7 +578,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             // Edge case: if this is on infection, it's possible for this event to off after RoundEnd() [usually for the master].
             // So, check if our local team is 1, but the networked team is 0, and if the lives calculated from the networked team is 1 (the lives count for Infection).
             var total_lives = 0; var members_alive = 0;
-            gameController.CheckSingleTeamLives(0, ref members_alive, ref total_lives);
+            gameController.CheckSingleTeamLives(0, gameController.cached_ply_in_game_dict, ref members_alive, ref total_lives);
             if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1 && gameController.GetGlobalTeam(Networking.LocalPlayer.playerId) == 0
                 && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
             else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
@@ -533,6 +588,16 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.TeleportLocalPlayerToReadyRoom();
             ply_state = (int)player_state_name.Dead;
             gameController.room_training_portal.SetActive(true);
+            int team_color_id = 0;
+            team_color_id = Mathf.Clamp(ply_team, 0, gameController.team_colors.Length);
+            if (gameController.option_teamplay) 
+            { 
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", Networking.LocalPlayer.displayName), (Color)gameController.team_colors_bright[team_color_id], 5.0f); 
+            }
+            else
+            {
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", Networking.LocalPlayer.displayName), Color.red, 5.0f);
+            }
         }
         else
         {
@@ -542,14 +607,14 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         if (last_hit_by_ply != null)
         {
-            gameController.AddToLocalTextQueue("Knocked out by " + last_hit_by_ply.displayName + "!");
+            gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_DEATH_OTHER", "Knocked out by $ARG0!", last_hit_by_ply.displayName));
             var plyAttr = gameController.FindPlayerAttributes(last_hit_by_ply);
             if (plyAttr != null) { plyAttr.SendCustomNetworkEvent(NetworkEventTarget.Owner, "KillOtherPlayer", last_hit_by_ply.playerId, Networking.LocalPlayer.playerId, ply_training); }
             last_hit_by_ply = null;
         }
         else
         {
-            gameController.AddToLocalTextQueue("Knocked out!");
+            gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_DEATH_SELF", "Knocked out!"));
         }
 
         if (gameController != null && gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
@@ -821,6 +886,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Send a tutorial message
         if (tutorial_messages_ready && Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
+            // To-do: Localize
             string display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
             if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
@@ -898,7 +964,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
         plyEyeHeight_change = true;
 
-        gameController.AddToLocalTextQueue("You are the ZomBig! Crush the Survivors into dust!", gameController.team_colors_bright[1]);
+        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_LOCAL", "You are the ZomBig! Crush the Survivors into dust!"), gameController.team_colors_bright[1]);
     }
 
     [NetworkCallable]
@@ -910,7 +976,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             ResetToDefaultStats();
             infection_special = 1; // We set this to 1 because GameController will automatically resolve it down to 0 if the player count condition is met
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForZombigs", Networking.LocalPlayer.playerId);
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "The ZomBig has been defeated!", Color.red, 5.0f);
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_DEATH", "The ZomBig has been defeated!"), Color.red, 5.0f);
         }
         else if (infection_special == 1)
         {
@@ -932,6 +998,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void ResetToDefaultStats()
     {
         ply_dp = ply_dp_default;
+        ply_damage_dealt = 0;
         ply_lives = gameController.plysettings_lives;
         ply_points = gameController.plysettings_points;
         ply_respawn_duration = gameController.plysettings_respawn_duration;

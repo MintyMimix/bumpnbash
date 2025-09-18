@@ -152,7 +152,7 @@ public class UIArrowSpectator : UIArrow
         else if (camera_points.Length > 0)
         {
             // Camera is on one of the map cameras
-            caption.text = "Map Camera " + (current_value + 1).ToString();
+            caption.text = gameController.localizer.FetchText("SPECTATOR_CAMERA_LABEL", "Map Camera: $ARG0", (current_value + 1).ToString());
             caption.color = Color.white;
             camera_main.transform.SetPositionAndRotation(camera_points[current_value].position, camera_points[current_value].rotation);
         }

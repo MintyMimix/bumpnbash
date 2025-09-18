@@ -1,4 +1,5 @@
 ﻿
+using System;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -45,6 +46,7 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
 
     public static string PowerupTypeToStr(int in_powerup_type)
     {
+        // To-do: Localize (may need to convert to gameController function with corresponding localizer strings)
         string output = "";
         if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = "Size Up"; }
         else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = "Size Down"; }
@@ -64,6 +66,7 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
 
     public static string WeaponTypeToStr(int in_weapon_type)
     {
+        // To-do: Localize (may need to convert to gameController function with corresponding localizer strings)
         string output = "";
         if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = "Punching Glove"; }
         else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = "Bomb"; }
@@ -276,31 +279,50 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
 
     public static void DictSort(ref int[] keys, ref int[] values, bool ascending_sort = true, bool keys_only = false)
     {
-        if (keys == null || values == null || keys.Length != values.Length) { return; }
+        if (keys == null || values == null || keys.Length != values.Length) return;
 
-        for (int i = 0; i < keys.Length; i++)
+        int len = keys.Length;
+
+        for (int i = 1; i < len; i++)
         {
-            int selectedIndex = i;
-            for (int j = i + 1; j < keys.Length; j++)
+            int key = keys[i];
+            int val = values[i];
+            int j = i - 1;
+
+            if (ascending_sort)
             {
-                // ASCENDING: use `<`, DESCENDING: use `>`
-                bool shouldSwap = ascending_sort ? values[j] < values[selectedIndex] : values[j] > values[selectedIndex];
-                if (shouldSwap)
+                while (j >= 0 && values[j] > val)
                 {
-                    selectedIndex = j;
+                    keys[j + 1] = keys[j];
+                    if (!keys_only) values[j + 1] = values[j];
+                    j--;
+                }
+            }
+            else
+            {
+                while (j >= 0 && values[j] < val)
+                {
+                    keys[j + 1] = keys[j];
+                    if (!keys_only) values[j + 1] = values[j];
+                    j--;
                 }
             }
 
-            int temp = keys[i];
-            keys[i] = keys[selectedIndex];
-            keys[selectedIndex] = temp;
-            if (!keys_only)
-            {
-                temp = values[i];
-                values[i] = values[selectedIndex];
-                values[selectedIndex] = temp;
-            }
+            keys[j + 1] = key;
+            if (!keys_only) values[j + 1] = val;
         }
+    }
+
+    public static bool ArraysEqual(int[] a, int[] b)
+    {
+        if (a == null || b == null) { return false; }
+        if (a.Length != b.Length) { return false; }
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i] != b[i]) { return false; }
+        }
+        return true;
     }
 
     public static GameObject[] AddToGameObjectArray(GameObject inValue, GameObject[] inArr)

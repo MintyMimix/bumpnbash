@@ -139,6 +139,12 @@ public class CaptureZone : UdonSharpBehaviour
                             contest_pause_timer = contest_pause_duration;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
                         }
+
+                        // We will, however, want one voice line for when we reach the 1 second mark exactly, and playing only once
+                        if (hold_index >= 0 && Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 2 && overtime_enabled)
+                        {
+                            gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_Overtime);
+                        }
                     }
                     else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
                     {
@@ -305,6 +311,7 @@ public class CaptureZone : UdonSharpBehaviour
                 ))
             {
                 gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Team);
+                gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_CaptureSelf);
             }
             else if ((
                 (gameController.option_teamplay && gameController.local_plyAttr != null && override_id != gameController.local_plyAttr.ply_team)
@@ -312,6 +319,7 @@ public class CaptureZone : UdonSharpBehaviour
                 ))
             {
                 gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Other);
+                gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_CaptureOther);
             }
         }
         // Point contesting start SFX
@@ -406,7 +414,7 @@ public class CaptureZone : UdonSharpBehaviour
             activeImage = UITeamLockImage;
             activeImage.enabled = true;
             RecolorDisplayArea(Color.gray);
-            displayText = "(LOCKED)\n";
+            displayText = gameController.localizer.FetchText("CAPTUREZONE_HOLDER_LOCK", "(LOCKED)") + '\n';
             timerText = string.Format("{0:F1}", initial_lock_duration - initial_lock_timer);
             activeImage.color = Color.gray;
             UITeamCBImage.sprite = gameController.team_sprites[0];
@@ -473,7 +481,7 @@ public class CaptureZone : UdonSharpBehaviour
                     UITeamText.color = Color.white;
                     UITimerText.color = Color.white;
                     RecolorDisplayArea(Color.white);
-                    displayText += "(DISCONNECTED)"; 
+                    displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_MISSING","(DISCONNECTED)"); 
                 }
             }
 
@@ -488,7 +496,7 @@ public class CaptureZone : UdonSharpBehaviour
         {
             activeImage.color = Color.white;
             UITeamCBImage.sprite = gameController.team_sprites[0];
-            displayText += "(OPEN)\n";
+            displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_NONE", "(OPEN)") + '\n';
             UITeamText.color = Color.white;
             UITimerText.color = Color.white;
             RecolorDisplayArea(Color.white);
@@ -496,7 +504,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (contest_id >= 0)
         {
-            displayText += "\n[Contestor: ";
+            displayText += '\n' + gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_HEADER_SINGLE", "[Contestor: ");
             float contest_pct = (contest_progress / gameController.option_gm_config_a);
             Color32 iColor = new Color32(255, 255, 0, 255);
             Color32 iColorB = new Color32(255, 255, 0, 255);
@@ -523,7 +531,7 @@ public class CaptureZone : UdonSharpBehaviour
                     }
                     displayText += contest_ply.displayName; 
                 }
-                else { displayText += "(DISCONNECTED)"; }
+                else { displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_MISSING", "(DISCONNECTED)"); }
             }
             Color colorLerp = new Color(
                 Mathf.Lerp(activeImage.color.r, ((Color)iColor).r, contest_pct)
@@ -547,14 +555,14 @@ public class CaptureZone : UdonSharpBehaviour
         }
         else if (contest_id == -2)
         {
-            displayText += "\n[Contested by multiple ";
-            if (gameController.option_teamplay) { displayText += "teams!]"; }
-            else { displayText += "players!]"; }
+            displayText += '\n' + gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_HEADER_MULTI", "[Contested by multiple ");
+            if (gameController.option_teamplay) { displayText += gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_TEAM", "teams!]"); }
+            else { displayText += gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_FFA", "players!]"); }
         }
 
         if (overtime_enabled && hold_points >= gameController.option_gm_goal - 1)
         {
-            displayText = displayText + "\n -- OVERTIME! --";
+            displayText = displayText + '\n' + gameController.localizer.FetchText("CAPTUREZONE_OVERTIME", "-- OVERTIME! --");
         }
 
         UITeamText.text = displayText;
@@ -687,7 +695,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
         if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning && player.playerId == Networking.LocalPlayer.playerId)
         {
-            gameController.AddToLocalTextQueue("Cannot interact with point while invulnerable!", Color.gray);
+            gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_KOTH_RESPAWN_WARNING", "Cannot interact with point while invulnerable!"), Color.gray);
         }
         
         // If we are not the master, signal to them that we entered the trigger

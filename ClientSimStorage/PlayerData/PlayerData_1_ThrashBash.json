@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-09-09T20:14:59.7534638-04:00",
+    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 7.0
+      "value": 10.0
     }
   },
   "UISeparation": {
@@ -88,19 +88,19 @@
     }
   },
   "UIStretch": {
-    "LastUpdated": "2025-09-09T20:14:59.7539641-04:00",
+    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
     "Key": "UIStretch",
     "Value": {
       "type": "Float",
-      "value": 14.0
+      "value": 10.0
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-09-09T20:14:59.7539641-04:00",
+    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
-      "value": 18.0
+      "value": 10.0
     }
   },
   "ParticleShow": {
@@ -112,7 +112,7 @@
     }
   },
   "UIHarmScale": {
-    "LastUpdated": "2025-09-06T00:47:09.4238865-04:00",
+    "LastUpdated": "2025-09-10T18:06:31.6187289-04:00",
     "Key": "UIHarmScale",
     "Value": {
       "type": "Float",
@@ -168,35 +168,35 @@
     }
   },
   "VOVolume": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "LastUpdated": "2025-09-18T01:03:10.0010783-04:00",
     "Key": "VOVolume",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 5.0
     }
   },
   "VOPrefA": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "LastUpdated": "2025-09-10T18:35:15.223787-04:00",
     "Key": "VOPrefA",
     "Value": {
       "type": "Bool",
-      "value": false
+      "value": true
     }
   },
   "VOPrefB": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "LastUpdated": "2025-09-10T18:35:15.2242875-04:00",
     "Key": "VOPrefB",
     "Value": {
       "type": "Bool",
-      "value": false
+      "value": true
     }
   },
   "VOPrefC": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
+    "LastUpdated": "2025-09-10T18:35:15.2242875-04:00",
     "Key": "VOPrefC",
     "Value": {
       "type": "Bool",
-      "value": false
+      "value": true
     }
   },
   "VOType": {
@@ -240,11 +240,43 @@
     }
   },
   "UIInverted": {
-    "LastUpdated": "2025-09-09T20:14:59.7539641-04:00",
+    "LastUpdated": "2025-09-18T01:02:56.9913086-04:00",
     "Key": "UIInverted",
     "Value": {
       "type": "Bool",
+      "value": false
+    }
+  },
+  "VOPref_A": {
+    "LastUpdated": "2025-09-14T22:14:46.7615779-04:00",
+    "Key": "VOPref_A",
+    "Value": {
+      "type": "Bool",
       "value": true
+    }
+  },
+  "VOPref_B": {
+    "LastUpdated": "2025-09-14T22:14:46.7615779-04:00",
+    "Key": "VOPref_B",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "VOPref_C": {
+    "LastUpdated": "2025-09-14T22:14:46.7615779-04:00",
+    "Key": "VOPref_C",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "MusicOverride": {
+    "LastUpdated": "2025-09-18T01:02:28.5037057-04:00",
+    "Key": "MusicOverride",
+    "Value": {
+      "type": "Float",
+      "value": 0.0
     }
   }
 }

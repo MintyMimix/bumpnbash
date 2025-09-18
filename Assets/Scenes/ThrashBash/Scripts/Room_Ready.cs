@@ -40,8 +40,8 @@ public class Room_Ready : UdonSharpBehaviour
             || gameController.round_state == (int)round_state_name.Queued
             || gameController.round_state == (int)round_state_name.Loading) 
         { gameController.PlaySFXFromArray(gameController.snd_game_music_source, gameController.snd_ready_music_clips, -1, 1, true); }
-        gameController.AddToLocalTextQueue("Step in the square to join the game!", Color.cyan);
-        gameController.AddToLocalTextQueue("Alternatively, you can spectate by using the 'Game' Tab in the Local Options menu!", Color.cyan);
+        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_START_0", "Step in the square to join the game!"), Color.cyan);
+        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_START_1", "Alternatively, you can spectate by using the 'Game' Tab in the Local Options menu!"), Color.cyan);
         gameController.room_training_portal.SetActive(true);
         if (gameController.mapscript_list != null && gameController.mapscript_list.Length > 0)
         {
