@@ -828,8 +828,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             var powerup_len = (int)Mathf.Min(PTSPowerupSprites.Length, playerAttributes.powerups_active.Length);
             for (int i = 0; i < PTSPowerupSprites.Length; i++)
             {
+                TMP_Text PTSPowerupSpriteText = PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>();
                 PTSPowerupSprites[i].transform.gameObject.SetActive(false);
-                PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>().text = "";
+                PTSPowerupSpriteText.text = "∞";
 
                 if (i < powerup_len)
                 {
@@ -839,7 +840,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     PTSPowerupSprites[i].transform.gameObject.SetActive(true);
                     PTSPowerupSprites[i].sprite = powerup.powerup_sprites[powerup.powerup_type];
 
-                    TMP_Text PTSPowerupSpriteText = PTSPowerupSprites[i].GetComponentInChildren<TMP_Text>();
                     float powerup_time_left = (float)(powerup.powerup_duration - powerup.powerup_timer_network);
                     if (powerup_time_left < 10.0f)
                     {
@@ -867,7 +867,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         // Handle weapon stats
         if (gameController != null && gameController.local_plyweapon != null && PTSWeaponSprite != null && PTSWeaponText != null && gameController.local_plyweapon.weapon_type != gameController.local_plyweapon.weapon_type_default)
         {
-            string weaponTxt = "";
+            string weaponTxt = "∞";
             PTSWeaponText.color = Color.white;
             if (gameController.local_plyweapon.weapon_temp_ammo > -1)
             {
@@ -1147,8 +1147,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 , PTSDamageTransform.localPosition.z
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
-            if (useWrist == 0) { PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation); }
-            else { PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300); }
+            if (useWrist == 0) 
+            {
+                PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation ); 
+            }
+            else 
+            { 
+                PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300); 
+            }
             PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
 
             ((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
@@ -1194,7 +1200,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (playerAttributes.ply_scale < 1.0f && Networking.LocalPlayer.IsUserInVR()) { velAdd /= (playerAttributes.ply_scale / 0.9f); }
             if (useWrist > 0) { velAdd *= 2.0f; } // When wrist hud is active, we want to increase the tracking speed
         }*/
-
+        
+        // If we are using UI in front and are on desktop, distance UI instead becomes a parameter that scales both vertical & horizontal separation rather than being another scale
+        //if (useWrist == 0 && !Networking.LocalPlayer.IsUserInVR()) { distanceUI = 1.0f; } 
         Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
         Vector3 VROffset = new Vector3(0.0f, -0.1f, 0.0f) * GlobalHelperFunctions.BoolToInt(Networking.LocalPlayer.IsUserInVR());
         Vector3 posFinal = posOut + VROffset; //+ velAdd;

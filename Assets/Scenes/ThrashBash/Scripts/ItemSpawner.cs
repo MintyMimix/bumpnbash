@@ -70,6 +70,8 @@ public class ItemSpawner : UdonSharpBehaviour
 
     [NonSerialized] public bool training_tutorial_ui_ready = false;
 
+    [NonSerialized] public int cached_language_type = -1;
+
     private void Start()
     {
         if (gameController == null)
@@ -214,9 +216,10 @@ public class ItemSpawner : UdonSharpBehaviour
 
     private void LateUpdate()
     {
-        if (training_spawner && !training_tutorial_ui_ready && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
+        if (training_spawner && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
         {
-            UpdateTrainingTutorialText();
+            if (!training_tutorial_ui_ready) { UpdateTrainingTutorialText(); }
+            else if (gameController.localizer != null && cached_language_type != gameController.localizer.language_type) { training_tutorial_ui_ready = false; cached_language_type = gameController.localizer.language_type; }
         }
     }
 

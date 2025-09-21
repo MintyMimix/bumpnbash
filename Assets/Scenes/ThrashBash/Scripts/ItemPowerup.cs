@@ -110,9 +110,9 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.LowGrav:
-                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.5f;
+                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.66f;
                 powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
-                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.25f;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.33f;
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.PartialHeal:

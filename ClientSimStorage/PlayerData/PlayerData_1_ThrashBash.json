@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
+    "LastUpdated": "2025-09-20T17:19:50.1597935-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 6.0
     }
   },
   "UISeparation": {
@@ -88,7 +88,7 @@
     }
   },
   "UIStretch": {
-    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
+    "LastUpdated": "2025-09-19T00:00:11.7372877-04:00",
     "Key": "UIStretch",
     "Value": {
       "type": "Float",
@@ -96,7 +96,7 @@
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-09-18T01:02:34.4089395-04:00",
+    "LastUpdated": "2025-09-20T17:13:23.868703-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
@@ -136,15 +136,15 @@
     }
   },
   "UIDistance": {
-    "LastUpdated": "2025-09-09T20:10:18.5328893-04:00",
+    "LastUpdated": "2025-09-20T17:19:50.1597935-04:00",
     "Key": "UIDistance",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 21.0
     }
   },
   "ColorblindChoice": {
-    "LastUpdated": "2025-09-06T09:53:56.9990692-04:00",
+    "LastUpdated": "2025-09-20T15:49:27.1501168-04:00",
     "Key": "ColorblindChoice",
     "Value": {
       "type": "Int",
@@ -168,11 +168,11 @@
     }
   },
   "VOVolume": {
-    "LastUpdated": "2025-09-18T01:03:10.0010783-04:00",
+    "LastUpdated": "2025-09-20T17:13:13.7259813-04:00",
     "Key": "VOVolume",
     "Value": {
       "type": "Float",
-      "value": 5.0
+      "value": 10.0
     }
   },
   "VOPrefA": {
@@ -208,7 +208,7 @@
     }
   },
   "LanguageType": {
-    "LastUpdated": "2025-09-09T15:29:54.378375-04:00",
+    "LastUpdated": "2025-09-20T17:13:40.1829436-04:00",
     "Key": "LanguageType",
     "Value": {
       "type": "Int",

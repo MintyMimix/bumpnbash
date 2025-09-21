@@ -311,7 +311,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         if (player == null) { return; }
 
         new_host_proposed_id = host_requested;
-        string display_text = "The Game Master will be changed to:\n$NAME\n\nAre you sure?";
+        string display_text = gameController.localizer.FetchText("GAMESETTINGS_HOST_CHANGE_CONFIRM", "The Game Master will be changed to:\n$NAME\n\nAre you sure?");
         display_text = display_text.Replace("$NAME", player.displayName);
         GlobalHelperFunctions.GetChildTransformByName(UIHostChangePanel.transform, "UIHostText").GetComponent<TMP_Text>().text = display_text;
         UIHostChangePanel.SetActive(true);

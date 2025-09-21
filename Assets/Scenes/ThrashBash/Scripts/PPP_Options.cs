@@ -18,6 +18,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public GameController gameController;
     [SerializeField] public DebuggerPanel debuggerPanel;
     [SerializeField] public Localizer localizer;
+    [SerializeField] public PPP_LocalizerContainer txt_container;
     [NonSerialized] public GameObject harmTester;
     [NonSerialized] public Vector3 canvas_pos_init;
     [NonSerialized] public Quaternion canvas_rot_init;
@@ -107,21 +108,8 @@ public class PPP_Options : UdonSharpBehaviour
         Transform harmtester_transform = GlobalHelperFunctions.GetChildTransformByName(transform, "HarmTester");
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
-        // Make sure our placeholder newline character is replaced with the real version (inspector doesn't interpret it correctly when manually typed)
-        for (int i = 0; i < ui_colorblind_dropdown_names.Length; i++)
-        {
-            ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("#", "  ");
-        }
-        ui_colorblind_dropdown.ClearOptions();
-        ui_colorblind_dropdown.AddOptions(ui_colorblind_dropdown_names);
-        ui_musicoverride_dropdown.ClearOptions();
-        string[] music_override_names = new string[gameController.snd_override_music_names.Length + 1];
-        music_override_names[0] = "(Default)";
-        for (int i = 0; i < gameController.snd_override_music_names.Length; i++)
-        {
-            music_override_names[i + 1] = gameController.snd_override_music_names[i];
-        }
-        ui_musicoverride_dropdown.AddOptions(music_override_names);
+        ResetColorblindNames(true);
+        ResetMusicNames(true);
 
         canvas_pos_init = transform.position;
         canvas_rot_init = transform.rotation;
@@ -178,7 +166,7 @@ public class PPP_Options : UdonSharpBehaviour
     {
         if (!player.isLocal) { return; }
         //gameController.local_ppp_options = this;
-        RefreshAllOptions();
+        RefreshAllOptions(true);
         waiting_on_playerdata = false;
 
         string tutorial_method = gameController.localizer.FetchText("LOCALOPTIONS_TUTORIAL_DESKTOP", "pushing your E or F key");
@@ -186,15 +174,17 @@ public class PPP_Options : UdonSharpBehaviour
         tutorial_text.text = tutorial_text.text.Replace("$METHOD", tutorial_method);
     }
 
-    public void RefreshAllOptions()
+    public void RefreshAllOptions(bool init)
     {
-        RefreshComponents();
+        if (init) { RefreshComponents(); }
         UpdateUIScale();
         UpdateUISeparation();
         UpdateUIStretch();
         UpdateUIDistance();
         UpdateUIWrist();
         UpdateUIInverted();
+        UpdateUIOtherScale();
+        UpdateUIHarmScale();
         UpdateSpectatorIntent();
         UpdateHitbox();
         UpdateHurtbox();
@@ -888,6 +878,7 @@ public class PPP_Options : UdonSharpBehaviour
         gameController.SetColorOptions(colorblind_choice);
         SetColorblindFlagColors();
         gameController.RefreshSetupUI();
+        UpdateUIWrist(false);
         //ShowDemoUI();
 
         if (waiting_on_playerdata) { return; }
@@ -961,19 +952,32 @@ public class PPP_Options : UdonSharpBehaviour
         sync_timer = 0.0f;
     }
 
-    public void UpdateUIWrist()
+    public void UpdateUIWrist(bool show_demo = true)
     {
+        if (gameController.team_colors != null && gameController.team_colors.Length > 2)
+        {
+            Color.RGBToHSV(gameController.team_colors[2], out float H, out float S, out float V);
+            V *= 0.5f;
+            Color DimColor = Color.HSVToRGB(H, S, V);
+            txt_container.PPPWristLToggle.color = DimColor;
+            txt_container.PPPWristRToggle.color = DimColor;
+            txt_container.PPPWristNoneToggle.color = DimColor;
+        }
+
         if (ui_wristtoggle_l.isOn)
         {
             ui_wrist = 1;
             ui_wristtoggle_r.isOn = false;
             ui_wristtoggle_n.isOn = false;
+            if (gameController.team_colors != null && gameController.team_colors.Length > 2) { txt_container.PPPWristLToggle.color = gameController.team_colors_bright[2]; }
         }
         else if (ui_wristtoggle_r.isOn)
         {
             ui_wrist = 2;
             ui_wristtoggle_l.isOn = false;
             ui_wristtoggle_n.isOn = false;
+            if (gameController.team_colors != null && gameController.team_colors.Length > 2) { txt_container.PPPWristRToggle.color = gameController.team_colors_bright[2]; }
+
         }
         else
         {
@@ -981,11 +985,12 @@ public class PPP_Options : UdonSharpBehaviour
             ui_wristtoggle_l.isOn = false;
             ui_wristtoggle_r.isOn = false;
             ui_wristtoggle_n.isOn = true;
+            if (gameController.team_colors != null && gameController.team_colors.Length > 2) { txt_container.PPPWristNoneToggle.color = gameController.team_colors_bright[2]; }
         }
 
         gameController.RefreshSetupUI();
         lock_wrist = false;
-        ShowDemoUI();
+        if (show_demo) { ShowDemoUI(); }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -1080,6 +1085,7 @@ public class PPP_Options : UdonSharpBehaviour
         {
             localizer.language_type = in_language_type;
             localizer.SetLangDict();
+            UnityEngine.Debug.Log("[LANGUAGE_TEST]: Setting language to " + in_language_type.ToString());
         }
 
         if (waiting_on_playerdata) { return; }
@@ -1089,27 +1095,27 @@ public class PPP_Options : UdonSharpBehaviour
 
     public void UpdateLangEnglish()
     {
-        UpdateLanguage((int)language_type_name.English);
+        if (ui_language_toggles[(int)language_type_name.English].isOn) { UpdateLanguage((int)language_type_name.English); }
     }
 
     public void UpdateLangFrench()
     {
-        UpdateLanguage((int)language_type_name.French);
+        if (ui_language_toggles[(int)language_type_name.French].isOn) { UpdateLanguage((int)language_type_name.French); }
     }
 
     public void UpdateLangJapanese()
     {
-        UpdateLanguage((int)language_type_name.Japanese);
+        if (ui_language_toggles[(int)language_type_name.Japanese].isOn) { UpdateLanguage((int)language_type_name.Japanese); }
     }
 
     public void UpdateLangSpanishLatin()
     {
-        UpdateLanguage((int)language_type_name.SpanishLatin);
+        if (ui_language_toggles[(int)language_type_name.SpanishLatin].isOn) { UpdateLanguage((int)language_type_name.SpanishLatin); }
     }
 
     public void UpdateLangSpanishEurope()
     {
-        UpdateLanguage((int)language_type_name.SpanishEurope);
+        if (ui_language_toggles[(int)language_type_name.SpanishEurope].isOn) { UpdateLanguage((int)language_type_name.SpanishEurope); }
     }
 
     public void UpdateSpectatorIntent()
@@ -1226,6 +1232,41 @@ public class PPP_Options : UdonSharpBehaviour
                 colorblind_flags[j].transform.GetChild(0).gameObject.SetActive(true);
             }
         }
+    }
+
+    public void ResetColorblindNames(bool init = false)
+    {
+        // Due to the way this is implemented, the value will be forced to 0. So, we store the original value and then reset to that value after refreshing the options.
+        int stored_value = ui_colorblind_dropdown.value;
+        // Make sure our placeholder newline character is replaced with the real version (inspector doesn't interpret it correctly when manually typed)
+
+        for (int i = 0; i < ui_colorblind_dropdown_names.Length; i++)
+        {
+            if (!init) { ui_colorblind_dropdown_names[i] = gameController.localizer.FetchText("LOCALOPTIONS_GAME_COLORBLIND_SELECT_" + i.ToString(), ui_colorblind_dropdown_names[i]).Replace("#", "  "); }
+            else { ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("#", "  "); }
+        }
+        ui_colorblind_dropdown.ClearOptions();
+        ui_colorblind_dropdown.AddOptions(ui_colorblind_dropdown_names);
+        ui_colorblind_dropdown.value = stored_value;
+    }
+
+    public void ResetMusicNames(bool init = false)
+    {
+        // Due to the way this is implemented, the value will be forced to 0. So, we store the original value and then reset to that value after refreshing the options.
+        int stored_value = ui_musicoverride_dropdown.value;
+
+        ui_musicoverride_dropdown.ClearOptions();
+        string[] music_override_names = new string[gameController.snd_override_music_names.Length + 1];
+        if (!init) { music_override_names[0] = gameController.localizer.FetchText("MUSIC_0", "(Default)");  }
+        else { music_override_names[0] = "(Default)"; }
+
+        for (int i = 0; i < gameController.snd_override_music_names.Length; i++)
+        {
+            if (!init) { music_override_names[i + 1] = gameController.localizer.FetchText("MUSIC_" + (i + 1).ToString(), gameController.snd_override_music_names[i]); }
+            else { music_override_names[i + 1] = gameController.snd_override_music_names[i]; }
+        }
+        ui_musicoverride_dropdown.AddOptions(music_override_names);
+        ui_musicoverride_dropdown.value = stored_value;
     }
 
 }

@@ -1,11 +1,7 @@
 ﻿
 using System;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Xml.Linq;
 using UdonSharp;
 using UnityEngine;
-using UnityEngine.SocialPlatforms.Impl;
-using UnityEngine.Windows;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
@@ -535,8 +531,8 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
 
         ResetPowerups();
-        if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); }
-        if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); }
+        if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); gameController.local_plyweapon.CacheWeaponPos(true); }
+        if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); gameController.local_secondaryweapon.CacheWeaponPos(true); }
 
         bool is_boss = gameController.local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
         is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
@@ -817,47 +813,50 @@ public class PlayerAttributes : UdonSharpBehaviour
         local_tutorial_message_str_vr = new string[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH];
 
         // Tutorial messages for all      
-        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeUp] = "Increases size, range, and attack/defense! Be a massive threat!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeDown] = "Decreases size, range, and attack/defense, but increases movement speed! Be a hard to hit menace!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.SpeedUp] = "Dramatically increases movement speed! Nyoom!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkUp] = "Multiplies damage dealt by a large factor!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkDown] = "Divides damage dealt by a large factor!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.DefUp] = "Divides damage received by a large factor!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.DefDown] = "Multiplies damage received by a large factor!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.LowGrav] = "Increases time spent in mid-air!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.PartialHeal] = "Removes 50% of damage dealt to the user!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.FullHeal] = "Removes 100% of damage dealt to the user!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.Multijump] = "Grants an additional jump while in mid-air!";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.HighGrav] = "Decreases time spent in mid-air!";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeUp] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_SIZEUP", "Increases size, range, and attack/defense! Be a massive threat!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SizeDown] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_SIZEDOWN", "Decreases size, range, and attack/defense, but increases movement speed! Be a hard to hit menace!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.SpeedUp] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_SPEEDUP", "Dramatically increases movement speed! Nyoom!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkUp] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_ATKUP", "Multiplies damage dealt by a large factor!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.AtkDown] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_DEFUP", "Divides damage dealt by a large factor!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.DefUp] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_ATKDOWN", "Divides damage received by a large factor!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.DefDown] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_DEFDOWN", "Multiplies damage received by a large factor!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.LowGrav] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_LOWGRAV", "Increases time spent in mid-air!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.PartialHeal] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_PARTIALHEAL", "Removes 50% of damage dealt to the user!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.FullHeal] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_FULLHEAL", "Removes 100 % of damage dealt to the user!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.Multijump] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_MULTIJUMP", "Grants an additional jump while in mid-air!");
+        local_tutorial_message_str_desktop[(int)powerup_type_name.HighGrav] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_POWERUP_HIGHGRAV", "Decreases time spent in mid-air!");
 
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = "The default weapon. Push your fire key to knock opponents out of the arena! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Push your fire key to toss it forward! It will detonate after " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = "Fire off projectiles that will explode in a radius! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox. Attack rate scales with # of players in-game! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = "Hyper-fast attacks, but less damage! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = "Mega damage, but slow to fire! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your fire key to charge it up and fire a huge beam! (Power: " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage] + ")";
-        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Push your fire key to toss it forward! (Contains: $NAME)";
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.PunchingGlove] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_PUNCHINGGLOVE", "The default weapon. Push your fire key to knock opponents out of the arena! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.PunchingGlove)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_BOMB_DESKTOP", "Push your fire key to toss it forward! It will detonate after $ARG0 seconds! (Power: $ARG1)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration].ToString(), gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Rocket] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_ROCKET", "Fire off projectiles that will explode in a radius! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Rocket)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_BOSSGLOVE", "Used by the Big Boss during the Boss Bash gamemode. Has a much bigger hitbox. Attack rate scales with # of players in-game! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.BossGlove)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.HyperGlove] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_HYPERGLOVE", "Hyper-fast attacks, but less damage! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.HyperGlove)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.MegaGlove] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_MEGAGLOVE", "Mega damage, but slow to fire! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_SUPERLASER_DESKTOP", "Hold down your fire key to charge it up and fire a huge beam! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_desktop[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_DESKTOP", "Push your fire key to toss it forward! (Contains: $ARG0)", "$NAME");
+
+        // VR-specific messages
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_BOMB_VR", "Toss it by releasing your Grip! It will detonate after $ARG0 seconds!", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration].ToString());
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_SUPERLASER_VR", "Hold down your Trigger to charge it up and fire a huge beam! (Power: $ARG0)", gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.SuperLaser)[(int)weapon_stats_name.Hurtbox_Damage].ToString());
+        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_VR", "Toss it by releasing your Grip! (Contains: $ARG0)", "$NAME");
 
         for (int i = 0; i < (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ENUM_LENGTH; i++)
         {
             local_tutorial_message_bool[i] = false;
             if (local_tutorial_message_str_desktop[i] != "" && i < (int)powerup_type_name.ENUM_LENGTH)
             {
-                local_tutorial_message_str_desktop[i] = GlobalHelperFunctions.PowerupTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i];
+                local_tutorial_message_str_desktop[i] = gameController.PowerupTypeToStr(i).ToUpper() + ": " + local_tutorial_message_str_desktop[i];
             }
             else if (local_tutorial_message_str_desktop[i] != "" && i >= (int)powerup_type_name.ENUM_LENGTH) 
             { 
-                local_tutorial_message_str_desktop[i] = GlobalHelperFunctions.WeaponTypeToStr(i - (int)powerup_type_name.ENUM_LENGTH).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; 
+                local_tutorial_message_str_desktop[i] = gameController.WeaponTypeToStr(i - (int)powerup_type_name.ENUM_LENGTH).ToUpper() + ": " + local_tutorial_message_str_desktop[i]; 
             }
 
-            local_tutorial_message_str_vr[i] = local_tutorial_message_str_desktop[i].Replace("fire key", "Trigger");
+            if (local_tutorial_message_str_vr[i] != "")
+            {
+                local_tutorial_message_str_vr[i] = local_tutorial_message_str_desktop[i].Replace(gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_GENERIC_DESKTOP", "fire key"), gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_GENERIC_VR", "Trigger"));
+            }
         }
-
-        // VR-specific messages
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.Bomb] = "Toss it by releasing your Grip! It will detonate after " + gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.Bomb)[(int)weapon_stats_name.Projectile_Duration] + " seconds!";
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.SuperLaser] = "Hold down your Trigger to charge it up and fire a huge beam!";
-        local_tutorial_message_str_vr[(int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem] = "Toss it by releasing your Grip! (Contains: $NAME)";
 
         tutorial_messages_ready = true;
     }
@@ -886,14 +885,13 @@ public class PlayerAttributes : UdonSharpBehaviour
         // Send a tutorial message
         if (tutorial_messages_ready && Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
         {
-            // To-do: Localize
             string display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
             if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
             {
                 string item_name = "";
-                if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = GlobalHelperFunctions.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
-                else { item_name = GlobalHelperFunctions.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH); }
+                if (gameController.local_plyweapon.weapon_extra_data < (int)powerup_type_name.ENUM_LENGTH) { item_name = gameController.PowerupTypeToStr(gameController.local_plyweapon.weapon_extra_data); }
+                else { item_name = gameController.WeaponTypeToStr(gameController.local_plyweapon.weapon_extra_data - (int)powerup_type_name.ENUM_LENGTH); }
                 display_str = display_str.Replace("$NAME", item_name);
             }
 
@@ -913,7 +911,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         // Send a tutorial message
         string display_str = "";
-        if (Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_bool != null && !local_tutorial_message_bool[item_type])
+        if (Networking.IsOwner(gameObject) && gameController != null && local_tutorial_message_str_desktop != null && local_tutorial_message_str_desktop.Length > item_type)
         {
             display_str = local_tutorial_message_str_desktop[item_type];
             if (Networking.LocalPlayer.IsUserInVR()) { display_str = local_tutorial_message_str_vr[item_type]; }
@@ -926,7 +924,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 }
                 if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
                 {
-                    display_str = display_str.Replace("(Contains: $NAME)", "Contains a random powerup or weapon! ");
+                    display_str = display_str.Replace("(Contains: $NAME)", gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_GENERIC", "Contains a random powerup or weapon!"));
                 }
             }
 

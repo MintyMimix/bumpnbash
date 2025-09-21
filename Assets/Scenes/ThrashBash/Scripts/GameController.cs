@@ -1091,16 +1091,18 @@ public class GameController : GlobalHelperFunctions
 
         if (ui_round_option_dropdown != null && local_gamemode_count < round_option_names.Length)
         {
-            // To-do: Localize (will additionally need a check to see if the language changed to refresh these options, or at the very least change the underlying checks [may not be exposed to U#])
+            // In case we are resetting the options [due to language change] instead of setting them, we store the value of the dropdown and set it after refreshing the options
+            int stored_gamemode_value = ui_round_option_dropdown.value;
             ui_round_option_dropdown.ClearOptions();
             ui_round_option_dropdown.AddOptions(round_option_names);
+            ui_round_option_dropdown.value = stored_gamemode_value;
             local_gamemode_count = (byte)round_option_names.Length;
 
             string gamemode_tutorial_description = "";
             for (int i = 0; i < round_option_names.Length; i++)
             {
                 if (ui_tutorial_gamemodes_txt == null || i >= ui_tutorial_gamemodes_txt.Length) { break; }
-                gamemode_tutorial_description = round_option_descriptions[i]; // To-do: Localize
+                gamemode_tutorial_description = round_option_descriptions[i];
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$TIMER", "X");
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$POINTS_A", "X");
                 gamemode_tutorial_description = gamemode_tutorial_description.Replace("$LIVES", "X");
@@ -1110,6 +1112,7 @@ public class GameController : GlobalHelperFunctions
 
         if (ui_ply_option_weapon_dropdown != null && local_weapon_count < (int)weapon_type_name.ENUM_LENGTH)
         {
+            int stored_weapon_value = ui_ply_option_weapon_dropdown.value;
             ui_ply_option_weapon_dropdown.ClearOptions();
             string[] weapon_options = new string[(int)weapon_type_name.ENUM_LENGTH];
             for (int i = 0; i < weapon_options.Length; i++) {
@@ -1117,6 +1120,7 @@ public class GameController : GlobalHelperFunctions
             }
             ui_ply_option_weapon_dropdown.AddOptions(weapon_options);
             local_weapon_count = (byte)weapon_options.Length;
+            ui_ply_option_weapon_dropdown.value = stored_weapon_value;
         }
 
         /*if (ui_round_map_dropdown != null && (map_selected >= mapscript_list.Length || map_selected < 0))
@@ -1609,7 +1613,18 @@ public class GameController : GlobalHelperFunctions
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (ply_object_owners == null) { ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS]; }
+        if (ply_object_owners == null || ply_object_owners[0] == 0) 
+        {
+            // If our owner array is empty, we can fill it now
+            VRCPlayerApi[] players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
+            VRCPlayerApi.GetPlayers(players);
+            foreach (VRCPlayerApi ply in players)
+            {
+                if (ply == player) { continue; } // We'll temporarily exclude ourselves as we'll be adding our own objects in the next steps
+                AddPlayerToObjOwners(ply);
+            }
+        }
+
         bool found_player_in_owner_arr = false;
         for (int i = 0; i < ply_object_owners.Length; i++)
         {
@@ -1704,6 +1719,7 @@ public class GameController : GlobalHelperFunctions
 
                 for (int i = 0; i < ply_owners_cnt; i++)
                 {
+                    if (ply_object_plyattr[i] != null && ply_object_plyattr[i].in_ready_room) { ply_object_plyhitbox[i].ToggleHitbox(false); continue; }
                     ply_object_plyhitbox[i].ToggleHitbox(ply_object_plyhitbox[i].network_active);
                 }
                 //CheckPlyObjsActive();
@@ -2066,6 +2082,7 @@ public class GameController : GlobalHelperFunctions
                 else { playerData.ply_dual_wield = false; }
             }
             plyWeapon.UpdateStatsFromWeaponType();
+            plyWeapon.CacheWeaponPos(true);
             if (secondaryWeapon != null && secondaryWeapon.gameObject.activeInHierarchy) { secondaryWeapon.UpdateStatsFromWeaponType(); }
             playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
             playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
@@ -2132,7 +2149,6 @@ public class GameController : GlobalHelperFunctions
         }
         if (option_teamplay && team_colors_bright != null && team_to_search < team_colors_bright.Length && team_to_search >= 0) { color_team = (Color)team_colors_bright[Mathf.Max(0, team_to_search)]; }
 
-        // To-do: Localize
         AddToLocalTextQueue(round_option_names[option_gamemode], Color.yellow, ready_length);
         AddToLocalTextQueue(gamemode_description, Color.white, ready_length);
 
@@ -2839,7 +2855,7 @@ public class GameController : GlobalHelperFunctions
                 if (plyWeapon.GetComponent<VRC_Pickup>() != null) { plyWeapon.GetComponent<VRC_Pickup>().Drop(); }
                 if (plyAttributes.ply_state != (int)player_state_name.Spectator) { plyAttributes.ply_state = (int)player_state_name.Inactive; plyAttributes.ply_training = false; }
                 ToggleReadyRoomCollisions(true);
-                if (plyAttributes.ply_team >= 0 || plyAttributes.ply_team == (int)player_tracking_name.WaitingForLobby) { TeleportLocalPlayerToReadyRoom(); }
+                if (!plyAttributes.in_ready_room && (plyAttributes.ply_team >= 0 || plyAttributes.ply_team == (int)player_tracking_name.WaitingForLobby)) { TeleportLocalPlayerToReadyRoom(); }
             }
         }
                 
@@ -3101,19 +3117,23 @@ public class GameController : GlobalHelperFunctions
         }
         //var plyWeaponObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon");
         //var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
-        if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.UpdateStatsFromWeaponType(); }
+
+        ToggleReadyRoomCollisions(false);
+        platformHook.custom_force_unhook = true;
+        Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
+        platformHook.custom_force_unhook = false;
+
+        // We want these to occur after the teleport, particular for CacheWeaponPos() so our player is already rotated when that runs and the weapon is properly placed in front of us rather than in a weird pre-teleport position.
+        if (local_plyweapon != null && !local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.UpdateStatsFromWeaponType(); local_plyweapon.CacheWeaponPos(true); }
         if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
         if (local_uiplytoself != null) { local_uiplytoself.UI_Damage(); }
         if (local_secondaryweapon != null && !local_secondaryweapon.gameObject.activeInHierarchy)
         {
             bool is_boss = (option_gamemode == (int)gamemode_name.BossBash && local_plyAttr.ply_team == 1) || local_plyAttr.ply_dual_wield;
             is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
-            if (is_boss) { local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_plyweapon.UpdateStatsFromWeaponType(); }
+            if (is_boss) { local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); local_secondaryweapon.UpdateStatsFromWeaponType(); }
+            local_secondaryweapon.CacheWeaponPos(true);
         }
-        ToggleReadyRoomCollisions(false);
-        platformHook.custom_force_unhook = true;
-        Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
-        platformHook.custom_force_unhook = false;
     }
 
     public void TeleportLocalPlayerToTrainingArena()
@@ -3583,7 +3603,6 @@ public class GameController : GlobalHelperFunctions
 
     public string ModifyModeDescription(string input)
     {
-        // To-do: Localize
         var gamemode_description = input.ToUpper();
         gamemode_description = gamemode_description.Replace("$TIMER", round_length.ToString());
         gamemode_description = gamemode_description.Replace("$POINTS_A", option_gm_goal.ToString());
@@ -3678,6 +3697,41 @@ public class GameController : GlobalHelperFunctions
                 }
             }
         }
+    }
+
+    public void AddPlayerToObjOwners(VRCPlayerApi player)
+    {
+        if (player == null) { return; }
+
+        if (ply_object_owners == null || ply_owners_cnt <= 0) 
+        {
+            ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        }
+
+        // Ensure the ID is not already there
+        for (int i = 0; i < ply_object_owners.Length; i++)
+        {
+            if (ply_object_owners[i] == player.playerId) { return; }
+        }
+
+        var plyAttributesObj = FindPlayerOwnedObject(player, "PlayerAttributes");
+        var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
+        var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
+        var plySecondaryObj = FindPlayerOwnedObject(player, "SecondaryWeapon");
+        var plyUIToOthers = FindPlayerOwnedObject(player, "UIPlyToOthers");
+
+        if (plyAttributesObj != null) { ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>(); }
+        if (plyHitboxObj != null) { ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>(); }
+        if (plyWeaponObj != null) { ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>(); }
+        if (plySecondaryObj != null) { ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>(); }
+        if (plyUIToOthers != null) { ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>(); }
+
+        ply_owners_cnt++;
     }
 
     public void RemovePlayerFromObjOwners(int player_id)
@@ -3845,6 +3899,41 @@ public class GameController : GlobalHelperFunctions
             local_uiplytoself.ui_check_gamevars_impulse = value / 1000.0f;
         }
     }
+
+    public string PowerupTypeToStr(int in_powerup_type)
+    {
+        string output = "";
+        if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = localizer.FetchText("POWERUP_SIZEUP", "Size Up"); }
+        else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = localizer.FetchText("POWERUP_SIZEDOWN", "Size Down"); }
+        else if (in_powerup_type == (int)powerup_type_name.SpeedUp) { output = localizer.FetchText("POWERUP_SPEEDUP", "Speed Boost"); }
+        else if (in_powerup_type == (int)powerup_type_name.AtkUp) { output = localizer.FetchText("POWERUP_ATKUP", "Attack Up"); }
+        else if (in_powerup_type == (int)powerup_type_name.AtkDown) { output = localizer.FetchText("POWERUP_DEFUP", "Attack Down"); }
+        else if (in_powerup_type == (int)powerup_type_name.DefUp) { output = localizer.FetchText("POWERUP_ATKDOWN", "Defense Up"); }
+        else if (in_powerup_type == (int)powerup_type_name.DefDown) { output = localizer.FetchText("POWERUP_DEFDOWN", "Defense Down"); }
+        else if (in_powerup_type == (int)powerup_type_name.LowGrav) { output = localizer.FetchText("POWERUP_LOWGRAV", "Low Gravity"); }
+        else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = localizer.FetchText("POWERUP_PARTIALHEAL", "Heal (50%)"); }
+        else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = localizer.FetchText("POWERUP_FULLHEAL", "Heal (100%)"); }
+        else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = localizer.FetchText("POWERUP_MULTIJUMP", "Multi-Jump"); }
+        else if (in_powerup_type == (int)powerup_type_name.HighGrav) { output = localizer.FetchText("POWERUP_HIGHGRAV", "High Gravity"); }
+        else { output = "(PLACEHOLDER)"; }
+        return output;
+    }
+
+    public string WeaponTypeToStr(int in_weapon_type)
+    {
+        string output = "";
+        if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = localizer.FetchText("WEAPON_PUNCHINGGLOVE", "Punching Glove"); }
+        else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = localizer.FetchText("WEAPON_BOMB", "Bomb"); }
+        else if (in_weapon_type == (int)weapon_type_name.Rocket) { output = localizer.FetchText("WEAPON_ROCKET", "Rocket Launcher"); }
+        else if (in_weapon_type == (int)weapon_type_name.BossGlove) { output = localizer.FetchText("WEAPON_BOSSGLOVE", "Big Boss Glove"); }
+        else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = localizer.FetchText("WEAPON_HYPERGLOVE", "Hyper Glove"); }
+        else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = localizer.FetchText("WEAPON_MEGAGLOVE", "Mega Glove"); }
+        else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = localizer.FetchText("WEAPON_SUPERLASER", "Superlaser"); }
+        else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = localizer.FetchText("WEAPON_THROWABLEITEM", "Throwable Item"); }
+        else { output = "(PLACEHOLDER)"; }
+        return output;
+    }
+
 
 }
 

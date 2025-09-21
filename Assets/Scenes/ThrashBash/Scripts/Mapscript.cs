@@ -15,6 +15,9 @@ public class Mapscript : UdonSharpBehaviour
 {
     [SerializeField] public string map_name;
     [SerializeField] public string map_description;
+    [SerializeField] public string map_localization_name_key;
+    [SerializeField] public string map_localization_description_key;
+
     [SerializeField] public Sprite map_image;
     [SerializeField] public float map_snd_radius;
     [SerializeField] public float map_gravity_scale = 1.0f;

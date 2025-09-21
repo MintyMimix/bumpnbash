@@ -7,6 +7,8 @@ using VRC.Udon;
 
 public class GlobalHelperFunctions : UdonSharpBehaviour
 {
+    public const string BUILD_VERSION = "0.26.0";
+
     // Enum replacement helper
     public static int KeyToPowerupType(string enum_str_name)
     {
@@ -40,44 +42,6 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
         else if (cleanStr == "megaglove") { output = (int)weapon_type_name.MegaGlove; }
         else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
         else if (cleanStr == "throwableitem") { output = (int)weapon_type_name.ThrowableItem; }
-        return output;
-    }
-
-
-    public static string PowerupTypeToStr(int in_powerup_type)
-    {
-        // To-do: Localize (may need to convert to gameController function with corresponding localizer strings)
-        string output = "";
-        if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = "Size Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = "Size Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.SpeedUp) { output = "Speed Boost"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkUp) { output = "Attack Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkDown) { output = "Attack Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefUp) { output = "Defense Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefDown) { output = "Defense Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.LowGrav) { output = "Low Gravity"; }
-        else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = "Heal (50%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = "Heal (100%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = "Multi-Jump"; }
-        else if (in_powerup_type == (int)powerup_type_name.HighGrav) { output = "High Gravity"; }
-        else { output = "(PLACEHOLDER)"; }
-        return output;
-    }
-
-    public static string WeaponTypeToStr(int in_weapon_type)
-    {
-        // To-do: Localize (may need to convert to gameController function with corresponding localizer strings)
-        string output = "";
-        if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = "Punching Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = "Bomb"; }
-        else if (in_weapon_type == (int)weapon_type_name.Rocket) { output = "Rocket Launcher"; }
-        else if (in_weapon_type == (int)weapon_type_name.BossGlove) { output = "Big Boss Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = "Hyper Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = "Mega Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = "Superlaser"; }
-        else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = "Throwable Item"; }
-
-        else { output = "(PLACEHOLDER)"; }
         return output;
     }
 

@@ -84,11 +84,11 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] private float cached_scale = -1.0f;
     [NonSerialized] private int cached_team = -1;
     [NonSerialized] private bool cached_teamplay = false;
-    [NonSerialized] private Vector3 cached_desktop_offset_dir;
+    [NonSerialized] public Vector3 cached_desktop_offset;
 
     private void Start()
     {
-        cached_desktop_offset_dir = Vector3.forward;
+        CacheWeaponPos(true);
         scale_inital = transform.localScale.x;
         all_weapon_stats = SetupAllWeaponStats();
 
@@ -146,6 +146,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         UpdateStatsFromWeaponType();
         if (!Networking.IsOwner(gameObject)) { return; }
         network_active = true;
+        CacheWeaponPos(true);
     }
 
     private void OnDisable()
@@ -369,6 +370,17 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
     }
 
+    public void CacheWeaponPos(bool resetElevation = false)
+    {
+        if (resetElevation) { cached_desktop_offset = (Networking.LocalPlayer.GetRotation() * Vector3.forward * 0.5f * 1.33f); }
+        else { cached_desktop_offset = (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * 1.33f); }
+
+        if (!pickup_component.IsHeld)
+        {
+            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + cached_desktop_offset;
+        }
+    }
+
     private void TeleportWeaponToOwner()
     {
         // -- Owner Only Event --
@@ -391,7 +403,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else if (!Networking.LocalPlayer.IsUserInVR())
         {
-            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (cached_desktop_offset_dir * -1.0f * ply_scale_offset);
+            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + cached_desktop_offset;
             if (is_secondary) { transform.position = transform.position + new Vector3(1.0f, 0.0f, 0.0f); }
             //if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
         }
@@ -452,8 +464,10 @@ public class PlayerWeapon : UdonSharpBehaviour
             pickup_component.pickupable = true;
             if (!Networking.LocalPlayer.IsUserInVR()) 
             {
-                cached_desktop_offset_dir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position - transform.position;
-                cached_desktop_offset_dir = cached_desktop_offset_dir.normalized;
+                float ply_scale_offset = 1.0f;
+                if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_scale != 1.0f) { ply_scale_offset = gameController.local_plyAttr.ply_scale; }
+                CacheWeaponPos();
+                
             }
             //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
             //{ gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
@@ -586,16 +600,19 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All
-            , "NetworkCreateProjectile"
-            , weapon_type
-            , pos_start
-            , transform.rotation
-            , new Vector3(distance, owner_attributes.ply_scale, weapon_extra_data)
-            , velocity_stored
-            , use_melee
-            , Networking.LocalPlayer.playerId
+            SendCustomNetworkEvent(
+                VRC.Udon.Common.Interfaces.NetworkEventTarget.All
+                , "NetworkCreateProjectile"
+                , weapon_type
+                , pos_start
+                , transform.rotation
+                , new Vector3(distance, owner_attributes.ply_scale, weapon_extra_data)
+                , velocity_stored
+                , use_melee
+                , Networking.LocalPlayer.playerId
+                , 1.0f / (1.0f + (Vector3.Project(Networking.LocalPlayer.GetVelocity(), transform.rotation * Vector3.forward).magnitude / 12.0f))
             );
+            UnityEngine.Debug.Log("Scale projectile duration by " + 1.0f / (1.0f + (Vector3.Project(Networking.LocalPlayer.GetVelocity(), transform.rotation * Vector3.forward).magnitude / 12.0f)));
         }
 
         // After throwing an item, reroll the item on it, if it has more than 1 ammo
@@ -607,7 +624,7 @@ public class PlayerWeapon : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id)
+    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id, float duration_mul)
     {
         float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
 
@@ -645,8 +662,6 @@ public class PlayerWeapon : UdonSharpBehaviour
         PlayerWeapon source_weaponScript = gameController.GetPlayerWeaponFromID(player_id);
         projectile.weapon_script = source_weaponScript;
 
-        if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem) { projectile.rb.velocity = Vector3.zero; }
-
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
             projectile.rb.velocity = fire_velocity;
@@ -660,9 +675,17 @@ public class PlayerWeapon : UdonSharpBehaviour
                 source_weaponScript.pickup_rb.velocity = Vector3.zero;
             }
         }
+        else
+        {
+            projectile.rb.velocity = Vector3.zero;
+            projectile.projectile_duration *= duration_mul;
+        }
 
         projectile.UpdateProjectileModel();
         newProjectileObj.SetActive(true);
+
+        //UnityEngine.Debug.Log("[PROJECTILE_TEST] " + newProjectileObj.name + " created. position = " + newProjectileObj.transform.position + "; duration = " + projectile.projectile_duration + "; start_ms = " + projectile.projectile_start_ms);
+
     }
 
     [NetworkCallable]
@@ -733,7 +756,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         hurtbox.SetMesh();
         newHurtboxObj.SetActive(true);
         
-        UnityEngine.Debug.Log("[HURTBOX_TEST] " + newHurtboxObj.name + " created. position = " + newHurtboxObj.transform.position + "; duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
+        //UnityEngine.Debug.Log("[HURTBOX_TEST] " + newHurtboxObj.name + " created. position = " + newHurtboxObj.transform.position + "; duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
     }
 
     public byte RollForPowerupBombExtraData()
