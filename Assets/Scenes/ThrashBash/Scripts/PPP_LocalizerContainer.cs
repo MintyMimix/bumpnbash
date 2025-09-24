@@ -23,6 +23,7 @@ public class PPP_LocalizerContainer : UdonSharpBehaviour
     [SerializeField] public TMP_Text PPPSoundGlobalHeader;
     [SerializeField] public TMP_Text PPPMusicOptionsCaption;
     [SerializeField] public TMP_Text PPPMusicOptionsWarning;
+    [SerializeField] public TMP_Text PPPAudiolinkHeader;
     [SerializeField] public TMP_Text PPPVOHeader;
     [SerializeField] public TMP_Text PPPVOEventAToggle;
     [SerializeField] public TMP_Text PPPVOEventBToggle;

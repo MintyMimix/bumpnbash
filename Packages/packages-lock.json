@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "com.llealloo.audiolink": {
+      "version": "file:com.llealloo.audiolink",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.prismic247.scaledcolliders": {
       "version": "file:com.prismic247.scaledcolliders",
       "depth": 0,

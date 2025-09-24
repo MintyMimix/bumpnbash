@@ -301,6 +301,7 @@ public class Localizer : UdonSharpBehaviour
             container.PPPSoundGlobalHeader.text = FetchText("LOCALOPTIONS_SOUND_VOLUME_HEADER", container.PPPSoundGlobalHeader.text);
             container.PPPMusicOptionsCaption.text = FetchText("LOCALOPTIONS_SOUND_MUSICOVERRIDE_HEADER", container.PPPMusicOptionsCaption.text);
             container.PPPMusicOptionsWarning.text = FetchText("LOCALOPTIONS_SOUND_MUSICOVERRIDE_WARNING", container.PPPMusicOptionsWarning.text);
+            container.PPPAudiolinkHeader.text = FetchText("LOCALOPTIONS_SOUND_AUDIOLINK", container.PPPAudiolinkHeader.text);
             container.PPPVOHeader.text = FetchText("LOCALOPTIONS_SOUND_VO_HEADER", container.PPPVOHeader.text);
             container.PPPVOEventAToggle.text = FetchText("LOCALOPTIONS_SOUND_VO_ROUND_TOGGLE", container.PPPVOEventAToggle.text);
             container.PPPVOEventBToggle.text = FetchText("LOCALOPTIONS_SOUND_VO_TUTORIAL_TOGGLE", container.PPPVOEventBToggle.text);

@@ -34,7 +34,8 @@ public class PlayerHitbox : UdonSharpBehaviour
 
     public override void OnDeserialization()
     {
-        gameObject.SetActive(network_active);
+        if (playerAttributes != null && playerAttributes.in_ready_room) { gameObject.SetActive(false); }
+        else { gameObject.SetActive(network_active); }
     }
 
     public override void PostLateUpdate() //ffo

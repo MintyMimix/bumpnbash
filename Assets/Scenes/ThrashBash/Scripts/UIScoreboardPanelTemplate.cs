@@ -70,7 +70,7 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
             if (gameController.option_gamemode == (int)gamemode_name.BossBash && plyAttr.ply_team == 0) 
             {
                 if (lives_image.sprite != damage_sprite) { lives_image.sprite = damage_sprite; }
-                lives_text.text = plyAttr.ply_damage_dealt.ToString() + "%";
+                lives_text.text = Mathf.Round(plyAttr.ply_damage_dealt).ToString() + "%";
             }
             else if (lives_image.sprite != lives_sprite) { lives_image.sprite = lives_sprite; }
         }

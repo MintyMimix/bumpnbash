@@ -244,6 +244,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
         {
             force_dir = (colliderOwner.GetPosition() - transform.position).normalized;
         }
+        else if (source_weapon_type == (int)weapon_type_name.SuperLaser)
+        {
+            force_dir = (active_collider.ClosestPointOnBounds(transform.position)  - colliderOwner.GetPosition()).normalized;
+        }
         else
         {
             force_dir = (colliderOwner.GetPosition() - active_collider.ClosestPointOnBounds(transform.position)).normalized;

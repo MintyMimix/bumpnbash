@@ -17,6 +17,9 @@
     },
     "com.vrchat.worlds": {
       "version": "3.8.2"
+    },
+    "com.llealloo.audiolink": {
+      "version": "2.1.0"
     }
   },
   "locked": {
@@ -54,6 +57,10 @@
     },
     "com.vrchat.base": {
       "version": "3.8.2",
+      "dependencies": {}
+    },
+    "com.llealloo.audiolink": {
+      "version": "2.1.0",
       "dependencies": {}
     }
   }

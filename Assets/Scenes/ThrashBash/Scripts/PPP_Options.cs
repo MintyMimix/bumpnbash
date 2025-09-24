@@ -48,6 +48,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Slider ui_uiseparationslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uidistanceslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uiyoffsetslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiotherscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
@@ -57,6 +58,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uiseparationtext;
     [SerializeField] public TMP_Text ui_uistretchtext;
     [SerializeField] public TMP_Text ui_uidistancetext;
+    [SerializeField] public TMP_Text ui_uiyoffsettext;
     [SerializeField] public TMP_Text ui_uiotherscaletext;
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
@@ -64,6 +66,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uivovolumetext;
     [SerializeField] public TMP_Dropdown ui_uivotype_dropdown;
     [SerializeField] public TMP_Dropdown ui_musicoverride_dropdown;
+    [SerializeField] public UnityEngine.UI.Toggle ui_audiolink_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_a_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_b_toggle;
     [SerializeField] public UnityEngine.UI.Toggle ui_vo_pref_c_toggle;
@@ -79,6 +82,7 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_scale = 1.0f;
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
+    [NonSerialized] public float ui_yoffset = 0.0f;
     [NonSerialized] public float ui_distance = 1.0f;
     [NonSerialized] public float ui_harm_scale = 1.0f;
     [NonSerialized] public float ui_other_scale = 1.0f;
@@ -87,6 +91,7 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public int music_override = -1;
     [NonSerialized] public float music_volume = 1.0f;
     [NonSerialized] public float sound_volume = 1.0f;
+    [NonSerialized] public bool audiolink = true;
     [NonSerialized] public float voiceover_volume = 1.0f;
     [SerializeField] public int voiceover_type = 0;
     [NonSerialized] public bool vo_pref_a = true;
@@ -192,6 +197,7 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateParticles();
         UpdateMusicVolume();
         UpdateSoundVolume();
+        UpdateAudioLink();
         UpdateMusicOverride();
         UpdateVOVolume();
         UpdateVOPreferences();
@@ -230,6 +236,12 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIDistance();
                     continue;
                 }
+                if (!PlayerData.HasKey(player, "UIYOffset"))
+                {
+                    ui_uiyoffsetslider.value = 0.0f;
+                    UpdateUIYOffset();
+                    continue;
+                }
                 if (!PlayerData.HasKey(player, "UIOtherScale"))
                 {
                     ui_uiotherscaleslider.value = 10.0f;
@@ -264,6 +276,20 @@ public class PPP_Options : UdonSharpBehaviour
                 {
                     ui_musicoverride_dropdown.value = 0;
                     UpdateMusicOverride();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "AudioLink"))
+                {
+                    if (gameController != null && gameController.flag_for_mobile_vr != null)
+                    {
+                        if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = false; }
+                        else
+                        {
+                            ui_audiolink_toggle.isOn = false;
+                            ui_audiolink_toggle.interactable = false;
+                        }
+                    }
+                    UpdateAudioLink();
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "VOVolume"))
@@ -434,6 +460,17 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateUIDistance();
         }
 
+        float out_UIYOffset;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIYOffset", out out_UIYOffset))
+        {
+            ui_uiyoffsetslider.value = out_UIYOffset;
+        }
+        else
+        {
+            ui_uiyoffsetslider.value = 0.0f;
+            UpdateUIYOffset();
+        }
+
 
         float out_UIOtherScale;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIOtherScale", out out_UIOtherScale))
@@ -500,6 +537,33 @@ public class PPP_Options : UdonSharpBehaviour
         {
             ui_musicoverride_dropdown.value = 0;
             UpdateMusicOverride();
+        }
+
+        bool out_AudioLink;
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "AudioLink", out out_AudioLink))
+        {
+            if (gameController != null && gameController.flag_for_mobile_vr != null)
+            {
+                if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = out_AudioLink; }
+                else
+                {
+                    ui_audiolink_toggle.isOn = false;
+                    ui_audiolink_toggle.interactable = false;
+                }
+            }
+        }
+        else
+        {
+            if (gameController != null && gameController.flag_for_mobile_vr != null)
+            {
+                if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = false; }
+                else
+                {
+                    ui_audiolink_toggle.isOn = false;
+                    ui_audiolink_toggle.interactable = false;
+                }
+            }
+            UpdateAudioLink();
         }
 
         float out_VOVolume;
@@ -706,12 +770,14 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIVertical", ui_uiseparationslider.value);
         PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
         PlayerData.SetFloat("UIDistance", ui_uidistanceslider.value);
+        PlayerData.SetFloat("UIYOffset", ui_uiyoffsetslider.value);
         PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
         PlayerData.SetBool("UIInverted", ui_uiinvertedtoggle.isOn);
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
         PlayerData.SetFloat("MusicOverride", ui_musicoverride_dropdown.value);
+        PlayerData.SetBool("AudioLink", ui_audiolink_toggle.isOn);
         PlayerData.SetFloat("VOVolume", ui_uivovolumelider.value);
         PlayerData.SetBool("VOPref_A", ui_vo_pref_a_toggle.isOn);
         PlayerData.SetBool("VOPref_B", ui_vo_pref_b_toggle.isOn);
@@ -784,6 +850,20 @@ public class PPP_Options : UdonSharpBehaviour
         sync_timer = 0.0f;
     }
 
+    public void UpdateUIYOffset()
+    {
+        ui_yoffset = ui_uiyoffsetslider.value / 10.0f;
+        ShowDemoUI();
+        ui_uiyoffsettext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_YOFFSET", "UI Height Offset: $ARG0", (ui_yoffset * 10.0f).ToString());
+        if (ui_yoffset > 0) { ui_uiyoffsettext.color = Color.cyan; }
+        else if (ui_yoffset < 0) { ui_uiyoffsettext.color = new Color32(255, 153, 0, 255); }
+        else { ui_uiyoffsettext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
     public void UpdateUIOtherScale()
     {
         ui_other_scale = ui_uiotherscaleslider.value / 10.0f;
@@ -828,8 +908,17 @@ public class PPP_Options : UdonSharpBehaviour
         music_volume = ui_uimusicslider.value / 10.0f;
 
         ui_uimusictext.text = gameController.localizer.FetchText("LOCALOPTIONS_SOUND_VOLUME_MUSIC", "Music Volume: $ARG0%", (music_volume * 100.0f).ToString());
-        if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) { ui_uimusictext.color = Color.red; }
-        else { ui_uimusictext.color = Color.white; }
+        if ((music_volume * 10.0f) <= ui_uimusicslider.minValue) 
+        { 
+            ui_uimusictext.color = Color.red; 
+            ui_audiolink_toggle.isOn = false;
+            ui_audiolink_toggle.interactable = false;
+        }
+        else 
+        { 
+            ui_uimusictext.color = Color.white;
+            ui_audiolink_toggle.interactable = gameController.flag_for_mobile_vr == null || !gameController.flag_for_mobile_vr.activeInHierarchy;
+        }
 
         gameController.snd_game_music_source.volume = gameController.music_volume_default * music_volume;
 
@@ -843,8 +932,17 @@ public class PPP_Options : UdonSharpBehaviour
         sound_volume = ui_uisoundslider.value / 10.0f;
 
         ui_uisoundtext.text = gameController.localizer.FetchText("LOCALOPTIONS_SOUND_VOLUME_SFX", "Sound Volume: $ARG0%", (sound_volume * 100.0f).ToString());
-        if ((sound_volume * 10.0f) <= ui_uisoundslider.minValue) { ui_uisoundtext.color = Color.red; }
-        else { ui_uisoundtext.color = Color.white; }
+        if ((sound_volume * 10.0f) <= ui_uisoundslider.minValue) 
+        { 
+            ui_uisoundtext.color = Color.red;
+            ui_audiolink_toggle.isOn = false;
+            ui_audiolink_toggle.interactable = false;
+        }
+        else 
+        { 
+            ui_uisoundtext.color = Color.white;
+            ui_audiolink_toggle.interactable = gameController.flag_for_mobile_vr == null || !gameController.flag_for_mobile_vr.activeInHierarchy;
+        }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -1036,6 +1134,17 @@ public class PPP_Options : UdonSharpBehaviour
         }
     }
 
+    public void UpdateAudioLink()
+    {
+        if (sound_volume <= 0 || music_volume <= 0) { ui_audiolink_toggle.isOn = false; }
+        audiolink = ui_audiolink_toggle.isOn && sound_volume > 0 && music_volume > 0;
+        gameController.audiolink_obj.SetActive(audiolink);
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
     public void UpdateVOVolume()
     {
         voiceover_volume = ui_uivovolumelider.value / 10.0f;
@@ -1096,26 +1205,36 @@ public class PPP_Options : UdonSharpBehaviour
     public void UpdateLangEnglish()
     {
         if (ui_language_toggles[(int)language_type_name.English].isOn) { UpdateLanguage((int)language_type_name.English); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn) 
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangFrench()
     {
         if (ui_language_toggles[(int)language_type_name.French].isOn) { UpdateLanguage((int)language_type_name.French); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangJapanese()
     {
         if (ui_language_toggles[(int)language_type_name.Japanese].isOn) { UpdateLanguage((int)language_type_name.Japanese); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangSpanishLatin()
     {
         if (ui_language_toggles[(int)language_type_name.SpanishLatin].isOn) { UpdateLanguage((int)language_type_name.SpanishLatin); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangSpanishEurope()
     {
         if (ui_language_toggles[(int)language_type_name.SpanishEurope].isOn) { UpdateLanguage((int)language_type_name.SpanishEurope); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateSpectatorIntent()
@@ -1148,6 +1267,7 @@ public class PPP_Options : UdonSharpBehaviour
         ui_uiseparationslider.value = 10.0f;
         ui_uistretchslider.value = 10.0f;
         ui_uidistanceslider.value = 10.0f;
+        ui_uiyoffsetslider.value = 0.0f;
         ui_uiotherscaleslider.value = 10.0f;
         ui_uiharmscaleslider.value = 10.0f;
         ui_wristtoggle_n.isOn = true;

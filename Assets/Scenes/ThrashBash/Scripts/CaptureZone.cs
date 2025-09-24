@@ -348,7 +348,22 @@ public class CaptureZone : UdonSharpBehaviour
                 || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
                 ))
             {
-                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                if (gameController.option_teamplay)
+                {
+                    // If in teamplay, make sure the local player is on the point and not just a teammate
+                    for (int i = 0; i < players_on_point.Length; i++)
+                    {
+                        if (players_on_point[i] == Networking.LocalPlayer.playerId)
+                        {
+                            gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                }
             }
             // If we are not the one contesting the point and we are near end goal, locally play the victory near sound instead
             else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10 && !(hold_points >= gameController.option_gm_goal - 2 && overtime_enabled))

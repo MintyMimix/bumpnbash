@@ -112,7 +112,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public override void OnDeserialization(DeserializationResult deserializationResult)
     {
-        if (gameController != null && gameController.round_state == (int)round_state_name.Ongoing)
+        if (gameController != null && gameController.round_state != (int)round_state_name.Start)
         {
             if (ply_lives_local != ply_lives || ply_points_local != ply_points || ply_deaths_local != ply_deaths || ply_team_local != ply_team || ply_dual_wield_local != ply_dual_wield)
             {
@@ -123,6 +123,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 if (ply_dual_wield_local != ply_dual_wield) { gameController.GetSecondaryWeaponFromID(Networking.GetOwner(gameObject).playerId).gameObject.SetActive(ply_dual_wield); }
                 ply_dual_wield_local = ply_dual_wield;
                 gameController.RefreshGameUI();
+                if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UpdateGameVariables(true); }
                 if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
             }
         }
@@ -349,6 +350,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         Vector3 modForceDirection = forceDirection; // To-do: make this into a slider, game setting, or serialized field
 
         // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
+        if (ply_def == 0) { ply_def = 0.01f; }
         calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
 
         float baseLift = 0.66f; // 0.33f

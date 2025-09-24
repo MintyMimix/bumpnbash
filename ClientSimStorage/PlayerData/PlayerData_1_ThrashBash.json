@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-09-20T17:19:50.1597935-04:00",
+    "LastUpdated": "2025-09-23T19:51:03.585134-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 6.0
+      "value": 4.0
     }
   },
   "UISeparation": {
@@ -56,7 +56,7 @@
     }
   },
   "MusicVolume": {
-    "LastUpdated": "2025-08-31T21:43:58.2843219-04:00",
+    "LastUpdated": "2025-09-23T16:08:20.4238906-04:00",
     "Key": "MusicVolume",
     "Value": {
       "type": "Float",
@@ -136,11 +136,11 @@
     }
   },
   "UIDistance": {
-    "LastUpdated": "2025-09-20T17:19:50.1597935-04:00",
+    "LastUpdated": "2025-09-22T17:19:48.3393614-04:00",
     "Key": "UIDistance",
     "Value": {
       "type": "Float",
-      "value": 21.0
+      "value": 10.0
     }
   },
   "ColorblindChoice": {
@@ -208,7 +208,7 @@
     }
   },
   "LanguageType": {
-    "LastUpdated": "2025-09-20T17:13:40.1829436-04:00",
+    "LastUpdated": "2025-09-23T13:38:38.4957701-04:00",
     "Key": "LanguageType",
     "Value": {
       "type": "Int",
@@ -277,6 +277,22 @@
     "Value": {
       "type": "Float",
       "value": 0.0
+    }
+  },
+  "AudioLink": {
+    "LastUpdated": "2025-09-23T16:08:10.8456619-04:00",
+    "Key": "AudioLink",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "UIYOffset": {
+    "LastUpdated": "2025-09-23T19:51:03.585134-04:00",
+    "Key": "UIYOffset",
+    "Value": {
+      "type": "Float",
+      "value": 4.0
     }
   }
 }
