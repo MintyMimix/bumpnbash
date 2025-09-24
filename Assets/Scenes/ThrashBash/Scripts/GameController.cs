@@ -60,7 +60,7 @@ public enum prealloc_obj_name
 }
 public enum GLOBAL_CONST
 {
-    UDON_MAX_PLAYERS=80, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128, TICK_RATE_MS=25
+    UDON_MAX_PLAYERS=100, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128, TICK_RATE_MS=25
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -1037,7 +1037,8 @@ public class GameController : GlobalHelperFunctions
 
         if (ui_round_mapselect != null)
         {
-            if (maps_active_local.Length != maps_active_str.Length)
+            if (maps_active_local == null || maps_active_str == null) { maps_active_str = ""; maps_active_local = ""; }
+            if (maps_active_local.Length != maps_active_str.Length) // broke here, somehow.
             {
                 ui_round_mapselect.BuildMapList();
             }
@@ -1054,7 +1055,7 @@ public class GameController : GlobalHelperFunctions
         }
 
         // Once a new player has received data, setup the correct map and teleport them as well as sync any hitbox or weapon active states
-        if (wait_for_sync_for_player_join)
+        if (wait_for_sync_for_player_join && ply_tracking_dict_keys_arr != null)
         {
             SetupMap();
 
@@ -1639,10 +1640,18 @@ public class GameController : GlobalHelperFunctions
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        if (ply_object_owners == null || ply_object_owners[0] == 0) 
+        
+        if (ply_object_owners == null || ply_object_owners[0] == 0 || ply_owners_cnt >= ply_object_owners.Length) 
         {
+            ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+
             // If our owner array is empty, we can fill it now
-            VRCPlayerApi[] players = new VRCPlayerApi[VRCPlayerApi.GetPlayerCount()];
+            VRCPlayerApi[] players = new VRCPlayerApi[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             VRCPlayerApi.GetPlayers(players);
             foreach (VRCPlayerApi ply in players)
             {
@@ -1658,7 +1667,25 @@ public class GameController : GlobalHelperFunctions
         }
         if (!found_player_in_owner_arr)
         {
-            ply_object_owners[ply_owners_cnt] = player.playerId;
+            if (ply_object_owners == null || ply_owners_cnt <= 0 || !(ply_owners_cnt < ply_object_owners.Length))
+            {
+                ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            }
+            if (ply_owners_cnt < ply_object_owners.Length) { ply_object_owners[ply_owners_cnt] = player.playerId; }
+            else
+            {
+                ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+                ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+            }
         }
 
         var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
@@ -2315,7 +2342,19 @@ public class GameController : GlobalHelperFunctions
         }
 
         room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
+        if (local_plyweapon == null) 
+        { 
+            var plyWeaponFind = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon"); 
+            if (plyWeaponFind != null) { local_plyweapon = plyWeaponFind.GetComponent<PlayerWeapon>(); } 
+        }
+        if (local_secondaryweapon == null)
+        {
+            var plyWeaponFind = FindPlayerOwnedObject(Networking.LocalPlayer, "SecondaryWeapon");
+            if (plyWeaponFind != null) { local_secondaryweapon = plyWeaponFind.GetComponent<PlayerWeapon>(); }
+        }
+
         if (local_plyweapon != null) {
+            local_plyweapon.ToggleActive(true);
             local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
             }
         if (local_secondaryweapon != null && local_secondaryweapon.gameObject.activeInHierarchy)
@@ -3723,7 +3762,7 @@ public class GameController : GlobalHelperFunctions
     {
         if (player == null) { return; }
 
-        if (ply_object_owners == null || ply_owners_cnt <= 0) 
+        if (ply_object_owners == null || ply_owners_cnt <= 0 || ply_owners_cnt >= ply_object_owners.Length) 
         {
             ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
@@ -3745,13 +3784,13 @@ public class GameController : GlobalHelperFunctions
         var plySecondaryObj = FindPlayerOwnedObject(player, "SecondaryWeapon");
         var plyUIToOthers = FindPlayerOwnedObject(player, "UIPlyToOthers");
 
-        if (plyAttributesObj != null) { ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>(); }
-        if (plyHitboxObj != null) { ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>(); }
-        if (plyWeaponObj != null) { ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>(); }
-        if (plySecondaryObj != null) { ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>(); }
-        if (plyUIToOthers != null) { ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>(); }
+        if (plyAttributesObj != null && ply_owners_cnt < ply_object_plyattr.Length) { ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>(); }
+        if (plyHitboxObj != null && ply_owners_cnt < ply_object_plyhitbox.Length) { ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>(); }
+        if (plyWeaponObj != null && ply_owners_cnt < ply_object_plyweapon.Length) { ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>(); }
+        if (plySecondaryObj != null && ply_owners_cnt < ply_object_secondaryweapon.Length) { ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>(); }
+        if (plyUIToOthers != null && ply_owners_cnt < ply_object_uiplytoothers.Length) { ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>(); }
 
-        ply_owners_cnt++;
+        //ply_owners_cnt++;
     }
 
     public void RemovePlayerFromObjOwners(int player_id)

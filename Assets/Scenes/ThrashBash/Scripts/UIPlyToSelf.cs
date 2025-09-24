@@ -1345,7 +1345,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (gameController != null && gameController.local_ppp_options != null) { offset_height *= gameController.local_ppp_options.ui_separation; }
             Quaternion offset_rot = Quaternion.Euler(180.0f, -55.0f, 0.0f);
             Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
-            Vector3 distance_pos = new Vector3(0.0f, 0.0f, 0.20f * (distanceUI - 1.0f));
+            Vector3 distance_pos = new Vector3(0.0f, offsetUI.y, 0.20f * (distanceUI - 1.0f));
             if (useWrist == 1) 
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;
