@@ -1,10 +1,12 @@
 ﻿
+using Newtonsoft.Json.Linq;
 using Superbstingray;
 using System;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.UI;
 using UnityEngine.UIElements;
 using UnityEngine.Windows;
 using VRC.SDK3.Components;
@@ -61,6 +63,7 @@ public enum prealloc_obj_name
 public enum GLOBAL_CONST
 {
     UDON_MAX_PLAYERS=100, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128, TICK_RATE_MS=25
+        , RENDER_DISTANCE_FAR_QUEST = 165, RENDER_DISTANCE_NEAR_QUEST = 95, RENDER_DISTANCE_FAR_PC = 205, RENDER_DISTANCE_NEAR_PC = 135
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -86,6 +89,7 @@ public class GameController : GlobalHelperFunctions
     //[NonSerialized] public sbyte highlight_camera_active = -1; // If -1, none; otherwise, camera at that index
     [NonSerialized] public bool[] highlight_cameras_waiting_on_sync;
     [NonSerialized] public bool[] highlight_cameras_active;
+    [NonSerialized] public int highlight_cameras_active_cnt;
     [NonSerialized] public bool[] highlight_cameras_snapped;
     [NonSerialized] public double[] highlight_cameras_ms;
     [NonSerialized] public bool highlight_cameras_resetting = false;
@@ -143,6 +147,7 @@ public class GameController : GlobalHelperFunctions
     [SerializeField] public GameObject room_training_hallway_spawn;
     [SerializeField] public GameObject room_training_arena_spawn;
     [SerializeField] public GameObject room_spectator_portal;
+    [NonSerialized] public bool room_ready_should_render = true;
 
     [SerializeField] public TMP_Text[] ui_tutorial_gamemodes_txt;
 
@@ -356,6 +361,8 @@ public class GameController : GlobalHelperFunctions
 
     //[NonSerialized] public int koth_decimal_division = 1000;
     [NonSerialized] public int[][] koth_progress_dict;
+    [NonSerialized][UdonSynced] public double koth_respawn_wave_start_ms;
+    [NonSerialized] public double koth_respawn_wave_duration;
     [NonSerialized][UdonSynced] public byte infection_zombigs_spawned = 0;
     [NonSerialized][UdonSynced] public bool infection_zombig_active = false;
     [NonSerialized][UdonSynced] public int round_extra_data = 0; // Extra tracking data for a gamemode, such as number of Survivor deaths in Infected
@@ -389,9 +396,9 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized] public int[] global_harmnumber_refs;
     [NonSerialized] public int global_harmnumber_cnt = 0;
     [NonSerialized] public int global_lowest_available_harmnumber_index = 0;
-
-    [NonSerialized] public Color32 COLOR_CHARGE = new Color32(196, 227, 255, 255);
-    [NonSerialized] public Color32 COLOR_COOLDOWN = new Color32(170, 65, 65, 255);
+    [NonSerialized] public Color32 COLOR_CHARGE = new Color32(70, 197, 101, 255); 
+    [NonSerialized] public Color32 COLOR_COOLDOWN = new Color32(170, 65, 65, 255);  
+    [NonSerialized] public Color32 COLOR_AIRTHRUST = new Color32(196, 227, 255, 255);
 
     // -- Initialization --
     private void Start()
@@ -602,6 +609,45 @@ public class GameController : GlobalHelperFunctions
             local_tick_timer = 0.0f;
         }
 
+        if (option_gamemode == (int)gamemode_name.KingOfTheHill && koth_respawn_wave_duration >= 0.0f) //koth_respawn_wave_start_ms != null && koth_respawn_wave_start_ms.Length > 0
+        {
+            if (!Networking.IsOwner(gameObject) && koth_respawn_wave_start_ms == 0.0f) { koth_respawn_wave_start_ms = server_ms; }
+            float koth_full_timer = (float)Networking.CalculateServerDeltaTime(server_ms, koth_respawn_wave_start_ms);
+            float koth_mod_timer = koth_full_timer % (float)koth_respawn_wave_duration;
+
+            if (local_plyAttr != null) {
+                local_plyAttr.ply_respawn_duration = (float)koth_respawn_wave_duration;
+                if (local_plyAttr.ply_state == (int)player_state_name.Respawning) 
+                { 
+                    local_plyAttr.ply_respawn_timer = koth_mod_timer + 1.0f;
+                    //UnityEngine.Debug.Log("[KOTH_TEST]: Respawn wave timer @ " + (koth_mod_timer + 1.0f) + " / " + koth_respawn_wave_duration);
+                }
+            }
+            /*for (int i = 0; i < koth_respawn_wave_start_ms.Length; i++)
+            {
+                float koth_timer = (float)Networking.CalculateServerDeltaTime(server_ms, koth_respawn_wave_start_ms[i]);
+                if (local_plyAttr != null && local_plyAttr.ply_state == (int)player_state_name.Respawning) 
+                {
+                    if (koth_timer >= koth_respawn_wave_duration[i]) // && Networking.IsOwner(gameObject)
+                    {
+                        koth_respawn_wave_start_ms[i] = server_ms;
+                        koth_timer = 0.0f;
+                    }
+                    
+                    if (option_teamplay && local_plyAttr.ply_team == i) 
+                    { 
+                        local_plyAttr.ply_respawn_timer = koth_timer;
+                        UnityEngine.Debug.Log("[KOTH_TEST]: Respawn wave timer @ " + koth_timer + " / " + koth_respawn_wave_duration[i]);
+                    }
+                    else if (!option_teamplay && ply_tracking_dict_keys_arr != null && ply_tracking_dict_keys_arr.Length > 0 && i < ply_tracking_dict_keys_arr.Length && ply_tracking_dict_keys_arr[i] == Networking.LocalPlayer.playerId) 
+                    { 
+                        local_plyAttr.ply_respawn_timer = koth_timer;
+                        UnityEngine.Debug.Log("[KOTH_TEST]: Respawn wave timer @ " + koth_timer + " / " + koth_respawn_wave_duration[i]);
+                    }
+                }
+            }*/
+        }
+
         if (voiceover_countdown > 0)
         {
             voiceover_countdown -= Time.deltaTime;
@@ -619,8 +665,11 @@ public class GameController : GlobalHelperFunctions
 
         OOBFailsafe();
 
+        // If ready room should render mismatches with active state and we are not the host, sync it
+        if (room_ready_script != null && room_ready_script.gameObject.activeInHierarchy != room_ready_should_render && !Networking.IsOwner(gameObject)) { room_ready_script.gameObject.SetActive(room_ready_should_render); }
+
         double server_ms = Networking.GetServerTimeInSeconds();
-        float photo_timer = 0.0f; byte reset_count = 0;
+        float photo_timer = 0.0f; byte reset_count = 0; byte active_count = 0;
         for (int i = 0; i < highlightCameras.Length; i++)
         {
             photo_timer = (float)Networking.CalculateServerDeltaTime(server_ms, highlight_cameras_ms[i]);
@@ -632,8 +681,11 @@ public class GameController : GlobalHelperFunctions
                 highlight_cameras_waiting_on_sync[i] = false; // We received the network event, thus we are no longer waiting on sync (active & snapped instead do the work)
             }
             if (highlight_cameras_resetting && !highlight_cameras_active[i] && !highlight_cameras_waiting_on_sync[i]) { reset_count++; }
+
+            if (highlight_cameras_active[i]) { active_count++; }
         }
         if (highlight_cameras_resetting && reset_count >= highlight_cameras_active.Length) { highlight_cameras_resetting = false; }
+        highlight_cameras_active_cnt = active_count;
 
         // UI handling
         if (local_uiplytoself != null)
@@ -676,7 +728,7 @@ public class GameController : GlobalHelperFunctions
                 }
                 else { mapscript_list[map_selected].map_bouncepads[k].gameObject.SetActive(false); }
             }
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "EnableReadyRoom");
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RoundCommence");
             RequestSerialization();
             RefreshSetupUI();
         }
@@ -696,15 +748,16 @@ public class GameController : GlobalHelperFunctions
         }
         else if (round_state == (int)round_state_name.Over && round_timer >= over_length)
         {
-            if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.UpdateGameVariables(true); }
+            if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.gamevars_force_refresh_on_next_tick = true; }
             round_start_ms = server_ms;
             round_state = (int)round_state_name.Start;
-            for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
-            {
-                if (ply_tracking_dict_values_arr == null) { break; }
-                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby)
+            if (ply_tracking_dict_values_arr != null) { 
+                for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
                 {
-                    ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false);
+                    if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby)
+                    {
+                        ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false);
+                    }
                 }
             }
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkTeleportToReadyRoom"); // Failsafe in case the master gets left behind in the arena or someone gets stuck in the Training Room. Sometimes occurs if they are the last Infected.
@@ -1364,7 +1417,7 @@ public class GameController : GlobalHelperFunctions
 
     public void RefreshGameUI()
     {
-        if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.UpdateGameVariables(); }
+        if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.gamevars_force_refresh_on_next_tick = true; }
         if (local_plyweapon != null) { local_plyweapon.SetTeamColor(); }
         if (local_secondaryweapon != null) { local_secondaryweapon.SetTeamColor(); }
     }
@@ -1392,23 +1445,41 @@ public class GameController : GlobalHelperFunctions
         }
         Networking.SetOwner(new_owner, megaphone.gameObject);
         Networking.SetOwner(new_owner, gameObject);
+        if (local_plyhitbox != null) { local_plyhitbox.network_active = true; } // To-do: failsafe for original owner not having hitbox on transfer. Figure out root cause (alongside hitboxes appearing on join for users in ready room)
     }
 
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
         ply_master_id = Networking.GetOwner(gameObject).playerId;
-        if (Networking.IsOwner(gameObject))
+        if (newOwner == Networking.LocalPlayer)
         {
             ply_tracking_dict_keys_str = ConvertIntArrayToString(ply_tracking_dict_keys_arr);
             ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
             ply_master_id = Networking.LocalPlayer.playerId;
+            ToggleReadyRoomCollisions(true);
+            ToggleTrainingRoom(true);
+            if (mapscript_list != null && mapscript_list.Length > 0)
+            {
+                foreach (ItemSpawner itemSpawner in mapscript_list[0].GetItemSpawnerFromParent(room_training.transform))
+                {
+                    if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                    itemSpawner.item_spawn_powerups_enabled = true;
+                    itemSpawner.item_spawn_weapons_enabled = true;
+                    itemSpawner.item_spawn_frequency_mul = 1.0f;
+                    itemSpawner.item_spawn_duration_mul = 1.0f;
+                    itemSpawner.SetSpawnChances();
+                    itemSpawner.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+                    itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable;
+                    itemSpawner.SyncSpawns();
+                }
+            }
             RequestSerialization();
             RefreshSetupUI();
         }
         // Enable the debugger menu if the dev
         if (local_ppp_options != null)
         {
-            bool is_dev = Networking.LocalPlayer.displayName.ToLower() == "mintymimix" && Networking.IsOwner(gameObject);
+            bool is_dev = Networking.LocalPlayer.displayName.ToLower() == "mintymimix" && newOwner == Networking.LocalPlayer;
             local_ppp_options.debuggerPanel.gameObject.SetActive(is_dev);
         }
     }
@@ -1431,6 +1502,7 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "3";
+            if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.Clash)
         {
@@ -1439,6 +1511,7 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "3";
+            if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
@@ -1447,6 +1520,7 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.text = "300";
             ui_round_length_toggle.isOn = false;
             ui_adv_option_respawn_duration.text = "3";
+            if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.Infection)
         {
@@ -1454,17 +1528,20 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.text = "180";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "3";
+            if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
 
         }
         else if (option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
             if (option_teamplay) { goal_input_a = Mathf.RoundToInt(90.0f / Mathf.Max(1, team_count)); }
             else { goal_input_a = Mathf.RoundToInt(Mathf.Lerp(60, 20, Mathf.Min(1.0f, ply_count / 8))); }
-            goal_input_b = 6;
-            ui_round_length_input.text = "1200";
-            ui_round_length_toggle.isOn = false;
-            ui_adv_option_respawn_duration.text = "6"; // Respawn duration will be higher on KOTH by default
+            goal_input_b = 2;
+            ui_round_length_input.text = "300";
+            ui_round_length_toggle.isOn = true;
+            ui_adv_option_respawn_duration.text = "12"; // Respawn duration will be higher on KOTH by default
+            if (ui_ply_option_atk.text == "100") { ui_ply_option_atk.text = "250"; } 
         }
+
         else if (option_gamemode == (int)gamemode_name.FittingIn)
         {
             goal_input_a = 400;
@@ -1472,6 +1549,7 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "3";
+            if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         ui_round_option_goal_input_a.text = goal_input_a.ToString();
         ui_round_option_goal_input_b.text = goal_input_b.ToString();
@@ -1489,6 +1567,7 @@ public class GameController : GlobalHelperFunctions
         ui_ply_option_dp.text = "0";
         ui_ply_option_scale.text = "100";
         ui_ply_option_atk.text = "100";
+        if (option_gamemode == (int)gamemode_name.KingOfTheHill) { ui_ply_option_atk.text = "250"; }
         ui_ply_option_def.text = "100";
         ui_ply_option_speed.text = "100";
         ui_ply_option_grav.text = "100";
@@ -1506,6 +1585,8 @@ public class GameController : GlobalHelperFunctions
         ui_adv_option_item_duration.text = "100";
         ui_adv_option_item_debuff_toggle.isOn = !option_teamplay;
 
+        if (option_gamemode == (int)gamemode_name.KingOfTheHill) { ui_round_teamplay_toggle.isOn = true; } // by default, KOTH is a team-based gamemode, but this is not strictly enforced
+
         ui_updating = false;
         ChangeGamemode();
     }
@@ -1517,8 +1598,7 @@ public class GameController : GlobalHelperFunctions
         if (!ui_initialized || ui_updating) { return; }
 
         option_gamemode = (byte)ui_round_option_dropdown.value;
-        option_force_teamplay = false;
-        option_enforce_team_limits = false;
+
 
         // Parse the first input as the points goal
         int try_goal_parse = 1;
@@ -1530,6 +1610,9 @@ public class GameController : GlobalHelperFunctions
         if (option_gamemode == (int)gamemode_name.Survival)
         {
             plysettings_lives = (ushort)try_goal_parse;
+            if (option_force_teamplay || option_enforce_team_limits) { ui_round_teamplay_toggle.isOn = false; } // if the previously selected gamemode enforced teamplay, set back to FFA
+            option_force_teamplay = false;
+            option_enforce_team_limits = false;
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
@@ -1559,6 +1642,10 @@ public class GameController : GlobalHelperFunctions
             Int32.TryParse(ui_round_option_goal_input_b.text, out try_goal_parse);
             try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 1), 65535);
             option_gm_config_a = (ushort)try_goal_parse;
+            ui_round_teamplay_toggle.isOn = true;
+            option_force_teamplay = true;
+            option_enforce_team_limits = false;
+            if (ui_round_teamplay_count_input.text == "1") { ui_round_teamplay_count_input.text = "2"; }
             //option_force_teamplay = option_gamemode == (int)gamemode_name.ENUM_LENGTH; // KOTH is a team-forced gamemode
         }
         else if (option_gamemode == (int)gamemode_name.FittingIn)
@@ -1567,6 +1654,15 @@ public class GameController : GlobalHelperFunctions
             Int32.TryParse(ui_round_option_goal_input_b.text, out try_goal_parse);
             try_goal_parse = Mathf.Clamp(try_goal_parse, 10, 65535); // Make sure our size increase % is > 10%
             option_gm_config_a = (ushort)try_goal_parse;
+            if (option_force_teamplay || option_enforce_team_limits) { ui_round_teamplay_toggle.isOn = false; } // if the previously selected gamemode enforced teamplay, set back to FFA
+            option_force_teamplay = false;
+            option_enforce_team_limits = false;
+        }
+        else
+        {
+            if (option_force_teamplay || option_enforce_team_limits) { ui_round_teamplay_toggle.isOn = false; } // if the previously selected gamemode enforced teamplay, set back to FFA
+            option_force_teamplay = false;
+            option_enforce_team_limits = false;
         }
 
         option_teamplay = ui_round_teamplay_toggle.isOn;
@@ -1577,11 +1673,16 @@ public class GameController : GlobalHelperFunctions
         int prev_team_count = team_count;
         Int32.TryParse(ui_round_teamplay_count_input.text, out team_input_parse);
         team_input_parse = Mathf.Min(Mathf.Max(team_input_parse, 1), team_colors.Length, 255);
-        if (option_teamplay) { team_count = (byte)team_input_parse; }
+        if (option_teamplay) 
+        { 
+            team_count = (byte)team_input_parse;
+            if (ui_round_teamplay_count_input.text == "1") { ui_round_teamplay_count_input.text = "2"; }
+        }
         else { team_count = 1; }
         if (prev_team_count != team_count)
         {
             PlayerAutoSortTeams();
+            ChangeGamemode();
         }
 
 
@@ -1640,8 +1741,9 @@ public class GameController : GlobalHelperFunctions
 
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
-        
-        if (ply_object_owners == null || ply_object_owners[0] == 0 || ply_owners_cnt >= ply_object_owners.Length) 
+        if (player == null) { return; }
+
+        if (ply_object_owners == null || ply_object_owners.Length < ply_owners_cnt)
         {
             ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
@@ -1649,43 +1751,26 @@ public class GameController : GlobalHelperFunctions
             ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-
-            // If our owner array is empty, we can fill it now
-            VRCPlayerApi[] players = new VRCPlayerApi[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-            VRCPlayerApi.GetPlayers(players);
-            foreach (VRCPlayerApi ply in players)
-            {
-                if (ply == player) { continue; } // We'll temporarily exclude ourselves as we'll be adding our own objects in the next steps
-                AddPlayerToObjOwners(ply);
-            }
+            ply_owners_cnt = 0;
         }
+        if (ply_owners_cnt >= (int)GLOBAL_CONST.UDON_MAX_PLAYERS)
+        {
+            ResetAllObjOwners();
+        }
+
+        UnityEngine.Debug.Log("[PLAYER_JOIN_TEST] Player " + player.playerId + " (" + player.displayName + ") joined. ply_owners_cnt = " + ply_owners_cnt);
+
+        bool game_is_functional = true;
+        if (ply_owners_cnt >= (int)GLOBAL_CONST.UDON_MAX_PLAYERS) { UnityEngine.Debug.LogError("[OWNERS_TEST] Owners count exceeds maximum udon player limit (100); this game will cease function!"); game_is_functional = false;  }
 
         bool found_player_in_owner_arr = false;
         for (int i = 0; i < ply_object_owners.Length; i++)
         {
             if (ply_object_owners[i] == player.playerId) { found_player_in_owner_arr = true; break; }
         }
-        if (!found_player_in_owner_arr)
+        if (!found_player_in_owner_arr && game_is_functional)
         {
-            if (ply_object_owners == null || ply_owners_cnt <= 0 || !(ply_owners_cnt < ply_object_owners.Length))
-            {
-                ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-            }
             if (ply_owners_cnt < ply_object_owners.Length) { ply_object_owners[ply_owners_cnt] = player.playerId; }
-            else
-            {
-                ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-                ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
-            }
         }
 
         var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
@@ -1700,21 +1785,21 @@ public class GameController : GlobalHelperFunctions
         var plyLandingCircleObj = FindPlayerOwnedObject(player, "PlayerLandingCircle");
 
         Networking.SetOwner(player, plyAttributesObj);
-        ply_object_plyattr[ply_owners_cnt] = plyAttributesComponent;
+        if (game_is_functional) { ply_object_plyattr[ply_owners_cnt] = plyAttributesComponent; }
         Networking.SetOwner(player, plyWeaponObj);
-        ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>();
-        ply_object_plyweapon[ply_owners_cnt].owner_attributes = plyAttributesComponent;
+        if (game_is_functional) { ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>(); }
+        if (game_is_functional) { ply_object_plyweapon[ply_owners_cnt].owner_attributes = plyAttributesComponent; }
         Networking.SetOwner(player, plySecondaryObj);
-        ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>();
-        ply_object_secondaryweapon[ply_owners_cnt].owner_attributes = plyAttributesComponent;
+        if (game_is_functional) { ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>(); }
+        if (game_is_functional) { ply_object_secondaryweapon[ply_owners_cnt].owner_attributes = plyAttributesComponent; }
         Networking.SetOwner(player, plyHitboxObj);
-        ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>();
-        ply_object_plyhitbox[ply_owners_cnt].owner = player;
-        ply_object_plyhitbox[ply_owners_cnt].playerAttributes = plyAttributesComponent;
+        if (game_is_functional) { ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>(); }
+        if (game_is_functional) { ply_object_plyhitbox[ply_owners_cnt].owner = player; }
+        if (game_is_functional) { ply_object_plyhitbox[ply_owners_cnt].playerAttributes = plyAttributesComponent; }
         Networking.SetOwner(player, plyUIToOthers);
-        ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>();
-        ply_object_uiplytoothers[ply_owners_cnt].owner = player;
-        ply_object_uiplytoothers[ply_owners_cnt].playerAttributes = plyAttributesComponent;
+        if (game_is_functional) { ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>();}
+        if (game_is_functional) { ply_object_uiplytoothers[ply_owners_cnt].owner = player; }
+        if (game_is_functional) { ply_object_uiplytoothers[ply_owners_cnt].playerAttributes = plyAttributesComponent; }
         Networking.SetOwner(player, plyUIToSelf);
         plyUIToSelf.GetComponent<UIPlyToSelf>().owner = player;
         plyUIToSelf.GetComponent<UIPlyToSelf>().playerAttributes = plyAttributesComponent;
@@ -1731,19 +1816,19 @@ public class GameController : GlobalHelperFunctions
             PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
             local_uiplytoself.local_uimessagestoself = plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>();
             local_plyAttr = plyAttributesComponent;
-            local_plyweapon = ply_object_plyweapon[ply_owners_cnt];
+            if (game_is_functional) { local_plyweapon = ply_object_plyweapon[ply_owners_cnt]; }
             if (local_plyweapon != null) 
             { 
                 local_plyweapon.OnDrop(); 
                 local_plyweapon.pickup_component.pickupable = true;
             }
-            local_secondaryweapon = ply_object_secondaryweapon[ply_owners_cnt];
+            if (game_is_functional) { local_secondaryweapon = ply_object_secondaryweapon[ply_owners_cnt]; }
             if (local_secondaryweapon != null)
             {
                 local_secondaryweapon.OnDrop();
                 local_secondaryweapon.pickup_component.pickupable = true;
             }
-            local_plyhitbox = ply_object_plyhitbox[ply_owners_cnt];
+            if (game_is_functional) { local_plyhitbox = ply_object_plyhitbox[ply_owners_cnt]; }
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
             local_ppp_options.ColorblindTemplateInit();
             //local_ppp_options.RefreshAllOptions();
@@ -1766,17 +1851,8 @@ public class GameController : GlobalHelperFunctions
             plyLandingCircleObj.SetActive(true);
             plyUIMessagesToSelf.SetActive(true);
             plyPPPCanvas.SetActive(true);
-            if (ply_object_plyhitbox != null && ply_owners_cnt < ply_object_plyhitbox.Length && ply_owners_cnt >= 0)
-            {
-                ply_object_plyhitbox[ply_owners_cnt].ToggleHitbox(false);
-
-                for (int i = 0; i < ply_owners_cnt; i++)
-                {
-                    if (ply_object_plyattr[i] != null && ply_object_plyattr[i].in_ready_room) { ply_object_plyhitbox[i].ToggleHitbox(false); continue; }
-                    ply_object_plyhitbox[i].ToggleHitbox(ply_object_plyhitbox[i].network_active);
-                }
-                //CheckPlyObjsActive();
-            }
+            if (game_is_functional) { ply_object_plyhitbox[ply_owners_cnt].ToggleHitbox(false); }
+            ForceResetHitboxes();
         }
         else
         {
@@ -1791,7 +1867,7 @@ public class GameController : GlobalHelperFunctions
         { DictAddEntry(player.playerId, (int)player_tracking_name.Unassigned, ref ply_tracking_dict_keys_arr, ref ply_tracking_dict_values_arr); }
         else
         {
-            UnityEngine.Debug.Log("New player (" + player.playerId + ") just dropped! Let's add them to the dictionary!" + ply_tracking_dict_keys_str);
+            UnityEngine.Debug.Log("[PLAYER_JOIN_TEST] New player (" + player.playerId + ") just dropped! Let's add them to the dictionary! " + ply_tracking_dict_keys_str);
         }
 
         if (Networking.IsOwner(gameObject))
@@ -1809,10 +1885,12 @@ public class GameController : GlobalHelperFunctions
             if (ply_tracking_dict_keys_arr == null) { ply_tracking_dict_keys_arr = new int[VRCPlayerApi.GetPlayerCount()]; }
             if (ply_tracking_dict_values_arr == null) { ply_tracking_dict_values_arr = new int[VRCPlayerApi.GetPlayerCount()]; }
         }
-        UnityEngine.Debug.Log("New player (" + player.playerId + ") is now in the dictionary! " + ply_tracking_dict_keys_str);
+        UnityEngine.Debug.Log("[PLAYER_JOIN_TEST] New player (" + player.playerId + ") is now in the dictionary! " + ply_tracking_dict_keys_str);
         if (Networking.LocalPlayer == player) { wait_for_sync_for_player_join = true; }
 
         ply_owners_cnt++;
+        UnityEngine.Debug.Log("[PLAYER_JOIN_TEST] Join complete for " + player.displayName + ". ply_owners_cnt = " + ply_owners_cnt + " [" + ConvertIntArrayToString(ply_object_owners) + "]");
+
     }
 
     public override void OnPlayerLeft(VRCPlayerApi player)
@@ -1853,6 +1931,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
             local_plyAttr.in_ready_room = true;
+            local_plyAttr.air_thrust_enabled = false;
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
             if (local_secondaryweapon != null) { local_secondaryweapon.ResetWeaponToDefault(); }
@@ -1877,6 +1956,7 @@ public class GameController : GlobalHelperFunctions
         
         room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
         ToggleReadyRoomCollisions(true);
+        ToggleTrainingRoom(false);
         room_training_portal.SetActive(true);
     }
 
@@ -1886,16 +1966,38 @@ public class GameController : GlobalHelperFunctions
         // This also prevents us from accidentally disabling the canvas colliders (which would prevent interacting with them!)
         room_ready_script.trigger_player.enabled = toggle;
 
-        /*Transform[] AllChildren = room_ready_script.gameObject.transform.GetComponentsInChildren<Transform>();
-        foreach (Transform t in AllChildren)
-        {
-            Collider component = t.GetComponent<Collider>();
-            if (t.GetComponent<Collider>() != null)
-            {
-                component.enabled = toggle;
-            }
+        // If we aren't the host, we can easily cull the ready room as needed
+        if (!Networking.IsOwner(gameObject)) 
+        { 
+            room_ready_should_render = toggle;
+            room_ready_script.gameObject.SetActive(toggle);
         }
-        room_ready_script.gameObject.GetComponent<Collider>().enabled = toggle;*/
+        // If we are the host, however, we'll need to cull only if the game is ongoing and we are a participant. Otherwise, all functionality must remain in-tact.
+        else if (round_state == (int)round_state_name.Ongoing && local_plyAttr != null && local_plyAttr.ply_team >= 0 && !local_plyAttr.ply_training && (local_plyAttr.ply_state == (byte)player_state_name.Alive || local_plyAttr.ply_state == (byte)player_state_name.Respawning))
+        {
+            room_ready_should_render = toggle;
+            room_ready_script.gameObject.SetActive(toggle);
+        }
+        else
+        {
+            room_ready_should_render = true;
+            if (!room_ready_script.gameObject.activeInHierarchy) { room_ready_script.gameObject.SetActive(true); }
+        }
+
+    }
+
+    public void ToggleTrainingRoom(bool toggle)
+    {
+        // If we aren't the host, we can easily cull the training room as needed
+        if (!Networking.IsOwner(gameObject))
+        {
+            room_training.SetActive(toggle);
+        }
+        // If we are the host, however, it must always remain enabled in the interest of synchronization.
+        else if (!room_training.activeInHierarchy)
+        { 
+           room_training.gameObject.SetActive(true); 
+        }
     }
 
     // -- Round Management --
@@ -2002,6 +2104,161 @@ public class GameController : GlobalHelperFunctions
         var personal_description = "";
         var player_description = "";
 
+        // -- Local Only Below --
+
+        // Failsafes in case locally setting active/inactive fails. Inefficient, but the alternative is a game where someone is permanently invulnerable
+        //local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
+        //local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
+        local_plyweapon.ToggleActive(true);
+        local_plyhitbox.ToggleHitbox(true);
+        //local_secondaryweapon.ToggleActive(false);
+
+        //room_training.SetActive(false);
+        room_training_portal.SetActive(false);
+        // To-do: IsNetworkSettled / IsClogged check for this player data
+        PlayerAttributes playerData = FindPlayerAttributes(Networking.LocalPlayer);
+        playerData.ply_training = false;
+        playerData.ResetTutorialMessage();
+
+        playerData.ply_deaths = 0;
+        playerData.ply_dp = plysettings_dp;
+        playerData.ply_dp_default = plysettings_dp;
+        playerData.ply_damage_dealt = 0;
+        playerData.ply_lives = plysettings_lives;
+        playerData.ply_points = plysettings_points;
+        playerData.ply_respawn_duration = plysettings_respawn_duration;
+        playerData.ply_scale = plysettings_scale;
+        playerData.ply_speed = plysettings_speed;
+        playerData.ply_atk = plysettings_atk;
+        playerData.ply_def = plysettings_def;
+        playerData.ply_grav = plysettings_grav * mapscript_list[map_selected].map_gravity_scale;
+        playerData.killstreak = 0;
+        playerData.killbo = 0;
+        playerData.combo_receive = 0;
+        playerData.combo_send = 0;
+        playerData.ply_state = (int)player_state_name.Alive;
+        playerData.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+        playerData.air_thrust_enabled = true;
+
+        if (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1)
+        {
+            //playerData.ply_lives = option_goal_value_b;
+            playerData.ply_scale = plysettings_scale * plysettings_boss_scale_mod;
+            playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
+            playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
+            playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
+            personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_BOSS", "You are THE BIG BOSS! Crush everyone who stands in your way!");
+            //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_B);
+            if (local_secondaryweapon != null && Networking.LocalPlayer.IsUserInVR())
+            {
+                playerData.ply_dual_wield = true;
+                local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
+                //secondaryWeapon.ToggleActive(true);
+            }
+        }
+        else
+        {
+            if (option_gamemode == (int)gamemode_name.BossBash)
+            {
+                personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_TINY", "You are a Tiny Trooper! Work together and defeat $ARG0!", "$BOSS");
+                //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_A);
+            }
+            else if (option_gamemode == (int)gamemode_name.Infection)
+            {
+                if (playerData.ply_team == 1)
+                {
+                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_INFECTED", "You are an Infected!");
+                    playerData.infection_special = 1;
+                    playerData.InfectionStatReset();
+                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_B);
+
+                }
+                else
+                {
+                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_SURVIVOR", "You are a Survivor!");
+                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_A);
+                }
+                playerData.ply_lives = 2; // We set lives to 2 so that you always have at least one left upon death (although this should never decrement, it never hurts to be safe)
+            }
+        }
+
+        bool is_boss = (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1);
+        if (local_plyweapon == null || local_secondaryweapon == null)
+        {
+            local_plyweapon = GetPlayerWeaponFromID(Networking.LocalPlayer.playerId);
+            local_secondaryweapon = GetSecondaryWeaponFromID(Networking.LocalPlayer.playerId);
+        }
+        if (local_plyweapon != null)
+        {
+            if (is_boss)
+            {
+                gamemode_boss_id = Networking.LocalPlayer.playerId;
+                local_plyweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
+                local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
+            }
+            else
+            {
+                local_plyweapon.weapon_type_default = plysettings_weapon;
+                local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
+            }
+            //if (local_plyweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+            //{
+            local_plyweapon.weapon_temp_ammo = -1;
+            local_plyweapon.weapon_temp_duration = -1;
+            //}
+            local_plyweapon.UpdateStatsFromWeaponType();
+            local_plyweapon.CacheWeaponPos(true);
+            is_boss = is_boss || local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove;
+        }
+        if (local_secondaryweapon != null)
+        {
+            if (is_boss)
+            {
+                gamemode_boss_id = Networking.LocalPlayer.playerId;
+                local_secondaryweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
+                local_secondaryweapon.weapon_type = local_plyweapon.weapon_type_default;
+            }
+            else
+            {
+                local_secondaryweapon.weapon_type_default = plysettings_weapon;
+                local_secondaryweapon.weapon_type = local_secondaryweapon.weapon_type_default;
+            }
+            //if (local_secondaryweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+            //{
+            local_secondaryweapon.weapon_temp_ammo = -1;
+            local_secondaryweapon.weapon_temp_duration = -1;
+            //}
+            is_boss = is_boss || local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove;
+            if (local_secondaryweapon.gameObject.activeInHierarchy) { local_secondaryweapon.UpdateStatsFromWeaponType(); }
+        }
+
+        if (is_boss && Networking.LocalPlayer.IsUserInVR()) { playerData.ply_dual_wield = true; }
+        else { playerData.ply_dual_wield = false; }
+
+        playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
+        playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+        playerData.plyEyeHeight_change = true;
+
+        if (local_uiplytoself != null)
+        {
+            local_uiplytoself.ResetCache();
+            local_uiplytoself.ForceUpdateAllUI();
+        }
+
+        //if (option_teamplay & !option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(); }
+        // { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
+        TeleportLocalPlayerToGameSpawnZone();
+        ToggleReadyRoomCollisions(false);
+        ToggleTrainingRoom(false);
+
+
+        //if (option_gamemode == (int)gamemode_name.Survival) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Survival); }
+        //else if (option_gamemode == (int)gamemode_name.Clash) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Clash); }
+        //else if (option_gamemode == (int)gamemode_name.FittingIn) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_FittingIn); }
+        //else if (option_gamemode == (int)gamemode_name.KingOfTheHill) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_KingOfTheHill); }
+
+        // -- Local Only End (In Loop) --
+
         for (var i = 0; i < ply_parent_arr[0].Length; i++)
         {
             var player = VRCPlayerApi.GetPlayerById(ply_parent_arr[0][i]);
@@ -2038,123 +2295,7 @@ public class GameController : GlobalHelperFunctions
             UIPlyToOthers plytoothers = GetUIPlyToOthersFromID(player.playerId);
             if (plytoothers != null) { plytoothers.ResetCache(); }
 
-            // -- Local Only Below (in loop) --
-            if (!player.isLocal) { continue; }
-
-            // Failsafes in case locally setting active/inactive fails. Inefficient, but the alternative is a game where someone is permanently invulnerable
-            //local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
-            //local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
-            local_plyweapon.ToggleActive(true);
-            local_plyhitbox.ToggleHitbox(true);
-            //local_secondaryweapon.ToggleActive(false);
-
-            //room_training.SetActive(false);
-            room_training_portal.SetActive(false);
-            // To-do: IsNetworkSettled / IsClogged check for this player data
-            PlayerAttributes playerData = FindPlayerAttributes(player);
-            playerData.ply_training = false;
-            playerData.ResetTutorialMessage();
-            
-            playerData.ply_deaths = 0;
-            playerData.ply_dp = plysettings_dp;
-            playerData.ply_dp_default = plysettings_dp;
-            playerData.ply_damage_dealt = 0;
-            playerData.ply_lives = plysettings_lives;
-            playerData.ply_points = plysettings_points;
-            playerData.ply_respawn_duration = plysettings_respawn_duration;
-            playerData.ply_scale = plysettings_scale;
-            playerData.ply_speed = plysettings_speed;
-            playerData.ply_atk = plysettings_atk;
-            playerData.ply_def = plysettings_def;
-            playerData.ply_grav = plysettings_grav * mapscript_list[map_selected].map_gravity_scale;
-            playerData.killstreak = 0;
-            playerData.killbo = 0;
-            playerData.combo_receive = 0;
-            playerData.combo_send = 0;
-            playerData.ply_state = (int)player_state_name.Alive;
-            playerData.ply_team = ply_parent_arr[1][i];
-            if (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1)
-            {
-                //playerData.ply_lives = option_goal_value_b;
-                playerData.ply_scale = plysettings_scale * plysettings_boss_scale_mod;
-                playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
-                playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
-                playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
-                personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_BOSS", "You are THE BIG BOSS! Crush everyone who stands in your way!");
-                //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_B);
-                if (secondaryWeapon != null && Networking.LocalPlayer.IsUserInVR()) 
-                {
-                    playerData.ply_dual_wield = true;
-                    secondaryWeapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
-                    //secondaryWeapon.ToggleActive(true);
-                }
-            }
-            else
-            {
-                if (option_gamemode == (int)gamemode_name.BossBash) 
-                { 
-                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_TINY", "You are a Tiny Trooper! Work together and defeat $ARG0!", "$BOSS");
-                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_A);
-                }
-                else if (option_gamemode == (int)gamemode_name.Infection)
-                {
-                    if (playerData.ply_team == 1) 
-                    { 
-                        personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_INFECTED", "You are an Infected!"); 
-                        playerData.infection_special = 1; 
-                        playerData.InfectionStatReset();
-                        //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_B);
-
-                    }
-                    else 
-                    { 
-                        personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_SURVIVOR", "You are a Survivor!");
-                        //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_A);
-                    }
-                    playerData.ply_lives = 2; // We set lives to 2 so that you always have at least one left upon death (although this should never decrement, it never hurts to be safe)
-                }
-
-                plyWeapon.weapon_type_default = plysettings_weapon;
-                plyWeapon.weapon_type = plyWeapon.weapon_type_default;
-                if (plyWeapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
-                {
-                    plyWeapon.weapon_temp_ammo = -1;
-                    plyWeapon.weapon_temp_duration = -1;
-                }
-                secondaryWeapon.weapon_type_default = plysettings_weapon;
-                secondaryWeapon.weapon_type = secondaryWeapon.weapon_type_default;
-                if (secondaryWeapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
-                {
-                    secondaryWeapon.weapon_temp_ammo = -1;
-                    secondaryWeapon.weapon_temp_duration = -1;
-                }
-
-                bool is_boss = plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || secondaryWeapon.weapon_type == (int)weapon_type_name.BossGlove || (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1);
-                if (is_boss && Networking.LocalPlayer.IsUserInVR()) { playerData.ply_dual_wield = true; }
-                else { playerData.ply_dual_wield = false; }
-            }
-            plyWeapon.UpdateStatsFromWeaponType();
-            plyWeapon.CacheWeaponPos(true);
-            if (secondaryWeapon != null && secondaryWeapon.gameObject.activeInHierarchy) { secondaryWeapon.UpdateStatsFromWeaponType(); }
-            playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
-            playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
-            playerData.plyEyeHeight_change = true;
-            
-            if (local_uiplytoself != null) {
-                local_uiplytoself.ResetCache();
-                local_uiplytoself.ForceUpdateAllUI();
-            }
-
-            if (option_teamplay & !option_force_teamplay) { TeleportLocalPlayerToGameSpawnZone(); }
-            else { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
-            ToggleReadyRoomCollisions(false);
-
-            //if (option_gamemode == (int)gamemode_name.Survival) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Survival); }
-            //else if (option_gamemode == (int)gamemode_name.Clash) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Clash); }
-            //else if (option_gamemode == (int)gamemode_name.FittingIn) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_FittingIn); }
-            //else if (option_gamemode == (int)gamemode_name.KingOfTheHill) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_KingOfTheHill); }
-
-            // -- Local Only End (In Loop) --
+            if (player.isLocal) { continue; }
         }
 
         if (local_plyAttr.ply_team < 0) { room_training_portal.SetActive(true); }
@@ -2218,24 +2359,38 @@ public class GameController : GlobalHelperFunctions
                 capturezone.gameObject.SetActive(ply_parent_arr[0].Length >= capturezone.min_players);
 
                 if (!Networking.IsOwner(gameObject)) { continue; }
+                double server_ms = Networking.GetServerTimeInSeconds();
                 if (option_teamplay)
                 {
                     // If we have teams on, the leaderboard will be a list of team IDs
                     capturezone.dict_points_keys_arr = new int[team_count];
                     capturezone.dict_points_values_arr = new int[team_count];
+                    //koth_respawn_wave_start_ms = new double[team_count];
+                    //koth_respawn_wave_duration = new double[team_count];
                     for (int i = 0; i < team_count; i++)
                     {
                         capturezone.dict_points_keys_arr[i] = i;
                         capturezone.dict_points_values_arr[i] = 0;
+                        //koth_respawn_wave_start_ms[i] = server_ms;
+                        //koth_respawn_wave_duration[i] = plysettings_respawn_duration;
                     }
                 }
                 else
                 {
                     capturezone.dict_points_keys_arr = ply_parent_arr[0];
                     capturezone.dict_points_values_arr = ply_parent_arr[1];
+                   // koth_respawn_wave_start_ms = new double[ply_parent_arr[0].Length];
+                    //koth_respawn_wave_duration = new double[team_count];
+                    for (int i = 0; i < ply_parent_arr[0].Length; i++)
+                    {
+                        //koth_respawn_wave_start_ms[i] = server_ms;
+                        //koth_respawn_wave_duration[i] = plysettings_respawn_duration;
+                    }
                 }
                 capturezone.ResetZone();
                 capturezone.RequestSerialization(); // Continous sync probably doesn't require this, but just in case
+                koth_respawn_wave_start_ms = server_ms;
+                koth_respawn_wave_duration = plysettings_respawn_duration;
             }
         }
 
@@ -2249,6 +2404,7 @@ public class GameController : GlobalHelperFunctions
             // Ensure they don't have photos from the previous round and that they're reset after
             SnapHighlightPhoto(i, Vector3.zero, Quaternion.LookRotation(Vector3.down), Vector3.zero, Vector3.zero, false, 1.0f);
         }
+        highlight_cameras_active_cnt = 0;
 
         room_spectator_portal.SetActive(true);
         ui_highlightcanvas.SetActive(false);
@@ -2313,6 +2469,17 @@ public class GameController : GlobalHelperFunctions
         local_queue_timer = 0.0f;
         local_every_second_timer = 0.0f;
         PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.QueueCancel);
+        // If we have anyone waiting for lobby, they should now be in the game
+        if (ply_tracking_dict_values_arr != null && Networking.IsOwner(gameObject))
+        {
+            for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
+            {
+                if (ply_tracking_dict_values_arr[i] == (int)player_tracking_name.WaitingForLobby)
+                {
+                    ChangeTeam(ply_tracking_dict_keys_arr[i], 0, false);
+                }
+            }
+        }
         RefreshSetupUI();
         if (Networking.IsOwner(gameObject)) { RequestSerialization(); }
     }
@@ -2324,7 +2491,7 @@ public class GameController : GlobalHelperFunctions
     }
 
     [NetworkCallable]
-    public void EnableReadyRoom()
+    public void RoundCommence()
     {
         AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDSTART_BEGIN", "GO!"));
 
@@ -2342,6 +2509,8 @@ public class GameController : GlobalHelperFunctions
         }
 
         room_ready_script.gameObject.GetComponent<Collider>().enabled = true;
+
+        // To be ABSOLUTELY CERTAIN, let's also re-enable everyone's hitboxes and weapons
         if (local_plyweapon == null) 
         { 
             var plyWeaponFind = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerWeapon"); 
@@ -2353,15 +2522,15 @@ public class GameController : GlobalHelperFunctions
             if (plyWeaponFind != null) { local_secondaryweapon = plyWeaponFind.GetComponent<PlayerWeapon>(); }
         }
 
-        if (local_plyweapon != null) {
-            local_plyweapon.ToggleActive(true);
+        if (local_plyweapon != null && local_plyAttr != null && local_plyAttr.ply_team >= 0 && !local_plyAttr.ply_training) {
+            if (!local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.ToggleActive(true); }
             local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
-            }
+        }
         if (local_secondaryweapon != null && local_secondaryweapon.gameObject.activeInHierarchy)
         {
             local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UpdateStatsFromWeaponType");
         }
-        // To be ABSOLUTELY CERTAIN, let's also re-enable everyone's hitboxes
+
         cached_ply_in_game_dict = GetPlayersInGame();
         if (cached_ply_in_game_dict != null && cached_ply_in_game_dict.Length > 0 && cached_ply_in_game_dict[0] != null)
         {
@@ -2822,6 +2991,8 @@ public class GameController : GlobalHelperFunctions
                     }
                 }
                 declare_victor = progress_arr[0] >= option_gm_goal;
+
+                //UnityEngine.Debug.Log("[PROGRESS_TEST] KOTH: " + ConvertIntArrayToString(progress_arr) + "; LEADERBOARD: " + ConvertIntArrayToString(leaderboard_arr));
             }
             
         }
@@ -2845,9 +3016,9 @@ public class GameController : GlobalHelperFunctions
                 int total_deaths = 0;
                 int[] pointsPerPlayer = CheckSingleTeamPoints(0, players_in_game_dict,ref total_deaths, true);
                 progress_arr = pointsPerPlayer;
-                UnityEngine.Debug.Log("[PROGRESS_TEST] FITTING IN DEATHS PER PLAYER: " + ConvertIntArrayToString(pointsPerPlayer) + "; TOTAL DEATHS: " + total_deaths);
+                //UnityEngine.Debug.Log("[PROGRESS_TEST] FITTING IN DEATHS PER PLAYER: " + ConvertIntArrayToString(pointsPerPlayer) + "; TOTAL DEATHS: " + total_deaths);
                 DictSort(ref leaderboard_arr, ref progress_arr, true);
-                UnityEngine.Debug.Log("[PROGRESS_TEST] FITTING IN DEATHS PER PLAYER SORTED: " + ConvertIntArrayToString(progress_arr) + "; LEADERBOARD: " + ConvertIntArrayToString(leaderboard_arr));
+                //UnityEngine.Debug.Log("[PROGRESS_TEST] FITTING IN DEATHS PER PLAYER SORTED: " + ConvertIntArrayToString(progress_arr) + "; LEADERBOARD: " + ConvertIntArrayToString(leaderboard_arr));
                 leader_name = GetLeaderName(leaderboard_arr, progress_arr, true);
             }
         }
@@ -2886,7 +3057,7 @@ public class GameController : GlobalHelperFunctions
     public void RoundEnd(string winner_name, int winning_team)
     {
         //UnityEngine.Debug.Log("[DICT_TEST]: ROUND END - " + ConvertIntArrayToString(players_in_game_dict[0]) + " | " + ConvertIntArrayToString(players_in_game_dict[1]));
-        if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.UpdateGameVariables(true); }
+        if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.gamevars_force_refresh_on_next_tick = true; }
 
         for (int i = 0; i < ply_tracking_dict_keys_arr.Length; i++)
         {
@@ -3041,9 +3212,10 @@ public class GameController : GlobalHelperFunctions
         if (spawnZoneIndex >= 0 && spawnZoneIndex < mapscript_list[map_selected].map_spawnzones.Length)
         {
             spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex];
+            // Note: we need to ensure KO
             if (spawnzone == null
-                || (option_teamplay && !option_force_teamplay && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0 )
-                || (option_teamplay && !option_force_teamplay && spawnzone.team_id == -2) // FFA-only
+                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0 )
+                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id == -2) // FFA-only
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || !spawnzone.gameObject.activeInHierarchy || !spawnzone.gameObject.activeSelf
                 ) { spawnZoneIndex = -1; }
@@ -3093,7 +3265,7 @@ public class GameController : GlobalHelperFunctions
         UnityEngine.Debug.Log("Teleporting player to spawn zone " + spawnZoneIndex);
         platformHook.custom_force_unhook = false;
 
-        if (local_plyAttr != null) { local_plyAttr.in_ready_room = false; }
+        if (local_plyAttr != null) { local_plyAttr.in_ready_room = false; local_plyAttr.air_thrust_enabled = true; }
     }
 
     [NetworkCallable]
@@ -3129,6 +3301,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
             local_plyAttr.in_ready_room = true;
+            local_plyAttr.air_thrust_enabled = false;
             if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
             {
@@ -3146,6 +3319,7 @@ public class GameController : GlobalHelperFunctions
             UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Ready Room with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
         }
         ToggleReadyRoomCollisions(true);
+        ToggleTrainingRoom(false);
         Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
         if (ui_round_scoreboard_canvas != null)
         {
@@ -3166,6 +3340,7 @@ public class GameController : GlobalHelperFunctions
         { 
             local_plyAttr.ply_training = true;
             local_plyAttr.in_ready_room = false;
+            local_plyAttr.air_thrust_enabled = true;
             if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
             {
@@ -3180,6 +3355,7 @@ public class GameController : GlobalHelperFunctions
         //var plyHitboxObj = FindPlayerOwnedObject(Networking.LocalPlayer, "PlayerHitbox");
 
         ToggleReadyRoomCollisions(false);
+        ToggleTrainingRoom(true);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_hallway_spawn.transform.position, room_training_hallway_spawn.transform.rotation); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
@@ -3204,6 +3380,7 @@ public class GameController : GlobalHelperFunctions
         { 
             local_plyAttr.ply_training = true;
             local_plyAttr.in_ready_room = false;
+            local_plyAttr.air_thrust_enabled = true;
             local_plyAttr.ply_state = (int)player_state_name.Alive;
             UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Training Arena with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team);
         }
@@ -3218,6 +3395,7 @@ public class GameController : GlobalHelperFunctions
         }
 
         ToggleReadyRoomCollisions(false);
+        ToggleTrainingRoom(true);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(room_training_arena_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
@@ -3233,7 +3411,8 @@ public class GameController : GlobalHelperFunctions
         if (local_secondaryweapon != null && local_secondaryweapon.gameObject.activeInHierarchy) { local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
 
-        ToggleReadyRoomCollisions(false);
+        //ToggleReadyRoomCollisions(false);
+        ToggleTrainingRoom(false);
         platformHook.custom_force_unhook = true;
         Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].room_spectator_spawn.transform.position, Networking.LocalPlayer.GetRotation()); //faceScoreboard * Networking.LocalPlayer.GetRotation()
         platformHook.custom_force_unhook = false;
@@ -3264,6 +3443,7 @@ public class GameController : GlobalHelperFunctions
         }
 
         highlight_cameras_active[camera_id] = true;
+        highlight_cameras_active_cnt++;
         highlight_cameras_ms[camera_id] = Networking.GetServerTimeInSeconds();
     }
 
@@ -3535,7 +3715,7 @@ public class GameController : GlobalHelperFunctions
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
             if (spawnzone == null
                 || (option_teamplay && !option_force_teamplay && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
-                || (option_teamplay && !option_force_teamplay && spawnzone.team_id == -2) // FFA-only spawnzone
+                || (option_teamplay && !option_force_teamplay && spawnzone.team_id == -1) // Universal spawnzone
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
                 ) { continue; }
@@ -3758,12 +3938,69 @@ public class GameController : GlobalHelperFunctions
         }
     }
 
-    public void AddPlayerToObjOwners(VRCPlayerApi player)
+    public void ResetAllObjOwners()
+    {
+        ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_plyweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_secondaryweapon = new PlayerWeapon[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_object_uiplytoothers = new UIPlyToOthers[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        ply_owners_cnt = 0;
+
+        VRCPlayerApi[] players = new VRCPlayerApi[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
+        VRCPlayerApi.GetPlayers(players);
+        foreach (VRCPlayerApi player in players)
+        {
+            if (ply_owners_cnt < ply_object_owners.Length) { ply_object_owners[ply_owners_cnt] = player.playerId; }
+
+            var plyAttributesObj = FindPlayerOwnedObject(player, "PlayerAttributes");
+            var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
+            var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
+            var plySecondaryObj = FindPlayerOwnedObject(player, "SecondaryWeapon");
+            var plyUIToOthers = FindPlayerOwnedObject(player, "UIPlyToOthers");
+
+            if (plyAttributesObj != null && ply_owners_cnt < ply_object_plyattr.Length)
+            {
+                ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>();
+                UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyAttributesObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+            }
+            if (plyHitboxObj != null && ply_owners_cnt < ply_object_plyhitbox.Length)
+            {
+                ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>();
+                UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyHitboxObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+            }
+            if (plyWeaponObj != null && ply_owners_cnt < ply_object_plyweapon.Length)
+            {
+                ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>();
+                UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyWeaponObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+            }
+            if (plySecondaryObj != null && ply_owners_cnt < ply_object_secondaryweapon.Length)
+            {
+                ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>();
+                UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plySecondaryObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+
+            }
+            if (plyUIToOthers != null && ply_owners_cnt < ply_object_uiplytoothers.Length)
+            {
+                ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>();
+                UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyUIToOthers belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+            }
+
+            ply_owners_cnt++;
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Incrementing owner count to " + ply_owners_cnt);
+        }
+    }
+
+    /*public void AddPlayerToObjOwners(VRCPlayerApi player, bool increment_counter = false)
     {
         if (player == null) { return; }
 
-        if (ply_object_owners == null || ply_owners_cnt <= 0 || ply_owners_cnt >= ply_object_owners.Length) 
+        UnityEngine.Debug.Log("[OWNERS_TEST]: Adding " + player.playerId + " (" + player.displayName + ") to object owners at index " + ply_owners_cnt);
+        
+        if (ply_object_owners == null || ply_owners_cnt <= 0 || ply_object_owners.Length < (int)GLOBAL_CONST.UDON_MAX_PLAYERS) 
         {
+            UnityEngine.Debug.Log("[OWNERS_TEST]: New owners array of " + (int)GLOBAL_CONST.UDON_MAX_PLAYERS + " created.");
             ply_object_owners = new int[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_plyattr = new PlayerAttributes[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
             ply_object_plyhitbox = new PlayerHitbox[(int)GLOBAL_CONST.UDON_MAX_PLAYERS];
@@ -3778,20 +4015,50 @@ public class GameController : GlobalHelperFunctions
             if (ply_object_owners[i] == player.playerId) { return; }
         }
 
+        UnityEngine.Debug.Log("[OWNERS_TEST]: Player ID " + player.playerId + " (" + player.displayName + ") is not in the owners array of length " + ply_object_owners.Length + " (current owner count: " + ply_owners_cnt + ")");
+
+        if (ply_owners_cnt < ply_object_owners.Length) { ply_object_owners[ply_owners_cnt] = player.playerId; }
+
         var plyAttributesObj = FindPlayerOwnedObject(player, "PlayerAttributes");
         var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
         var plyWeaponObj = FindPlayerOwnedObject(player, "PlayerWeapon");
         var plySecondaryObj = FindPlayerOwnedObject(player, "SecondaryWeapon");
         var plyUIToOthers = FindPlayerOwnedObject(player, "UIPlyToOthers");
 
-        if (plyAttributesObj != null && ply_owners_cnt < ply_object_plyattr.Length) { ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>(); }
-        if (plyHitboxObj != null && ply_owners_cnt < ply_object_plyhitbox.Length) { ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>(); }
-        if (plyWeaponObj != null && ply_owners_cnt < ply_object_plyweapon.Length) { ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>(); }
-        if (plySecondaryObj != null && ply_owners_cnt < ply_object_secondaryweapon.Length) { ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>(); }
-        if (plyUIToOthers != null && ply_owners_cnt < ply_object_uiplytoothers.Length) { ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>(); }
+        if (plyAttributesObj != null && ply_owners_cnt < ply_object_plyattr.Length) 
+        { 
+            ply_object_plyattr[ply_owners_cnt] = plyAttributesObj.GetComponent<PlayerAttributes>();
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyAttributesObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+        }
+        if (plyHitboxObj != null && ply_owners_cnt < ply_object_plyhitbox.Length) 
+        { 
+            ply_object_plyhitbox[ply_owners_cnt] = plyHitboxObj.GetComponent<PlayerHitbox>();
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyHitboxObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+        }
+        if (plyWeaponObj != null && ply_owners_cnt < ply_object_plyweapon.Length) 
+        { 
+            ply_object_plyweapon[ply_owners_cnt] = plyWeaponObj.GetComponent<PlayerWeapon>();
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyWeaponObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+        }
+        if (plySecondaryObj != null && ply_owners_cnt < ply_object_secondaryweapon.Length) 
+        { 
+            ply_object_secondaryweapon[ply_owners_cnt] = plySecondaryObj.GetComponent<PlayerWeapon>();
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plySecondaryObj belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
 
-        //ply_owners_cnt++;
-    }
+        }
+        if (plyUIToOthers != null && ply_owners_cnt < ply_object_uiplytoothers.Length) 
+        { 
+            ply_object_uiplytoothers[ply_owners_cnt] = plyUIToOthers.GetComponent<UIPlyToOthers>();
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Found and added plyUIToOthers belonging to " + player.playerId + " (" + player.displayName + ") to index " + ply_owners_cnt);
+        }
+
+        if (increment_counter) 
+        {
+            // This is typically handled by the end of OnPlayerJoined(), but if we want to manually add to the counter, this is an object
+            ply_owners_cnt++;
+            UnityEngine.Debug.Log("[OWNERS_TEST]: Incrementing owner count to " + ply_owners_cnt);
+        } 
+    }*/
 
     public void RemovePlayerFromObjOwners(int player_id)
     {
@@ -3799,26 +4066,33 @@ public class GameController : GlobalHelperFunctions
         int owner_index = -1;
         for (int i = 0; i < ply_object_owners.Length; i++)
         {
-            if (ply_object_owners[i] == player_id) { owner_index = ply_object_owners[i]; break; }
+            if (ply_object_owners[i] == player_id) { owner_index = i; break; }
         }
         if (owner_index < 0) { return; }
 
-        if (ply_owners_cnt > 1) 
-        {
-            ply_object_plyattr[owner_index] = ply_object_plyattr[ply_owners_cnt - 1];
-            ply_object_plyweapon[owner_index] = ply_object_plyweapon[ply_owners_cnt - 1];
-            ply_object_plyhitbox[owner_index] = ply_object_plyhitbox[ply_owners_cnt - 1];
-            ply_object_uiplytoothers[owner_index] = ply_object_uiplytoothers[ply_owners_cnt - 1];
-            ply_object_owners[owner_index] = ply_object_owners[ply_owners_cnt - 1];
+        UnityEngine.Debug.Log("[PLAYER_LEAVE_TEST] Removing player ID " + player_id + " at ply_obj_owners index " + owner_index);
 
-            ply_object_plyattr[ply_owners_cnt - 1] = ply_object_plyattr[ply_owners_cnt - 1];
-            ply_object_plyweapon[ply_owners_cnt - 1] = ply_object_plyweapon[ply_owners_cnt - 1];
-            ply_object_plyhitbox[ply_owners_cnt - 1] = ply_object_plyhitbox[ply_owners_cnt - 1];
-            ply_object_uiplytoothers[ply_owners_cnt - 1] = ply_object_uiplytoothers[ply_owners_cnt - 1];
-            ply_object_owners[ply_owners_cnt - 1] = -1;
+        for (int i = owner_index + 1; i < ply_object_owners.Length; i++)
+        {
+            ply_object_plyattr[i - 1] = ply_object_plyattr[i];
+            ply_object_plyweapon[i - 1] = ply_object_plyweapon[i];
+            ply_object_secondaryweapon[i - 1] = ply_object_secondaryweapon[i];
+            ply_object_plyhitbox[i - 1] = ply_object_plyhitbox[i];
+            ply_object_uiplytoothers[i - 1] = ply_object_uiplytoothers[i];
+            ply_object_owners[i - 1] = ply_object_owners[i];
         }
 
+        ply_object_plyattr[ply_object_owners.Length - 1] = null;
+        ply_object_plyweapon[ply_object_owners.Length - 1] = null;
+        ply_object_secondaryweapon[ply_object_owners.Length - 1] = null;
+        ply_object_uiplytoothers[ply_object_owners.Length - 1] = null;
+        ply_object_plyattr[ply_object_owners.Length - 1] = null;
+        ply_object_owners[ply_object_owners.Length - 1] = 0;
+
         ply_owners_cnt--;
+
+        UnityEngine.Debug.Log("[PLAYER_LEAVE_TEST] Removed player ID from owners [" + ConvertIntArrayToString(ply_object_owners) + "]");
+
     }
 
     public int GetPlayerObjIndexFromID(int player_id)
@@ -3992,6 +4266,22 @@ public class GameController : GlobalHelperFunctions
         else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = localizer.FetchText("WEAPON_THROWABLEITEM", "Throwable Item"); }
         else { output = "(PLACEHOLDER)"; }
         return output;
+    }
+
+    public void ForceResetHitboxes()
+    {
+        if (ply_object_plyhitbox != null && ply_object_plyattr != null && ply_owners_cnt < ply_object_plyattr.Length && ply_owners_cnt < ply_object_plyhitbox.Length && ply_owners_cnt >= 0)
+        {
+            UnityEngine.Debug.Log("[PLAYER_JOIN_TEST] Resetting hitboxes");
+            if (ply_object_plyhitbox[ply_owners_cnt] == null) { return; }
+            
+            for (int i = 0; i < ply_owners_cnt; i++)
+            {
+                if (ply_object_plyattr[i] != null && ply_object_plyattr[i].in_ready_room) { ply_object_plyhitbox[i].ToggleHitbox(false); continue; }
+                ply_object_plyhitbox[i].ToggleHitbox(ply_object_plyhitbox[i].network_active);
+            }
+            //CheckPlyObjsActive();
+        }
     }
 
 

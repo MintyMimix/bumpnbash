@@ -60,7 +60,7 @@ public class map_element_ice : UdonSharpBehaviour
             }
 
             // Then, we adjust our velocity so that it always goes up or down the plane's surface
-            LayerMask layers_to_hit = LayerMask.GetMask("Ice");
+            LayerMask layers_to_hit = LayerMask.GetMask("MapElement");
 
             cooldown_timer = 0.0f;
                        

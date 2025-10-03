@@ -317,6 +317,10 @@ public class Localizer : UdonSharpBehaviour
             container.PPPMotionSicknessToggleCage.text = FetchText("LOCALOPTIONS_GAME_MOTIONSICKNESS_CAGE_TOGGLE", container.PPPMotionSicknessToggleCage.text);
             container.PPPColorblindHeader.text = FetchText("LOCALOPTIONS_GAME_COLORBLIND_HEADER", container.PPPColorblindHeader.text);
             container.PPPColorblindToggle.text = FetchText("LOCALOPTIONS_GAME_COLORBLIND_SYMBOL_TOGGLE", container.PPPColorblindToggle.text);
+
+            string tutorial_method = FetchText("LOCALOPTIONS_TUTORIAL_DESKTOP", "pushing your E or F key");
+            if (Networking.LocalPlayer.IsUserInVR()) { tutorial_method = gameController.localizer.FetchText("LOCALOPTIONS_TUTORIAL_VR", "grabbing behind your head"); }
+            gameController.local_ppp_options.tutorial_text.text = gameController.local_ppp_options.tutorial_text.text.Replace("$METHOD", tutorial_method);
         }
     }
 }

@@ -15,6 +15,10 @@ public class PPP_Pickup : UdonSharpBehaviour
         //if (!Networking.LocalPlayer.IsUserInVR()) { gameObject.SetActive(false); }
     }
 
+    public void Update()
+    {
+        PostLateUpdate();
+    }
 
     public override void PostLateUpdate()
     {
@@ -26,8 +30,8 @@ public class PPP_Pickup : UdonSharpBehaviour
         }
 
         float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * -1.333f;
-        Vector3 posFinal = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI);
+        Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * -1.2f * heightUI; //too short: -1.0f; too long: -1.333f;
+        Vector3 posFinal = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + plyForward;
         transform.SetPositionAndRotation(
             posFinal
             , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
@@ -40,8 +44,11 @@ public class PPP_Pickup : UdonSharpBehaviour
 
         ppp_options = ppp_options.gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PPPCanvas").GetComponent<PPP_Options>();
 
-        ppp_options.PushPPPCanvas();
-        GetComponent<VRC_Pickup>().Drop();
+        if (ppp_options != null)
+        {
+            ppp_options.PushPPPCanvas();
+            GetComponent<VRC_Pickup>().Drop();
+        }
     }
 
 }

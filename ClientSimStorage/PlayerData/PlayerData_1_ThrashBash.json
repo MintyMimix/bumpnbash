@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-09-23T19:51:03.585134-04:00",
+    "LastUpdated": "2025-09-29T10:28:05.9167992-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 4.0
+      "value": 10.0
     }
   },
   "UISeparation": {
@@ -88,7 +88,7 @@
     }
   },
   "UIStretch": {
-    "LastUpdated": "2025-09-19T00:00:11.7372877-04:00",
+    "LastUpdated": "2025-09-27T19:42:22.071854-04:00",
     "Key": "UIStretch",
     "Value": {
       "type": "Float",
@@ -96,7 +96,7 @@
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-09-20T17:13:23.868703-04:00",
+    "LastUpdated": "2025-09-27T19:42:22.071854-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
@@ -136,7 +136,7 @@
     }
   },
   "UIDistance": {
-    "LastUpdated": "2025-09-22T17:19:48.3393614-04:00",
+    "LastUpdated": "2025-09-29T10:28:05.9167992-04:00",
     "Key": "UIDistance",
     "Value": {
       "type": "Float",
@@ -288,11 +288,11 @@
     }
   },
   "UIYOffset": {
-    "LastUpdated": "2025-09-23T19:51:03.585134-04:00",
+    "LastUpdated": "2025-09-29T10:28:05.9167992-04:00",
     "Key": "UIYOffset",
     "Value": {
       "type": "Float",
-      "value": 4.0
+      "value": 0.0
     }
   }
 }

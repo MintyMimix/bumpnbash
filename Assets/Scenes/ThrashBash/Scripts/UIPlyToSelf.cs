@@ -56,6 +56,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image PTSChargeMeterBGSprite;
     [SerializeField] public UnityEngine.UI.Image PTSSecondaryChargeMeterFGSprite;
     [SerializeField] public UnityEngine.UI.Image PTSSecondaryChargeMeterBGSprite;
+    [SerializeField] public UnityEngine.UI.Image PTSAirThrustMeterFGSprite;
+    [SerializeField] public UnityEngine.UI.Image PTSAirThrustMeterBGSprite;
 
     [SerializeField] public Transform PTSPowerupPanel;
     [NonSerialized] public UnityEngine.UI.Image[] PTSPowerupSprites;
@@ -102,7 +104,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public Color[] text_queue_full_colors;
     [NonSerialized] public float[] text_queue_full_durations;
 
-    [SerializeField] public float ui_check_gamevars_impulse = 0.4f; // How often should we check for game variables (i.e. team lives, points, etc.)
+    [SerializeField] public float ui_check_gamevars_impulse_default = 0.4f;// How often should we check for game variables (i.e. team lives, points, etc.)
+    [NonSerialized] public float ui_check_gamevars_impulse = 0.4f; 
     [NonSerialized] public float ui_check_gamevars_timer = 0.0f;
 
     [NonSerialized] public int[] gamevars_leaderboard_arr;
@@ -121,6 +124,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public int gamevars_local_team_members_alive;
     [NonSerialized] public byte gamevars_local_players_alive;
     [NonSerialized] public byte gamevars_local_teams_alive;
+    [NonSerialized] public bool gamevars_force_refresh_on_next_tick;
 
     // Stored positions for inverted UI arrangement
     [SerializeField] private Vector2 stored_local_sizedelta_ptscanvas;
@@ -148,6 +152,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
 
         SetRenderQueueFromParent(transform);
+
+        ui_check_gamevars_impulse = ui_check_gamevars_impulse_default;
 
         stored_local_sizedelta_ptscanvas = PTSCanvas.sizeDelta;
         stored_local_pos_ptsweaponpanel = PTSWeaponPanel.localPosition;
@@ -377,8 +383,10 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 // Only refresh the scoreboard if a change has been made.
                 if (forceRefresh || !GlobalHelperFunctions.ArraysEqual(gameController.cached_leaderboard_arr, gamevars_leaderboard_arr) || !GlobalHelperFunctions.ArraysEqual(gameController.cached_progress_arr, gamevars_progress_arr))
                 {
-                    gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RefreshScores();
-                    gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RearrangeScoreboard(gamevars_leaderboard_arr);
+                    if (gameController.room_ready_should_render) { 
+                        gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RefreshScores();
+                        gameController.ui_round_scoreboard_canvas.gameObject.GetComponent<Scoreboard>().RearrangeScoreboard(gamevars_leaderboard_arr);
+                    }
 
                     // And if a change has been made, make sure to transfer those changes.
                     gameController.cached_leaderboard_arr = new int[gamevars_leaderboard_arr.Length];
@@ -388,6 +396,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 }
             }
         }
+
+        gamevars_force_refresh_on_next_tick = false;
     }
 
     
@@ -566,10 +576,28 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 //AddToTextQueue(" -- ALPHA BUILD VERSION 0.18.4 --", Color.white);
                 //AddToTextQueue("Step in the square to join the game!", Color.white);
                 //if (gameController != null && gameController.local_ppp_options != null) { gameController.local_ppp_options.RefreshAllOptions(); }
-                if (gameController != null && Networking.IsOwner(gameController.gameObject)) { gameController.ResetGameOptionsToDefault(false); }
+                if (gameController != null) 
+                { 
+                    gameController.ForceResetHitboxes(); 
+                    if (Networking.IsOwner(gameController.gameObject)) { gameController.ResetGameOptionsToDefault(false); }
+                }
             }
             ui_show_intro_text = false;
             ui_demo_timer = 0.0f;
+        }
+
+        // Dynamically adjust the gamevars update impulse
+        if (gameController != null && gameController.ply_tracking_dict_keys_arr != null && gameController.ply_tracking_dict_keys_arr.Length > 0)
+        {
+            ui_check_gamevars_impulse = Mathf.Max(ui_check_gamevars_impulse_default, 0.08f * gameController.ply_tracking_dict_keys_arr.Length);
+
+            // Change the debugger's value as well
+            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.debuggerPanel != null
+                && gameController.local_ppp_options.debuggerPanel.cached_gamevars_impulse != ui_check_gamevars_impulse
+                ) 
+            { 
+                gameController.local_ppp_options.debuggerPanel.ui_input_gamevarsimpulse.text = ui_check_gamevars_impulse.ToString(); 
+            }
         }
 
         // Tick down gamevars update timer
@@ -579,7 +607,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
         else
         {
-            UpdateGameVariables();
+            UpdateGameVariables(gamevars_force_refresh_on_next_tick);
             UI_Flag();
             UI_Lives();
             UI_Miniscore();
@@ -953,6 +981,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
         UI_Secondary();
         UI_Charge();
+        UI_Air_Thrust();
     }
 
     public void UI_Secondary()
@@ -1050,6 +1079,28 @@ public class UIPlyToSelf : UdonSharpBehaviour
         }
     }
 
+    public void UI_Air_Thrust()
+    {
+        if (PTSAirThrustMeterFGSprite != null && PTSAirThrustMeterBGSprite != null && gameController.local_plyAttr != null && gameController.local_plyAttr.air_thrust_enabled)
+        {
+            PTSAirThrustMeterFGSprite.gameObject.SetActive(!gameController.local_plyAttr.air_thrust_ready || ui_demo_enabled);
+            PTSAirThrustMeterBGSprite.gameObject.SetActive(!gameController.local_plyAttr.air_thrust_ready || ui_demo_enabled);
+            float offsetMax = PTSAirThrustMeterBGSprite.rectTransform.rect.width;
+            float offsetPct = 0.0f;
+            if (!gameController.local_plyAttr.air_thrust_ready && gameController.local_plyAttr.air_thrust_cooldown > 0.0f)
+            {
+                offsetPct = 1.0f - System.Convert.ToSingle(gameController.local_plyAttr.air_thrust_timer / gameController.local_plyAttr.air_thrust_cooldown);
+                if (PTSAirThrustMeterFGSprite.color != gameController.COLOR_AIRTHRUST) { PTSAirThrustMeterFGSprite.color = gameController.COLOR_AIRTHRUST; }
+            }
+            PTSAirThrustMeterFGSprite.rectTransform.offsetMax = new Vector2(-offsetMax + (offsetMax * offsetPct), PTSAirThrustMeterFGSprite.rectTransform.offsetMax.y);
+        }
+        else
+        {
+            PTSAirThrustMeterFGSprite.gameObject.SetActive(false);
+            PTSAirThrustMeterBGSprite.gameObject.SetActive(false);
+        }
+    }
+
     public void UI_Capturezones()
     {
         // Handle capture zones
@@ -1072,7 +1123,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 int hold_index = 0;
                 if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { hold_index = GlobalHelperFunctions.DictIndexFromKey(capturezone.hold_id, capturezone.dict_points_keys_arr); }
                 string hold_text = ""; Color hold_color = Color.white;
-                if (!capturezone.is_locked && hold_index >= 0 && hold_index < capturezone.dict_points_keys_arr.Length)
+                if (!capturezone.is_locked && hold_index >= 0 && capturezone.dict_points_keys_arr != null && hold_index < capturezone.dict_points_keys_arr.Length)
                 {
                     if (gameController.option_teamplay) 
                     { 
@@ -1121,7 +1172,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 int contest_index = -1;
                 if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { contest_index = GlobalHelperFunctions.DictIndexFromKey(capturezone.contest_id, capturezone.dict_points_keys_arr); }
                  Color contest_color = Color.white;
-                if (contest_index >= 0 && contest_index < capturezone.dict_points_keys_arr.Length)
+                if (contest_index >= 0 && capturezone.dict_points_keys_arr != null && contest_index < capturezone.dict_points_keys_arr.Length)
                 {
                     PTSCaptureOverlays[koth_iter].offsetMax = new Vector2(PTSCaptureOverlays[koth_iter].offsetMax.x, Mathf.Lerp(-PTSCaptureSprites[i].sizeDelta.y, 0, capturezone.contest_progress / gameController.option_gm_config_a));
                     if (gameController.option_teamplay)
@@ -1241,14 +1292,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
         float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         float scaleUI = 1.0f;
         float distanceUI = 1.0f;
-        Vector3 offsetUI = Vector2.zero;
+        float offsetUI = 0.0f;
         int useWrist = 0;
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
             useWrist = ppp_options.ui_wrist;
 
-            offsetUI = new Vector3(0.0f, ppp_options.ui_yoffset / 10.0f, 0.0f);
+            offsetUI = ppp_options.ui_yoffset / 10.0f;
 
             /*for (int i = 0; i < text_queue_limited_lines; i++)
             {
@@ -1316,6 +1367,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
 
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        Vector3 plyUp = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.up;
         /*float plyMagInForward = Vector3.Dot(Networking.LocalPlayer.GetVelocity(), plyForward);
         Vector3 velAdd = Vector3.zero;
 
@@ -1325,12 +1377,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (playerAttributes.ply_scale < 1.0f && Networking.LocalPlayer.IsUserInVR()) { velAdd /= (playerAttributes.ply_scale / 0.9f); }
             if (useWrist > 0) { velAdd *= 2.0f; } // When wrist hud is active, we want to increase the tracking speed
         }*/
-        
+
         // If we are using UI in front and are on desktop, distance UI instead becomes a parameter that scales both vertical & horizontal separation rather than being another scale
         //if (useWrist == 0 && !Networking.LocalPlayer.IsUserInVR()) { distanceUI = 1.0f; } 
-        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI);
+        // in fron, and only in front, scale seems to affect the offsetuI???
+        Vector3 posOut = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + (plyForward * heightUI * distanceUI) + (plyUp * offsetUI * heightUI);
         //Vector3 VROffset = new Vector3(0.0f, -0.1f, 0.0f) * GlobalHelperFunctions.BoolToInt(Networking.LocalPlayer.IsUserInVR());
-        Vector3 posFinal = posOut + offsetUI; //+ velAdd;
+        Vector3 posFinal = posOut; //+ velAdd;
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
             posFinal
@@ -1345,7 +1398,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             if (gameController != null && gameController.local_ppp_options != null) { offset_height *= gameController.local_ppp_options.ui_separation; }
             Quaternion offset_rot = Quaternion.Euler(180.0f, -55.0f, 0.0f);
             Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
-            Vector3 distance_pos = new Vector3(0.0f, offsetUI.y, 0.20f * (distanceUI - 1.0f));
+            Vector3 distance_pos = new Vector3(0.0f, offsetUI, 0.20f * (distanceUI - 1.0f));
             if (useWrist == 1) 
             { 
                 wrist_pos = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).position;

@@ -74,7 +74,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             if (hurtbox_timer_network > hurtbox_duration)
             {
                 // Fire off events for hurtbox expiration here
-                UnityEngine.Debug.Log("[HURTBOX_TEST] " + gameObject.name + " expired. server_ms = " + server_ms + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network + "; duration = " + hurtbox_duration);
+                //UnityEngine.Debug.Log("[HURTBOX_TEST] " + gameObject.name + " expired. server_ms = " + server_ms + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network + "; duration = " + hurtbox_duration);
                 OnStop();
             }
         }

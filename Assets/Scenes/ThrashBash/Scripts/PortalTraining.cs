@@ -16,6 +16,9 @@ public class PortalTraining : Portal
         }
         else if (portal_type == 1)
         {
+            Networking.LocalPlayer.SetVelocity(new Vector3(0.0f, 0.0f, 0.0f));
+            gameController.ToggleReadyRoomCollisions(true);
+            gameController.ToggleTrainingRoom(false);
             gameController.TeleportLocalPlayerToReadyRoom();
         }
         else if (portal_type == 2)

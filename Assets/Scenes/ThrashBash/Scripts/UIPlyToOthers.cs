@@ -38,6 +38,10 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [NonSerialized] public float cached_def = -1.0f;
     [NonSerialized] public float local_tick_timer = 0.0f;
     [NonSerialized] public byte local_tick_cnt = 0;
+    [NonSerialized] public float render_distance_far = 999999.0f;
+    [NonSerialized] public float render_distance_near = 999999.0f;
+    [NonSerialized] public bool render_active_far = true;
+    [NonSerialized] public bool render_active_near = true;
 
     private void Start()
     {
@@ -45,6 +49,17 @@ public class UIPlyToOthers : UdonSharpBehaviour
         {
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
+
+        if (gameController.flag_for_mobile_vr.activeInHierarchy)
+        {
+            render_distance_far = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_QUEST) / 10.0f;
+            render_distance_near = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_QUEST) / 10.0f;
+        }
+        else
+        {
+            render_distance_far = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_PC) / 10.0f;
+            render_distance_near = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_PC) / 10.0f;
         }
     }
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
@@ -61,10 +76,9 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
         // Sort out better without all the debug
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
-        round_ready = round_ready && !playerAttributes.ply_training;
-        if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
-        else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
-
+        round_ready = round_ready && !(playerAttributes.ply_training || (playerAttributes.ply_team >= 0 && (playerAttributes.ply_state == (int)player_state_name.Alive || playerAttributes.ply_state == (int)player_state_name.Respawning)));
+        if ((round_ready || !render_active_near) && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
+        else if (!round_ready && render_active_near && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
 
         local_tick_timer += Time.deltaTime;
         if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
@@ -84,8 +98,49 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     private void LocalPerTickUpdate() 
     {
+        // If we are not the owner of the game object, see if we are far enough away to cull the animator or renderer
+        if (!Networking.IsOwner(gameObject))
+        {
+            float render_dist_far = render_distance_far;
+            float render_dist_near = render_distance_near;
+
+            if (playerAttributes != null)
+            {
+                render_dist_far *= (1.0f + playerAttributes.ply_scale) / 2.0f;
+                render_dist_near *= (1.0f + playerAttributes.ply_scale) / 2.0f;
+            }
+            if (gameController != null && ((gameController.local_plyAttr != null && gameController.local_plyAttr.in_ready_room) || gameController.highlight_cameras_active_cnt > 0))
+            {
+                // If we are in the ready room (for spectating reasons) or are snapping a highlight photo, do not cull, UNLESS the other player is ALSO in the ready room / spectator room
+                render_dist_far = 999999.0f;
+                render_dist_near = 999999.0f;
+            }
+            if (playerAttributes.in_ready_room || playerAttributes.in_spectator_area)
+            {
+                render_dist_far = 0.0f;
+                render_dist_near = 0.0f;
+            }
+
+            if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), owner.GetPosition()) >= render_dist_far)
+            {
+                render_active_far = false;
+                render_active_near = false;
+                PTOVictoryStar.SetActive(false);
+            }
+            else if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), owner.GetPosition()) >= render_dist_near)
+            {
+                render_active_far = true;
+                render_active_near = false;
+            }
+            else
+            {
+                render_active_far = true;
+                render_active_near = true;
+            }
+        }
+
         // Checked cached variables; if there is a mismatch, update the UI element accordingly
-        if (playerAttributes == null) { return; }
+        if (playerAttributes == null || !render_active_near) { return; }
         if (cached_team != playerAttributes.ply_team) { UI_Flag(); cached_team = playerAttributes.ply_team; }
         if (cached_scale != playerAttributes.ply_scale) {UI_Attack(); UI_Defense(); cached_scale = playerAttributes.ply_scale; }
         if (cached_atk != playerAttributes.ply_atk) { UI_Attack(); cached_atk = playerAttributes.ply_atk; }
@@ -106,6 +161,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Damage() 
     {
+        if (!render_active_near) { return; }
+
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
@@ -128,6 +185,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Attack() 
     {
+        if (!render_active_near) { return; }
+
         var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var AttackText = AttackVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { AttackText = ""; }
@@ -139,6 +198,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Defense()
     {
+        if (!render_active_near) { return; }
+
         var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var DefenseText = DefenseVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { DefenseText = ""; }
@@ -150,6 +211,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Flag()
     {
+        if (!render_active_near) { return; }
+
         if (playerAttributes.ply_team < gameController.team_colors.Length) 
         {
             int team = Mathf.Max(0, playerAttributes.ply_team);
@@ -178,6 +241,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Lives()
     {
+        if (!render_active_near) { return; }
+
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         var LivesText = "";
@@ -237,6 +302,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Victory()
     {
+        if (!render_active_far) { return; }
+
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         // Display victory star if in first place
@@ -260,7 +327,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
     public override void PostLateUpdate()
     {
-        if (owner == Networking.LocalPlayer || owner == null) { return; }
+        if (owner == Networking.LocalPlayer || owner == null || !render_active_far) { return; }
         float scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);
         float posUI = scaleUI;
         if (gameController != null && gameController.local_ppp_options != null)

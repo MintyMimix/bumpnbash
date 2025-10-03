@@ -62,7 +62,6 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float combo_send_duration = 2.0f;
     [NonSerialized] public float combo_send_timer = 0.0f;
 
-
     [NonSerialized] public int killstreak, killbo = 0;
     [NonSerialized] public float killbo_duration = 6.0f;
     [NonSerialized] public float killbo_timer = 0.0f;
@@ -70,9 +69,17 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float hazard_cooldown = 0.5f;
     [NonSerialized] public float hazard_timer = 0.0f;
 
+    [NonSerialized] public float air_thrust_cooldown = 1.1f;
+    [NonSerialized] public float air_thrust_timer = 0.0f;
+    [NonSerialized] public bool air_thrust_ready = false;
+    [NonSerialized] public bool air_thrust_enabled = false;
+
     [NonSerialized] public bool powerups_are_resetting = false;
 
     [NonSerialized] public GameObject[] powerups_active;
+    [NonSerialized] public PlayerWeapon owner_plyweapon;
+    [NonSerialized] public PlayerWeapon owner_secondweapon;
+    [NonSerialized] public PlayerHitbox owner_plyhitbox;
 
     [NonSerialized] [UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
     [Tooltip("How long a size-changing animation should play on a player")]
@@ -123,9 +130,10 @@ public class PlayerAttributes : UdonSharpBehaviour
                 if (ply_dual_wield_local != ply_dual_wield) { gameController.GetSecondaryWeaponFromID(Networking.GetOwner(gameObject).playerId).gameObject.SetActive(ply_dual_wield); }
                 ply_dual_wield_local = ply_dual_wield;
                 gameController.RefreshGameUI();
-                if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UpdateGameVariables(true); }
+                if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.gamevars_force_refresh_on_next_tick = true; }
                 if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); } // Because we are already confirmed to be the game master, we can send this locally instead of as a networked event
             }
+
         }
     }
 
@@ -134,14 +142,35 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void Update()
     {
 
-        // -- Only the owner should run the following --
+        
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
             else { return; }
         }
-        
+        else
+        {
+            if (owner_plyweapon == null) { owner_plyweapon = gameController.GetPlayerWeaponFromID(Networking.GetOwner(gameObject).playerId); }
+            if (owner_secondweapon == null) { owner_secondweapon = gameController.GetSecondaryWeaponFromID(Networking.GetOwner(gameObject).playerId); }
+            if (owner_plyhitbox == null) { owner_plyhitbox = gameController.GetPlayerHitboxFromID(Networking.GetOwner(gameObject).playerId); }
+
+            if (owner_plyweapon != null
+                && (in_ready_room || in_spectator_area || gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over)
+                && !(ply_training || (ply_team >= 0 && (ply_state == (int)player_state_name.Alive || ply_state == (int)player_state_name.Respawning)))
+                )
+            {
+                owner_plyweapon.ToggleActive(false);
+                owner_plyhitbox.ToggleHitbox(false);
+            }
+            else if (owner_plyweapon != null)
+            { 
+                owner_plyweapon.ToggleActive(true);
+                owner_plyhitbox.ToggleHitbox(true);
+            }
+        }
+
+        // -- Only the owner should run the following --
         if (!Networking.IsOwner(gameObject)) { return; }
 
         // Handle player state
@@ -161,6 +190,24 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             //gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForRoundGoal");
             ply_respawn_timer = 0.0f;
+        }
+
+        // Handle air thrust
+        if (air_thrust_enabled && air_thrust_timer < air_thrust_cooldown && !air_thrust_ready)
+        {
+            air_thrust_timer += Time.deltaTime;
+        }
+        else if (air_thrust_enabled && !air_thrust_ready)
+        {
+            air_thrust_ready = true;
+            air_thrust_timer = 0.0f;
+        }
+        else if (air_thrust_enabled && air_thrust_ready)
+        {
+            if (!Networking.LocalPlayer.IsUserInVR() && Input.GetKeyDown(KeyCode.Q))
+            {
+                AirThrust(); 
+            }
         }
 
         // Handle last hit by
@@ -242,6 +289,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             local_tick_timer = 0.0f;
         }
 
+
     }
 
     private void LocalPerTickUpdate()
@@ -271,6 +319,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         { 
             LocalResetScale(); 
         }
+
     }
 
     public override void OnAvatarChanged(VRCPlayerApi player) {
@@ -804,6 +853,27 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_jump_pressed = true;
         }
         else if (!value && ply_jump_pressed) { ply_jump_pressed = false; }
+    }
+
+    public override void InputLookVertical(float value, UdonInputEventArgs args)
+    {
+        base.InputMoveVertical(value, args);
+
+        if (!Networking.LocalPlayer.IsUserInVR()) { return; }
+        if (air_thrust_enabled && air_thrust_ready && Mathf.Abs(value) > 0.5f)
+        {
+            AirThrust();
+        }
+    }
+
+    public void AirThrust()
+    {
+        if (Networking.IsOwner(gameObject) && air_thrust_enabled)
+        {
+            Networking.LocalPlayer.SetVelocity(Networking.LocalPlayer.GetVelocity() + Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * Networking.LocalPlayer.GetRunSpeed() * 2.0f);
+            air_thrust_ready = false;
+            air_thrust_timer = 0.0f;
+        }
     }
 
     public void SetupTutorialMessages()

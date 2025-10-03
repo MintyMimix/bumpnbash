@@ -112,6 +112,7 @@ public class CaptureZone : UdonSharpBehaviour
         float networkTimeDelta = (float)Networking.CalculateServerDeltaTime(currentNetworkTime, last_network_time);
         last_network_time = currentNetworkTime;
 
+
         // Impulse point granting (also used for any events which will occur every second)
         if (point_grant_timer >= point_grant_impulse)
         {
@@ -134,8 +135,8 @@ public class CaptureZone : UdonSharpBehaviour
                     {
                         // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
                         // However, the pause timer for contesting is instant if they aren't on point!
-                        if (contest_id >= 0 && contest_pause_timer > 0.0f) 
-                        { 
+                        if (contest_id >= 0 && contest_pause_timer > 0.0f)
+                        {
                             contest_pause_timer = contest_pause_duration;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
                         }
@@ -154,8 +155,16 @@ public class CaptureZone : UdonSharpBehaviour
 
                 }
 
-                // Respawn duration should scale with progress
-                int local_id = 0;
+                /*if (gameController.koth_respawn_wave_duration != null && gameController.koth_respawn_wave_duration.Length > 0)
+                {
+                    for (int i = 0; i < gameController.koth_respawn_wave_duration.Length; i++)
+                    {
+                        if (hold_id >= 0 && hold_id < gameController.koth_respawn_wave_duration.Length) { gameController.koth_respawn_wave_duration[hold_id] = gameController.plysettings_respawn_duration * 2.0f; }
+                        if (contest_id >= 0 && contest_id < gameController.koth_respawn_wave_duration.Length) { gameController.koth_respawn_wave_duration[contest_id] = gameController.plysettings_respawn_duration * 1.5f; }
+                    }
+                }*/
+
+                /*int local_id = 0;
                 if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
                 else { local_id = Networking.LocalPlayer.playerId; }
                 int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
@@ -177,12 +186,28 @@ public class CaptureZone : UdonSharpBehaviour
                         || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
                         ))
                     { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
-                }
+                }*/
             }
         }
         else
         {
             point_grant_timer += networkTimeDelta;
+        }
+
+        // Respawn duration should scale with progress
+        if (gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state != (int)player_state_name.Respawning)
+        {
+            if (
+                (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
+                )
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.6f; }
+            else if (
+                (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
+                )
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.3f; }
+            else { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration; }
         }
 
         // Handle point locking
@@ -276,19 +301,21 @@ public class CaptureZone : UdonSharpBehaviour
 
         // Enable overtime if there are others trying to contest the point. Overtime prevents a win, but allows holder point progress.
         overtime_enabled = (contestor_on_point || others_unique_count > 0 || contest_progress > 0.0f);
+        //bool team_near_win = hold_points >= gameController.option_gm_goal - 1;
+        bool team_near_win = false;
         // If the holder is on the point, pause contest progress.
         if (holder_on_point && contestor_on_point) { contest_pause_timer = 0.0f; }   
         // If no one other than the contestors are on point, give them progress.
         // We make this an if rather than an else-if because we do want to assign new contestors regardless of whether the holder is on point; all that matters is whether or not a contestor is or is not
         else if (!holder_on_point && contestor_on_point && others_unique_count == 0) { contest_progress += deltaTime; contest_pause_timer = 0.0f; }
-        // If there is no contestor AND there is only one team/player on the point AND they are not the holder, assign the contestor to them.
-        else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        // If there is no contestor AND there is only one team/player on the point AND they are not the holder AND the game isn't about to end, assign the contestor to them.
+        else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)) && !team_near_win)
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = other_id;
             if (Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Start_Team, contest_id); }
         }
         // Even if there are too many people on the point, we can still display a generic "Contested by multiple people" message
-        else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)) && !team_near_win)
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = -2;
         }

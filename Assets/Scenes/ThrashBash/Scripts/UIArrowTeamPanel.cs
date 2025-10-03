@@ -86,16 +86,26 @@ public class UIArrowTeamPanel : UIArrow
 
         if (parent_teampanel.gameController.option_teamplay)
         {
-            image_front.color = parent_teampanel.gameController.team_colors[current_value];
+            if (parent_teampanel.gameController.team_colors != null
+                && current_value < parent_teampanel.gameController.team_colors.Length)
+            {
+                image_front.color = parent_teampanel.gameController.team_colors[current_value];
+            }
+
             if (parent_teampanel.gameController.team_colors_bright != null
-                && current_value < parent_teampanel.gameController.team_colors_bright.Length) 
-            { caption.color = parent_teampanel.gameController.team_colors_bright[current_value]; }
+                && current_value < parent_teampanel.gameController.team_colors_bright.Length)
+            {
+                caption.color = parent_teampanel.gameController.team_colors_bright[current_value];
+            }
         }
         else
         {
             image_front.color = Color.white;
             caption.color = Color.white;
         }
+
+        if (player == Networking.LocalPlayer) { caption.alpha = 0.7f; }
+        else { caption.alpha = 1.0f; }
 
         image_cb.sprite = parent_teampanel.gameController.team_sprites[current_value];
         image_cb.color = image_front.color;

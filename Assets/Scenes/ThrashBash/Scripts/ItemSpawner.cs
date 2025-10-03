@@ -131,7 +131,12 @@ public class ItemSpawner : UdonSharpBehaviour
             {
                 if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown || i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
             }
-        }
+            // If we are NOT in Infection or Boss Bash, disable debuffs (unless it's a training spawner)
+            if (gamemode != (int)gamemode_name.Infection && gamemode != (int)gamemode_name.BossBash && !training_spawner)
+            {
+                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkDown || i == (int)powerup_type_name.DefDown || i == (int)powerup_type_name.HighGrav)) { parsed_spawn_chances[i] *= 0.0f; }
+            }
+        } 
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(parsed_spawn_chances));
         item_spawn_chances_str = GlobalHelperFunctions.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization(); 

@@ -1,6 +1,7 @@
 ﻿
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.SocialPlatforms.Impl;
 using VRC.Core;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -101,7 +102,37 @@ public class UIArrowSpectator : UIArrow
     {
         if (gameController == null) { return null; }
 
-        int[][] players_out = gameController.GetPlayersInGame();
+        int[][] players_in_game = gameController.cached_ply_in_game_dict;
+        int[] include_indices = new int[0]; int players_alive = 0;
+        if (players_in_game != null) { include_indices = new int[players_in_game[0].Length]; }
+
+        for (int i = 0; i < players_in_game[0].Length; i++)
+        {
+            if (players_in_game == null || players_in_game.Length < 2 || players_in_game[0] == null || players_in_game[0].Length == 0 || players_in_game[1] == null || players_in_game[1].Length == 0 || players_in_game[0].Length != players_in_game[1].Length) { break; }
+
+            VRCPlayerApi player = VRCPlayerApi.GetPlayerById(players_in_game[0][i]);
+            if (player == null) { continue; }
+            PlayerAttributes plyAttributes = gameController.FindPlayerAttributes(player);
+            if (plyAttributes == null) { continue; }
+            if (plyAttributes.ply_lives > 0)
+            {
+                include_indices[players_alive] = i;
+                players_alive++;
+            }
+        }
+
+        int[][] players_out = new int[2][];
+        if (players_alive > 0) 
+        { 
+            players_out[0] = new int[players_alive]; 
+            players_out[1] = new int[players_alive];
+            for (int i = 0; i < players_alive; i++)
+            {
+                players_out[0][i] = players_in_game[0][include_indices[i]];
+                players_out[1][i] = players_in_game[1][include_indices[i]];
+            }
+        }
+
         if (camera_points != null && current_value >= camera_points.Length && (players_out == null || players_out.Length == 0 || players_out[0].Length == 0)) { current_value = 0; }
         return players_out;
     }

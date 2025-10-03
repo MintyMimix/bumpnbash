@@ -270,7 +270,7 @@ public class WeaponProjectile : UdonSharpBehaviour
 
             weapon_script.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); // ENUM_LENGTH is used for weapon fire
 
-            UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating hurtbox at " + position + " (pos_start = " + pos_start + ")");
+            //UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating hurtbox at " + position + " (pos_start = " + pos_start + ")");
             weapon_script.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
@@ -312,7 +312,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             projectile_hit_on_this_frame = true;
             pos_end = rb.position;
-            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + other.name + " while at " + rb.position.ToString());
+            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + other.name + " while at " + rb.position.ToString());
             //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at TriggerEnter!");
         }
@@ -324,7 +324,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             projectile_hit_on_this_frame = true;
             pos_end = rb.position;
-            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + collision.collider.name + " while at " + rb.position.ToString());
+            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + collision.collider.name + " while at " + rb.position.ToString());
             //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at CollisionEter!");
         }

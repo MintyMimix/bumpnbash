@@ -1,4 +1,5 @@
 ﻿
+using Newtonsoft.Json.Linq;
 using System;
 using TMPro;
 using UdonSharp;
@@ -18,6 +19,7 @@ public class DebuggerPanel : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Toggle ui_toggle_gamecontroller;
     [SerializeField] public UnityEngine.UI.Toggle ui_toggle_dualwield;
     [SerializeField] public TMP_InputField ui_input_gamevarsimpulse;
+    [NonSerialized] public float cached_gamevars_impulse = 400.0f;
 
     public void Start()
     {
@@ -69,6 +71,7 @@ public class DebuggerPanel : UdonSharpBehaviour
         int try_goal_parse = 1;
         Int32.TryParse(ui_input_gamevarsimpulse.text, out try_goal_parse);
         try_goal_parse = Mathf.Min(Mathf.Max(try_goal_parse, 1), 65535);
+        cached_gamevars_impulse = try_goal_parse / 1000.0f;
         gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DebugModifyVariable", try_goal_parse, "GamevarsImpulse");
     }
 }

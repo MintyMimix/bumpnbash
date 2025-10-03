@@ -34,7 +34,7 @@ public class PlayerHitbox : UdonSharpBehaviour
 
     public override void OnDeserialization()
     {
-        if (playerAttributes != null && playerAttributes.in_ready_room) { gameObject.SetActive(false); }
+        if (playerAttributes != null && (playerAttributes.in_ready_room || playerAttributes.in_spectator_area)) { gameObject.SetActive(false); }
         else { gameObject.SetActive(network_active); }
     }
 
@@ -52,6 +52,8 @@ public class PlayerHitbox : UdonSharpBehaviour
     {
         //rb.AddForce(Vector3.zero); // Add an ever so slight force to the rigidbody just so it gets registered by hurtboxes even when standing still
         if (playerAttributes != null) {
+            GameController gameController = playerAttributes.gameController;
+
             if (owner == Networking.LocalPlayer && gameObject.layer != LayerMask.NameToLayer("LocalPlayerHitbox")) { gameObject.layer = LayerMask.NameToLayer("LocalPlayerHitbox"); }
 
             if (owner == Networking.LocalPlayer && material_id != (int)hitbox_mat_name.Invisible) { SetMaterial((int)hitbox_mat_name.Invisible); }
@@ -64,11 +66,20 @@ public class PlayerHitbox : UdonSharpBehaviour
             else if (owner != Networking.LocalPlayer && playerAttributes.ply_state != (int)player_state_name.Respawning && material_id != (int)hitbox_mat_name.Default)
             {
                 SetMaterial((int)hitbox_mat_name.Default);
-                UIPlyToOthers plytoothers = playerAttributes.gameController.GetUIPlyToOthersFromID(Networking.GetOwner(gameObject).playerId);
+                UIPlyToOthers plytoothers = gameController.GetUIPlyToOthersFromID(Networking.GetOwner(gameObject).playerId);
                 if (plytoothers != null) { plytoothers.UI_Damage(); }
             }
 
-            if (cached_team != playerAttributes.ply_team || cached_teamplay != playerAttributes.gameController.option_teamplay) { SetTeamColor(); }
+            if (cached_team != playerAttributes.ply_team || cached_teamplay != gameController.option_teamplay) { SetTeamColor(); }
+
+            if (
+                owner != Networking.LocalPlayer
+                && (gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over)
+                && !(playerAttributes.ply_training || (playerAttributes.ply_team >= 0 && (playerAttributes.ply_state == (int)player_state_name.Alive || playerAttributes.ply_state == (int)player_state_name.Respawning)))
+                )
+            {
+                ToggleHitbox(false);
+            }
         }
     }
 

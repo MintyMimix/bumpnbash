@@ -95,4 +95,40 @@ public class BouncePad : UdonSharpBehaviour
         Bounce(player);
     }
 
+    public void BounceProp(VRCPlayerApi player)
+    {
+        Vector3 player_velocity = player.GetVelocity();
+        if (cooldown_timer >= cooldown_duration)
+        {
+            if (player.isLocal)
+            {
+                LayerMask layers_to_hit = LayerMask.GetMask("BouncePad");
+                Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() / 1.6f, layers_to_hit, QueryTriggerInteraction.Collide);
+                if (hitColliders.Length > 0)
+                {
+                    player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
+                }
+
+                Vector3 calc_velocity = transform.up * Mathf.Max(minimum_magnitude, player_velocity.magnitude);
+                if (boost_player_momentum)
+                {
+                    float calc_x = Mathf.Max(minimum_magnitude, Math.Abs(player_velocity.x)); float calc_z = Mathf.Max(minimum_magnitude, Math.Abs(player_velocity.z));
+                    if (player_velocity.x < 0) { calc_x = -calc_x; }
+                    if (player_velocity.z < 0) { calc_z = -calc_z; }
+                    calc_velocity = new Vector3(calc_x, Mathf.Max(minimum_magnitude * 1.5f, Math.Abs(player_velocity.y)), calc_z);
+                }
+                player.SetVelocity(calc_velocity);
+                cooldown_timer = 0.0f;
+            }
+
+            if (bounce_sfx_should_play && bounce_sfx_clip != null && gameController != null)
+            {
+                AudioClip[] ac = new AudioClip[1];
+                ac[0] = bounce_sfx_clip;
+                float pitch = Mathf.Clamp(player_velocity.magnitude / (minimum_magnitude / 2.0f), 0.5f, 2.0f);
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], ac, 0, pitch);
+            }
+        }
+    }
+
 }

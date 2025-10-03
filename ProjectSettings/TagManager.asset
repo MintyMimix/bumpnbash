@@ -34,7 +34,7 @@ TagManager:
   - WeaponHurtbox
   - BouncePad
   - HUD
-  - Ice
+  - MapElement
   - LocalPlayerHitbox
   - CaptureZone
   - 

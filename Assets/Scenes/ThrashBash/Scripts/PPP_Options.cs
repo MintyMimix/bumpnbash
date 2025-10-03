@@ -20,7 +20,7 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public Localizer localizer;
     [SerializeField] public PPP_LocalizerContainer txt_container;
     [NonSerialized] public GameObject harmTester;
-    [NonSerialized] public Vector3 canvas_pos_init;
+    [SerializeField] public Vector3 canvas_pos_init;
     [NonSerialized] public Quaternion canvas_rot_init;
     [SerializeField] public TMP_Text tutorial_text;
     [SerializeField] public PPP_Pickup ppp_pickup;
@@ -116,9 +116,13 @@ public class PPP_Options : UdonSharpBehaviour
         ResetColorblindNames(true);
         ResetMusicNames(true);
 
-        canvas_pos_init = transform.position;
-        canvas_rot_init = transform.rotation;
+        if (canvas_pos_init == Vector3.zero)
+        {
+            canvas_pos_init = new Vector3(-184.587f, 20.0f, 127.9f);
+            canvas_rot_init = transform.rotation;
+        }
         close_button.gameObject.SetActive(false);
+        transform.SetPositionAndRotation(canvas_pos_init, canvas_rot_init);
         if (gameController != null && gameController.ui_ppp_reset_pos_button != null) { gameController.ui_ppp_reset_pos_button.interactable = false; }
     }
 
