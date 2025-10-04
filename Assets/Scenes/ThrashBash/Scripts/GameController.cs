@@ -64,6 +64,7 @@ public enum GLOBAL_CONST
 {
     UDON_MAX_PLAYERS=100, PROJECTILE_LIMIT_PER_PLAYER=64, POWERUP_LIMIT_PER_PLAYER=24, PREALLOC_BATCH_SIZE=128, TICK_RATE_MS=25
         , RENDER_DISTANCE_FAR_QUEST = 165, RENDER_DISTANCE_NEAR_QUEST = 95, RENDER_DISTANCE_FAR_PC = 205, RENDER_DISTANCE_NEAR_PC = 135
+        , INFECTION_HEAL_AMOUNT = 10
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
@@ -1430,6 +1431,14 @@ public class GameController : GlobalHelperFunctions
         RequestSerialization();
         VRCPlayerApi new_owner = VRCPlayerApi.GetPlayerById(new_owner_id);
         Networking.SetOwner(new_owner, ui_round_mapselect.gameObject);
+        if (mapscript_list != null && mapscript_list.Length > 0)
+        {
+            foreach (ItemSpawner itemSpawner in mapscript_list[0].GetItemSpawnerFromParent(room_training.transform))
+            {
+                if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                Networking.SetOwner(new_owner, itemSpawner.gameObject);
+            }
+        }
         for (int m = 0; m < mapscript_list.Length; m++)
         {
             foreach (ItemSpawner itemSpawner in mapscript_list[m].map_item_spawns)
@@ -1931,7 +1940,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
             local_plyAttr.in_ready_room = true;
-            local_plyAttr.air_thrust_enabled = false;
+            //local_plyAttr.air_thrust_enabled = false;
             local_plyAttr.ResetPowerups();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
             if (local_secondaryweapon != null) { local_secondaryweapon.ResetWeaponToDefault(); }
@@ -2105,157 +2114,157 @@ public class GameController : GlobalHelperFunctions
         var player_description = "";
 
         // -- Local Only Below --
-
-        // Failsafes in case locally setting active/inactive fails. Inefficient, but the alternative is a game where someone is permanently invulnerable
-        //local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
-        //local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
-        local_plyweapon.ToggleActive(true);
-        local_plyhitbox.ToggleHitbox(true);
-        //local_secondaryweapon.ToggleActive(false);
-
-        //room_training.SetActive(false);
-        room_training_portal.SetActive(false);
-        // To-do: IsNetworkSettled / IsClogged check for this player data
-        PlayerAttributes playerData = FindPlayerAttributes(Networking.LocalPlayer);
-        playerData.ply_training = false;
-        playerData.ResetTutorialMessage();
-
-        playerData.ply_deaths = 0;
-        playerData.ply_dp = plysettings_dp;
-        playerData.ply_dp_default = plysettings_dp;
-        playerData.ply_damage_dealt = 0;
-        playerData.ply_lives = plysettings_lives;
-        playerData.ply_points = plysettings_points;
-        playerData.ply_respawn_duration = plysettings_respawn_duration;
-        playerData.ply_scale = plysettings_scale;
-        playerData.ply_speed = plysettings_speed;
-        playerData.ply_atk = plysettings_atk;
-        playerData.ply_def = plysettings_def;
-        playerData.ply_grav = plysettings_grav * mapscript_list[map_selected].map_gravity_scale;
-        playerData.killstreak = 0;
-        playerData.killbo = 0;
-        playerData.combo_receive = 0;
-        playerData.combo_send = 0;
-        playerData.ply_state = (int)player_state_name.Alive;
-        playerData.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
-        playerData.air_thrust_enabled = true;
-
-        if (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1)
+        if (GetGlobalTeam(Networking.LocalPlayer.playerId) >= 0)
         {
-            //playerData.ply_lives = option_goal_value_b;
-            playerData.ply_scale = plysettings_scale * plysettings_boss_scale_mod;
-            playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
-            playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
-            playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
-            personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_BOSS", "You are THE BIG BOSS! Crush everyone who stands in your way!");
-            //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_B);
-            if (local_secondaryweapon != null && Networking.LocalPlayer.IsUserInVR())
+            // Failsafes in case locally setting active/inactive fails. Inefficient, but the alternative is a game where someone is permanently invulnerable
+            //local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
+            //local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", true);
+            local_plyweapon.ToggleActive(true);
+            local_plyhitbox.ToggleHitbox(true);
+            //local_secondaryweapon.ToggleActive(false);
+
+            //room_training.SetActive(false);
+            room_training_portal.SetActive(false);
+            // To-do: IsNetworkSettled / IsClogged check for this player data
+            PlayerAttributes playerData = FindPlayerAttributes(Networking.LocalPlayer);
+            playerData.ply_training = false;
+            playerData.ResetTutorialMessage();
+
+            playerData.ply_deaths = 0;
+            playerData.ply_dp = plysettings_dp;
+            playerData.ply_dp_default = plysettings_dp;
+            playerData.ply_damage_dealt = 0;
+            playerData.ply_lives = plysettings_lives;
+            playerData.ply_points = plysettings_points;
+            playerData.ply_respawn_duration = plysettings_respawn_duration;
+            playerData.ply_scale = plysettings_scale;
+            playerData.ply_speed = plysettings_speed;
+            playerData.ply_atk = plysettings_atk;
+            playerData.ply_def = plysettings_def;
+            playerData.ply_grav = plysettings_grav * mapscript_list[map_selected].map_gravity_scale;
+            playerData.killstreak = 0;
+            playerData.killbo = 0;
+            playerData.combo_receive = 0;
+            playerData.combo_send = 0;
+            playerData.ply_state = (int)player_state_name.Alive;
+            playerData.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            playerData.air_thrust_enabled = true;
+
+            if (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1)
             {
-                playerData.ply_dual_wield = true;
-                local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
-                //secondaryWeapon.ToggleActive(true);
-            }
-        }
-        else
-        {
-            if (option_gamemode == (int)gamemode_name.BossBash)
-            {
-                personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_TINY", "You are a Tiny Trooper! Work together and defeat $ARG0!", "$BOSS");
-                //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_A);
-            }
-            else if (option_gamemode == (int)gamemode_name.Infection)
-            {
-                if (playerData.ply_team == 1)
+                //playerData.ply_lives = option_goal_value_b;
+                playerData.ply_scale = plysettings_scale * plysettings_boss_scale_mod;
+                playerData.ply_atk = plysettings_atk + plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
+                playerData.ply_def = plysettings_def + plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
+                playerData.ply_speed = plysettings_speed + plysettings_boss_speed_mod;
+                personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_BOSS", "You are THE BIG BOSS! Crush everyone who stands in your way!");
+                //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_B);
+                if (local_secondaryweapon != null && Networking.LocalPlayer.IsUserInVR())
                 {
-                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_INFECTED", "You are an Infected!");
-                    playerData.infection_special = 1;
-                    playerData.InfectionStatReset();
-                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_B);
+                    playerData.ply_dual_wield = true;
+                    local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true);
+                    //secondaryWeapon.ToggleActive(true);
+                }
+            }
+            else
+            {
+                if (option_gamemode == (int)gamemode_name.BossBash)
+                {
+                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_BOSSBASH_TINY", "You are a Tiny Trooper! Work together and defeat $ARG0!", "$BOSS");
+                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_BossBash_A);
+                }
+                else if (option_gamemode == (int)gamemode_name.Infection)
+                {
+                    if (playerData.ply_team == 1)
+                    {
+                        personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_INFECTED", "You are an Infected!");
+                        playerData.infection_special = 1;
+                        playerData.InfectionStatReset();
+                        //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_B);
 
+                    }
+                    else
+                    {
+                        personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_SURVIVOR", "You are a Survivor!");
+                        //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_A);
+                    }
+                    playerData.ply_lives = 2; // We set lives to 2 so that you always have at least one left upon death (although this should never decrement, it never hurts to be safe)
+                }
+            }
+
+            bool is_boss = (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1);
+            if (local_plyweapon == null || local_secondaryweapon == null)
+            {
+                local_plyweapon = GetPlayerWeaponFromID(Networking.LocalPlayer.playerId);
+                local_secondaryweapon = GetSecondaryWeaponFromID(Networking.LocalPlayer.playerId);
+            }
+            if (local_plyweapon != null)
+            {
+                if (is_boss)
+                {
+                    gamemode_boss_id = Networking.LocalPlayer.playerId;
+                    local_plyweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
+                    local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
                 }
                 else
                 {
-                    personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_SURVIVOR", "You are a Survivor!");
-                    //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_A);
+                    local_plyweapon.weapon_type_default = plysettings_weapon;
+                    local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
                 }
-                playerData.ply_lives = 2; // We set lives to 2 so that you always have at least one left upon death (although this should never decrement, it never hurts to be safe)
+                //if (local_plyweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+                //{
+                local_plyweapon.weapon_temp_ammo = -1;
+                local_plyweapon.weapon_temp_duration = -1;
+                //}
+                local_plyweapon.UpdateStatsFromWeaponType();
+                local_plyweapon.CacheWeaponPos(true);
+                is_boss = is_boss || local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove;
             }
-        }
-
-        bool is_boss = (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1);
-        if (local_plyweapon == null || local_secondaryweapon == null)
-        {
-            local_plyweapon = GetPlayerWeaponFromID(Networking.LocalPlayer.playerId);
-            local_secondaryweapon = GetSecondaryWeaponFromID(Networking.LocalPlayer.playerId);
-        }
-        if (local_plyweapon != null)
-        {
-            if (is_boss)
+            if (local_secondaryweapon != null)
             {
-                gamemode_boss_id = Networking.LocalPlayer.playerId;
-                local_plyweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
-                local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
+                if (is_boss)
+                {
+                    gamemode_boss_id = Networking.LocalPlayer.playerId;
+                    local_secondaryweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
+                    local_secondaryweapon.weapon_type = local_plyweapon.weapon_type_default;
+                }
+                else
+                {
+                    local_secondaryweapon.weapon_type_default = plysettings_weapon;
+                    local_secondaryweapon.weapon_type = local_secondaryweapon.weapon_type_default;
+                }
+                //if (local_secondaryweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
+                //{
+                local_secondaryweapon.weapon_temp_ammo = -1;
+                local_secondaryweapon.weapon_temp_duration = -1;
+                //}
+                is_boss = is_boss || local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove;
+                if (local_secondaryweapon.gameObject.activeInHierarchy) { local_secondaryweapon.UpdateStatsFromWeaponType(); }
             }
-            else
+
+            if (is_boss && Networking.LocalPlayer.IsUserInVR()) { playerData.ply_dual_wield = true; }
+            else { playerData.ply_dual_wield = false; }
+
+            playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
+            playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
+            playerData.plyEyeHeight_change = true;
+
+            if (local_uiplytoself != null)
             {
-                local_plyweapon.weapon_type_default = plysettings_weapon;
-                local_plyweapon.weapon_type = local_plyweapon.weapon_type_default;
+                local_uiplytoself.ResetCache();
+                local_uiplytoself.ForceUpdateAllUI();
             }
-            //if (local_plyweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
-            //{
-            local_plyweapon.weapon_temp_ammo = -1;
-            local_plyweapon.weapon_temp_duration = -1;
-            //}
-            local_plyweapon.UpdateStatsFromWeaponType();
-            local_plyweapon.CacheWeaponPos(true);
-            is_boss = is_boss || local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove;
+
+            if (option_teamplay && !option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(); }
+            ToggleReadyRoomCollisions(false);
+            ToggleTrainingRoom(false);
+
+
+            //if (option_gamemode == (int)gamemode_name.Survival) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Survival); }
+            //else if (option_gamemode == (int)gamemode_name.Clash) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Clash); }
+            //else if (option_gamemode == (int)gamemode_name.FittingIn) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_FittingIn); }
+            //else if (option_gamemode == (int)gamemode_name.KingOfTheHill) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_KingOfTheHill); }
         }
-        if (local_secondaryweapon != null)
-        {
-            if (is_boss)
-            {
-                gamemode_boss_id = Networking.LocalPlayer.playerId;
-                local_secondaryweapon.weapon_type_default = (int)weapon_type_name.BossGlove;
-                local_secondaryweapon.weapon_type = local_plyweapon.weapon_type_default;
-            }
-            else
-            {
-                local_secondaryweapon.weapon_type_default = plysettings_weapon;
-                local_secondaryweapon.weapon_type = local_secondaryweapon.weapon_type_default;
-            }
-            //if (local_secondaryweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
-            //{
-            local_secondaryweapon.weapon_temp_ammo = -1;
-            local_secondaryweapon.weapon_temp_duration = -1;
-            //}
-            is_boss = is_boss || local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove;
-            if (local_secondaryweapon.gameObject.activeInHierarchy) { local_secondaryweapon.UpdateStatsFromWeaponType(); }
-        }
-
-        if (is_boss && Networking.LocalPlayer.IsUserInVR()) { playerData.ply_dual_wield = true; }
-        else { playerData.ply_dual_wield = false; }
-
-        playerData.plyEyeHeight_desired = playerData.plyEyeHeight_default * playerData.ply_scale;
-        playerData.plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
-        playerData.plyEyeHeight_change = true;
-
-        if (local_uiplytoself != null)
-        {
-            local_uiplytoself.ResetCache();
-            local_uiplytoself.ForceUpdateAllUI();
-        }
-
-        //if (option_teamplay & !option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(); }
-        // { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
-        TeleportLocalPlayerToGameSpawnZone();
-        ToggleReadyRoomCollisions(false);
-        ToggleTrainingRoom(false);
-
-
-        //if (option_gamemode == (int)gamemode_name.Survival) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Survival); }
-        //else if (option_gamemode == (int)gamemode_name.Clash) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Clash); }
-        //else if (option_gamemode == (int)gamemode_name.FittingIn) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_FittingIn); }
-        //else if (option_gamemode == (int)gamemode_name.KingOfTheHill) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_KingOfTheHill); }
 
         // -- Local Only End (In Loop) --
 
@@ -2295,7 +2304,10 @@ public class GameController : GlobalHelperFunctions
             UIPlyToOthers plytoothers = GetUIPlyToOthersFromID(player.playerId);
             if (plytoothers != null) { plytoothers.ResetCache(); }
 
-            if (player.isLocal) { continue; }
+            if (player.isLocal) {
+                if (!option_teamplay || option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
+                continue; 
+            }
         }
 
         if (local_plyAttr.ply_team < 0) { room_training_portal.SetActive(true); }
@@ -3301,7 +3313,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.ply_training = false;
             local_plyAttr.in_spectator_area = false;
             local_plyAttr.in_ready_room = true;
-            local_plyAttr.air_thrust_enabled = false;
+            //local_plyAttr.air_thrust_enabled = false;
             if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) 
             {
@@ -3406,7 +3418,7 @@ public class GameController : GlobalHelperFunctions
         if (mapscript_list == null || map_selected >= mapscript_list.Length || map_selected < 0) { return; }
         mapscript_list[map_selected].room_spectator_area.SetActive(true);
 
-        if (local_plyAttr != null) { local_plyAttr.in_spectator_area = true; local_plyAttr.in_ready_room = false; }
+        if (local_plyAttr != null) { local_plyAttr.in_spectator_area = true; local_plyAttr.in_ready_room = false; UnityEngine.Debug.Log("[TELEPORT_TEST]: Teleporting to Spectator Area with new state " + local_plyAttr.ply_state + " and team " + local_plyAttr.ply_team); } //local_plyAttr.air_thrust_enabled = false;
         if (local_plyweapon != null && local_plyweapon.gameObject.activeInHierarchy) { local_plyweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         if (local_secondaryweapon != null && local_secondaryweapon.gameObject.activeInHierarchy) { local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         if (local_plyhitbox != null && local_plyhitbox.gameObject.activeInHierarchy) { local_plyhitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleHitbox", false); }
@@ -3714,8 +3726,8 @@ public class GameController : GlobalHelperFunctions
         {
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
             if (spawnzone == null
-                || (option_teamplay && !option_force_teamplay && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
-                || (option_teamplay && !option_force_teamplay && spawnzone.team_id == -1) // Universal spawnzone
+                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
+                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id == -1) // Universal spawnzone
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
                 ) { continue; }
@@ -3752,7 +3764,7 @@ public class GameController : GlobalHelperFunctions
             for (int j = 0; j < plyInGame[0].Length; j++)
             {
                 VRCPlayerApi test_player = VRCPlayerApi.GetPlayerById(plyInGame[0][j]);
-                if (test_player == null || test_player == player || (option_teamplay && !option_force_teamplay && plyInGame[1][j] == team_id)) { continue; }
+                if (test_player == null || test_player == player || (option_teamplay && !option_enforce_team_limits && plyInGame[1][j] == team_id)) { continue; }
                 float testDistance = Mathf.Abs(Vector3.Distance(spawnzone.transform.position, test_player.GetPosition()));
                 if (plyDistanceMinInZone > testDistance || plyDistanceMinInZone < 0) { plyDistanceMinInZone = testDistance; }
                 debug_test_list[j] = Mathf.RoundToInt(testDistance);

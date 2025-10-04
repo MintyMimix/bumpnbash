@@ -114,7 +114,7 @@ public class UIArrowSpectator : UIArrow
             if (player == null) { continue; }
             PlayerAttributes plyAttributes = gameController.FindPlayerAttributes(player);
             if (plyAttributes == null) { continue; }
-            if (plyAttributes.ply_lives > 0)
+            if (!plyAttributes.ply_training && plyAttributes.ply_lives > 0 && (plyAttributes.ply_state == (int)player_state_name.Alive || plyAttributes.ply_state == (int)player_state_name.Respawning))
             {
                 include_indices[players_alive] = i;
                 players_alive++;
@@ -133,7 +133,7 @@ public class UIArrowSpectator : UIArrow
             }
         }
 
-        if (camera_points != null && current_value >= camera_points.Length && (players_out == null || players_out.Length == 0 || players_out[0].Length == 0)) { current_value = 0; }
+        if (camera_points != null && current_value >= camera_points.Length && (players_out == null || players_out.Length == 0 || players_out[0] == null || players_out[0].Length == 0)) { current_value = 0; }
         return players_out;
     }
 
@@ -147,7 +147,7 @@ public class UIArrowSpectator : UIArrow
         camera_points = ValidateCameraPoints(RefreshCameraPointsFromController());
         if (camera_points == null) { return; }
         players_to_spectate = GetPlayers();
-        if (players_to_spectate != null) { max_value = camera_points.Length + players_to_spectate[0].Length - 1; }
+        if (players_to_spectate != null && players_to_spectate.Length > 0 && players_to_spectate[0] != null) { max_value = camera_points.Length + players_to_spectate[0].Length - 1; }
         else { max_value = camera_points.Length - 1; }
 
         if (current_value > max_value) { current_value = min_value; }

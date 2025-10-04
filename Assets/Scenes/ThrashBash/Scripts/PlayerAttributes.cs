@@ -471,7 +471,11 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         
         // Update the UI accordingly
-        if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
+        if (gameController.local_uiplytoself != null) 
+        { 
+            gameController.local_uiplytoself.UI_Damage();
+            if (!hit_self) { gameController.local_uiplytoself.FlashRecentDamage(calcDmg); }
+        }
     }
 
     [NetworkCallable]
@@ -529,13 +533,21 @@ public class PlayerAttributes : UdonSharpBehaviour
         gameController.AddToLocalTextQueue(KOtext);
         TryHapticEvent((int)game_sfx_name.Kill);
 
-        // if this is the first KO of the match, snap a highlight photo
+        // If this is the first KO of the match, snap a highlight photo
         if (gameController.highlight_cameras_snapped != null && gameController.highlight_cameras_snapped.Length > 1
             && gameController.highlight_cameras_waiting_on_sync != null && gameController.highlight_cameras_waiting_on_sync.Length > 1
             && gameController.highlight_cameras_snapped[1] == false && gameController.highlight_cameras_waiting_on_sync[1] == false)
         {
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.forward, true, ply_scale);
             gameController.highlight_cameras_waiting_on_sync[1] = true;
+        }
+
+        // If this is infection and we are a survivor heal a little bit of damage
+        if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 0 && !ply_training) 
+        { 
+            if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.FlashRecentDamage(ply_dp - (int)GLOBAL_CONST.INFECTION_HEAL_AMOUNT >= 0 ? -(int)GLOBAL_CONST.INFECTION_HEAL_AMOUNT : -ply_dp); }
+            ply_dp = Mathf.Max(0.0f, ply_dp - (int)GLOBAL_CONST.INFECTION_HEAL_AMOUNT);
+            gameController.local_uiplytoself.UI_Damage();
         }
 
         // If we are the game master, we don't get an OnDeserialization event for ourselves, so check the round goal whenever we die or get a KO
@@ -738,9 +750,21 @@ public class PlayerAttributes : UdonSharpBehaviour
                         else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_grav *= powerup.powerup_stat_value[i]; }
                         break;
                     case (int)powerup_stat_name.Damage:
-                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_dp = powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
-                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) { ply_dp += powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
-                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) { ply_dp *= powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); }
+                        if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) 
+                        {
+                            if (gameController != null && gameController.local_uiplytoself != null) { gameController.local_uiplytoself.FlashRecentDamage(-Mathf.Max(0.0f, Mathf.Abs(ply_dp - powerup.powerup_stat_value[i]))); }
+                            ply_dp = powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); 
+                        }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Add) 
+                        {
+                            if (gameController != null && gameController.local_uiplytoself != null) { gameController.local_uiplytoself.FlashRecentDamage((ply_dp + powerup.powerup_stat_value[i]) >= 0 ? powerup.powerup_stat_value[i] : -ply_dp); }
+                            ply_dp += powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); 
+                        }
+                        else if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Multiply) 
+                        {
+                            if (gameController != null && gameController.local_uiplytoself != null) { gameController.local_uiplytoself.FlashRecentDamage(-Mathf.Max(0.0f, Mathf.Abs(ply_dp * powerup.powerup_stat_value[i]))); }
+                            ply_dp *= powerup.powerup_stat_value[i]; ply_dp = Mathf.Max(0.0f, ply_dp); 
+                        }
                         break;
                     case (int)powerup_stat_name.Jumps:
                         if (powerup.powerup_stat_behavior[i] == (int)powerup_stat_behavior_name.Set) { ply_jumps_add = Mathf.RoundToInt(powerup.powerup_stat_value[i]); }
@@ -860,7 +884,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         base.InputMoveVertical(value, args);
 
         if (!Networking.LocalPlayer.IsUserInVR()) { return; }
-        if (air_thrust_enabled && air_thrust_ready && Mathf.Abs(value) > 0.5f)
+        if (air_thrust_enabled && air_thrust_ready && Mathf.Abs(value) > 0.75f)
         {
             AirThrust();
         }

@@ -73,6 +73,7 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text TutorialBasicsImageTxt;
     [SerializeField] private TMP_Text TutorialBasicsImageTxt_1_0;
     [SerializeField] private TMP_Text TutorialBasicsImageTxt_1_1;
+    [SerializeField] private TMP_Text TutorialBasicsImageTxt_1_2;
     [SerializeField] private TMP_Text TutorialUIGridTxt_0;
     [SerializeField] private TMP_Text TutorialUIGridTxt_1;
     [SerializeField] private TMP_Text TutorialUIGridTxt_2;
@@ -99,6 +100,10 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text PowerupDemoHeader;
     [SerializeField] private TMP_Text WarningText_3;
     [SerializeField] private TMP_Text WarningText_4;
+    [SerializeField] private TMP_Text FloorJoinInstructHeader;
+    [SerializeField] private TMP_Text FloorJoinInstructInvertHeader;
+    [SerializeField] private TMP_Text FloorSpectateInstructHeader;
+    [SerializeField] private TMP_Text FloorSpectateInstructInvertHeader;
 
     void Start()
     {
@@ -258,6 +263,8 @@ public class Localizer : UdonSharpBehaviour
         TutorialBasicsImageTxt.text = FetchText("TUTORIAL_BASICS_IMAGE_KO", TutorialBasicsImageTxt.text);
         TutorialBasicsImageTxt_1_0.text = FetchText("TUTORIAL_BASICS_IMAGE_DAMAGE", TutorialBasicsImageTxt_1_0.text);
         TutorialBasicsImageTxt_1_1.text = FetchText("TUTORIAL_BASICS_IMAGE_FORCE", TutorialBasicsImageTxt_1_1.text);
+        if (Networking.LocalPlayer.IsUserInVR()) { TutorialBasicsImageTxt_1_2.text = FetchText("TUTORIAL_BASICS_IMAGE_DASH_BASE", TutorialBasicsImageTxt_1_2.text, FetchText("TUTORIAL_BASICS_IMAGE_DASH_VR", "flicking your right thumbstick up or down!")); }
+        else { TutorialBasicsImageTxt_1_2.text = FetchText("TUTORIAL_BASICS_IMAGE_DASH_BASE", TutorialBasicsImageTxt_1_2.text, FetchText("TUTORIAL_BASICS_IMAGE_DASH_DESKTOP", "pushing your Q key!")); }
         TutorialUIGridTxt_0.text = FetchText("TUTORIAL_UI_IMAGE_RANKING", TutorialUIGridTxt_0.text);
         TutorialUIGridTxt_1.text = FetchText("TUTORIAL_UI_IMAGE_DAMAGE", TutorialUIGridTxt_1.text);
         TutorialUIGridTxt_2.text = FetchText("TUTORIAL_UI_IMAGE_TIME", TutorialUIGridTxt_2.text);
@@ -284,6 +291,11 @@ public class Localizer : UdonSharpBehaviour
         PowerupDemoHeader.text = FetchText("TRAINING_HEADER_POWERUP", PowerupDemoHeader.text);
         WarningText_3.text = FetchText("LOCALOPTIONS_LANGUAGE_HEADER", WarningText_3.text);
         WarningText_4.text = FetchText("LOCALOPTIONS_LANGUAGE_WARNING", WarningText_4.text);
+        FloorJoinInstructHeader.text = FetchText("NOTIFICATION_START_0", "Stand in the square to join the game!");
+        FloorJoinInstructInvertHeader.text = "↓" + FloorJoinInstructHeader.text + "↓";
+        FloorJoinInstructHeader.text = "↑" + FloorJoinInstructHeader.text + "↑";
+        FloorSpectateInstructHeader.text = FetchText("NOTIFICATION_START_1", "Alternatively, you can spectate by using the 'Game' Tab in the Local Options menu!");
+        FloorSpectateInstructInvertHeader.text = FloorSpectateInstructHeader.text;
 
         if (gameController != null && gameController.local_ppp_options != null)
         {

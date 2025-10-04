@@ -9,6 +9,7 @@ public class Room_Ready : UdonSharpBehaviour
 {
     [SerializeField] public GameController gameController;
     [SerializeField] public Collider trigger_player;
+    [SerializeField] public UnityEngine.UI.Button WarningButton;
     [SerializeField] public GameObject WarningCanvas;
     [SerializeField] public GameObject WarningPanel;
     [SerializeField] public GameObject monitor_obj;
@@ -30,6 +31,15 @@ public class Room_Ready : UdonSharpBehaviour
         }
     }*/
 
+    private void Update()
+    {
+        if (!warning_acknowledged)
+        {
+            if (!WarningButton.interactable && gameController != null && gameController.local_plyAttr != null && gameController.ui_initialized) { WarningButton.interactable = true; }
+            else if (WarningButton.interactable && gameController == null || gameController.local_plyAttr == null || !gameController.ui_initialized) { WarningButton.interactable = false; }
+        }
+    }
+
     public void AcknowledgeWarning()
     {
         warning_acknowledged = true;
@@ -40,7 +50,7 @@ public class Room_Ready : UdonSharpBehaviour
             || gameController.round_state == (int)round_state_name.Queued
             || gameController.round_state == (int)round_state_name.Loading) 
         { gameController.PlaySFXFromArray(gameController.snd_game_music_source, gameController.snd_ready_music_clips, -1, 1, true); }
-        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_START_0", "Step in the square to join the game!"), Color.cyan);
+        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_START_0", "Stand in the square to join the game!"), Color.cyan);
         gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_START_1", "Alternatively, you can spectate by using the 'Game' Tab in the Local Options menu!"), Color.cyan);
         gameController.room_training_portal.SetActive(true);
         if (gameController.mapscript_list != null && gameController.mapscript_list.Length > 0)
@@ -56,6 +66,11 @@ public class Room_Ready : UdonSharpBehaviour
                 if (itemSpawner.item_spawn_state == (int)item_spawn_state_name.Disabled) { itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable; }
                 else { itemSpawner.SyncSpawns(); }
             }
+        }
+        if (gameController.local_plyAttr != null) 
+        { 
+            gameController.local_plyAttr.air_thrust_enabled = true;
+            if (gameController.local_plyweapon != null) { gameController.local_plyAttr.air_thrust_cooldown = gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Cooldown] * 2.0f; }
         }
         //gameController.room_training.SetActive(true); // Just a temporary measure so the item spawners can be setup
     }

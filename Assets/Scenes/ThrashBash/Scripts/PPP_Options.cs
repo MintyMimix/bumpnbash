@@ -143,7 +143,7 @@ public class PPP_Options : UdonSharpBehaviour
                 allow_ply_team = gameController.local_plyAttr.ply_team < 0;
                 allow_ply_state = gameController.local_plyAttr.ply_state == (int)player_state_name.Spectator || gameController.local_plyAttr.ply_state == (int)player_state_name.Dead || gameController.local_plyAttr.ply_state == (int)player_state_name.Inactive || gameController.local_plyAttr.ply_state == (int)player_state_name.Joined;
             }
-            ui_spectatortoggle.interactable = allow_ply_state && (allow_round_state || allow_ply_team);
+            ui_spectatortoggle.interactable = allow_round_state && (allow_ply_state || allow_ply_team);
         }
 
         if (sync_timer < sync_impulse)

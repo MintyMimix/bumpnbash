@@ -58,6 +58,7 @@ public class BouncePad : UdonSharpBehaviour
                 Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() / 1.6f, layers_to_hit, QueryTriggerInteraction.Collide);
                 if (hitColliders.Length > 0)
                 {
+                    UnityEngine.Debug.Log("[BOUNCE_TEST]: Teleporting using bouncepad " + gameObject.name);
                     player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
                 }
                 
@@ -106,6 +107,7 @@ public class BouncePad : UdonSharpBehaviour
                 Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() / 1.6f, layers_to_hit, QueryTriggerInteraction.Collide);
                 if (hitColliders.Length > 0)
                 {
+                    UnityEngine.Debug.Log("[BOUNCE_TEST]: Teleporting using bounceprop " + gameObject.name);
                     player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
                 }
 

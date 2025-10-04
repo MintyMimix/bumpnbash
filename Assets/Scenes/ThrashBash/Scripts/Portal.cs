@@ -34,6 +34,7 @@ public class Portal : UdonSharpBehaviour
     public virtual void Teleport()
     {
         gameController.platformHook.custom_force_unhook = true;
+        UnityEngine.Debug.Log("[PORTAL_TEST]: Teleporting using portal " + gameObject.name);
         Networking.LocalPlayer.TeleportTo(teleport_to_point.position, teleport_to_point.rotation);
         gameController.platformHook.custom_force_unhook = false;
     }

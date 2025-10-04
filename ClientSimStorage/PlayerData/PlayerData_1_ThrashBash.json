@@ -40,11 +40,11 @@
     }
   },
   "UIScale": {
-    "LastUpdated": "2025-09-29T10:28:05.9167992-04:00",
+    "LastUpdated": "2025-10-03T16:32:43.9182993-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 7.0
     }
   },
   "UISeparation": {
@@ -88,19 +88,19 @@
     }
   },
   "UIStretch": {
-    "LastUpdated": "2025-09-27T19:42:22.071854-04:00",
+    "LastUpdated": "2025-10-03T16:32:48.0878848-04:00",
     "Key": "UIStretch",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 16.0
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-09-27T19:42:22.071854-04:00",
+    "LastUpdated": "2025-10-03T16:32:43.9182993-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
-      "value": 10.0
+      "value": 17.0
     }
   },
   "ParticleShow": {
@@ -240,7 +240,7 @@
     }
   },
   "UIInverted": {
-    "LastUpdated": "2025-09-18T01:02:56.9913086-04:00",
+    "LastUpdated": "2025-10-03T16:02:59.8867593-04:00",
     "Key": "UIInverted",
     "Value": {
       "type": "Bool",

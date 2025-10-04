@@ -33,6 +33,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] public Sprite PTSFlagSprite;
     [SerializeField] public TMP_Text PTSDamage;
     [SerializeField] public RectTransform PTSDamageTransform;
+    [SerializeField] public TMP_Text PTSRecentDamage; 
     [SerializeField] public TMP_Text PTSAttack;
     [SerializeField] public TMP_Text PTSDefense;
     [SerializeField] public TMP_Text PTSInvul;
@@ -128,6 +129,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
     // Stored positions for inverted UI arrangement
     [SerializeField] private Vector2 stored_local_sizedelta_ptscanvas;
+    [SerializeField] private Vector3 stored_local_pos_ptsairthrust;
     [SerializeField] private Vector3 stored_local_pos_ptsweaponpanel;
     [SerializeField] private Vector3 stored_local_pos_ptschargepanel;
     [SerializeField] private Vector3 stored_local_pos_ptscapturepanel;
@@ -141,7 +143,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public float cached_scale = -1.0f;
     [NonSerialized] public float cached_atk = -1.0f;
     [NonSerialized] public float cached_def = -1.0f;
-
+    [NonSerialized] public float damage_receive_temp = 0.0f;
+    [NonSerialized] public float damage_receive_duration = 3.0f;
+    [NonSerialized] public float damage_receive_timer = 0.0f;
 
     void Start()
     {
@@ -156,6 +160,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         ui_check_gamevars_impulse = ui_check_gamevars_impulse_default;
 
         stored_local_sizedelta_ptscanvas = PTSCanvas.sizeDelta;
+        stored_local_pos_ptsairthrust = PTSAirThrustMeterBGSprite.transform.localPosition;
         stored_local_pos_ptsweaponpanel = PTSWeaponPanel.localPosition;
         stored_local_pos_ptschargepanel = PTSChargePanel.localPosition;
         stored_local_pos_ptscapturepanel = PTSCapturePanel.localPosition;
@@ -633,6 +638,19 @@ public class UIPlyToSelf : UdonSharpBehaviour
         else if (playerAttributes.ply_training) { PTSTopPanel.SetActive(true); }
         else if ((round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(false); }
         else if (!(round_ready || playerAttributes.ply_state == (int)player_state_name.Inactive || playerAttributes.ply_state == (int)player_state_name.Spectator || playerAttributes.ply_team < 0) && !PTSTopPanel.activeInHierarchy) { PTSTopPanel.SetActive(true); }
+    
+        // Tick down recent damage timer
+        if (damage_receive_timer < damage_receive_duration)
+        {
+            damage_receive_timer += Time.deltaTime;
+            UI_RecentDamage();
+        }
+        else if (damage_receive_temp != 0.0f)
+        {
+            damage_receive_temp = 0.0f;
+            UI_RecentDamage();
+        }
+    
     }
     
     public void ForceUpdateAllUI()
@@ -697,6 +715,35 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSDamage.gameObject.transform.parent.gameObject.SetActive(false);
         }
         PTSInvul.text = InvulText;
+        UI_RecentDamage();
+    }
+
+    public void UI_RecentDamage()
+    {
+        string ReceiveText = Mathf.RoundToInt(damage_receive_temp).ToString() + '%';
+        if (damage_receive_temp > 0) 
+        { 
+            ReceiveText = '+' + ReceiveText;
+            if (gameController != null && gameController.team_colors_bright != null && gameController.team_colors_bright.Length > 1) { PTSRecentDamage.color = gameController.team_colors_bright[1]; }
+            else { PTSRecentDamage.color = Color.red; }
+        }
+        else
+        {
+            if (gameController != null && gameController.team_colors_bright != null && gameController.team_colors_bright.Length > 3) { PTSRecentDamage.color = gameController.team_colors_bright[3]; }
+            else { PTSRecentDamage.color = Color.green; }
+        }
+        PTSRecentDamage.text = ReceiveText;
+        if (damage_receive_timer < damage_receive_duration * 0.5f) { PTSRecentDamage.alpha = 1.0f; }
+        else { PTSRecentDamage.alpha = Mathf.Lerp(1.0f, 0.0f, (damage_receive_timer - (damage_receive_duration * 0.5f)) / (damage_receive_duration * 0.5f)); }
+    }
+
+    public void FlashRecentDamage(float addDamage)
+    {
+        damage_receive_timer = 0.0f;
+        // If we already have temp damage, but the sign changed, reset it completely
+        if (damage_receive_temp != 0 && addDamage / damage_receive_temp < -1) { damage_receive_temp = addDamage; }
+        // Otherwise, just add to the currently growing amount
+        else { damage_receive_temp += addDamage; }
     }
     
     public void UI_Attack()
@@ -1647,6 +1694,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSChargePanel.localPosition = working_pos;
 
             // Offset all elements by the inverse of their Y
+            working_pos = stored_local_pos_ptsairthrust;
+            working_pos.y = -working_pos.y;
+            PTSAirThrustMeterBGSprite.transform.localPosition = working_pos;
             working_pos = stored_local_pos_ptsweaponpanel;
             working_pos.y = -working_pos.y;
             PTSWeaponPanel.localPosition = working_pos;
@@ -1677,6 +1727,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             PTSPowerupPanel.localPosition = stored_local_pos_ptspoweruppanel;
             ((RectTransform)PTSChargePanel).anchorMin = new Vector2(0, 0);
             ((RectTransform)PTSChargePanel).anchorMax = new Vector2(1, 0);
+            PTSAirThrustMeterBGSprite.transform.localPosition = stored_local_pos_ptsairthrust;
             PTSChargePanel.localPosition = stored_local_pos_ptschargepanel;
             PTSWeaponPanel.localPosition = stored_local_pos_ptsweaponpanel;
             PTSCapturePanel.localPosition = stored_local_pos_ptscapturepanel;
