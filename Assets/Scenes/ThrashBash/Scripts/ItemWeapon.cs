@@ -125,15 +125,22 @@ public class ItemWeapon : ItemGeneric
         if (plyWeapon != null && gameController.local_plyAttr != null)
         {
             LocalApplyWeapon(plyWeapon);
-            bool is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_plyAttr.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
-            is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
-            if (is_boss && gameController.local_secondaryweapon != null) 
+            bool is_boss_any = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_plyAttr.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+            bool is_boss_vr = is_boss_any && Networking.LocalPlayer.IsUserInVR();
+            if (is_boss_any && !is_boss_vr && gameController.local_plyAttr != null && !gameController.local_plyAttr.ply_desktop_applied_dual_compensation_buff)
+            {
+                // If the user is a boss on desktop, picking up a weapon, and their attack value isn't doubled already, double it
+                gameController.local_plyAttr.ply_atk *= 2.0f;
+                gameController.local_plyAttr.ply_desktop_applied_dual_compensation_buff = true;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Applying compensation from OnTriggerEnter() of " + transform.parent.name);
+            }
+            if (is_boss_vr && gameController.local_secondaryweapon != null) 
             {
                 if (!gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); }
                 LocalApplyWeapon(gameController.local_secondaryweapon); 
                 gameController.local_plyAttr.ply_dual_wield = true;
             }
-            if (!is_boss && gameController.local_secondaryweapon != null)
+            if (!is_boss_vr && gameController.local_secondaryweapon != null)
             {
                 if (gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
             }

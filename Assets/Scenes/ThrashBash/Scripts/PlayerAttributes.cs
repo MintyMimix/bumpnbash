@@ -2,6 +2,8 @@
 using System;
 using UdonSharp;
 using UnityEngine;
+using UnityEngine.Rendering;
+using VRC.Core;
 using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
@@ -41,11 +43,13 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public float ply_atk = 1.0f;
     [NonSerialized] [UdonSynced] public float ply_def = 1.0f;
     [NonSerialized] public float ply_grav = 1.0f;
+    [NonSerialized] public bool in_grav_well = false;
     [NonSerialized] [UdonSynced] public int ply_jumps_add = 0;
     [NonSerialized] public int ply_jumps_tracking = 0;
     [NonSerialized] public bool ply_jump_pressed = false;
     [NonSerialized] public float ply_firerate = 1.0f;
     [NonSerialized][UdonSynced] public bool ply_dual_wield = false;
+    [NonSerialized] public bool ply_desktop_applied_dual_compensation_buff = false;
 
     [NonSerialized] public float ply_respawn_duration;
     [NonSerialized] public VRCPlayerApi last_hit_by_ply;
@@ -81,7 +85,8 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public PlayerWeapon owner_secondweapon;
     [NonSerialized] public PlayerHitbox owner_plyhitbox;
 
-    [NonSerialized] [UdonSynced] public float plyEyeHeight_default, plyEyeHeight_desired;
+    [NonSerialized][UdonSynced] public float plyEyeHeight_default = 0.0f;
+    [NonSerialized][UdonSynced] public float plyEyeHeight_desired = 0.0f;
     [Tooltip("How long a size-changing animation should play on a player")]
     [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
@@ -202,13 +207,13 @@ public class PlayerAttributes : UdonSharpBehaviour
             air_thrust_ready = true;
             air_thrust_timer = 0.0f;
         }
-        else if (air_thrust_enabled && air_thrust_ready)
+        /*else if (air_thrust_enabled && air_thrust_ready)
         {
             if (!Networking.LocalPlayer.IsUserInVR() && Input.GetKeyDown(KeyCode.Q))
             {
                 AirThrust(); 
             }
-        }
+        }*/
 
         // Handle last hit by
         if (last_hit_by_timer < last_hit_by_duration && last_hit_by_ply != null)
@@ -264,7 +269,8 @@ public class PlayerAttributes : UdonSharpBehaviour
             Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
-            Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav * (1.0f/koth_mod));
+            if (in_grav_well) { Networking.LocalPlayer.SetGravityStrength(0.0f); }
+            else { Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav * (1.0f / koth_mod)); }
             Networking.LocalPlayer.SetJumpImpulse(4.0f + (1.0f - ply_grav)); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
@@ -355,13 +361,13 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (!Networking.IsOwner(gameObject)) { return; }
         ResetPowerups();
+        if (gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
 
         float default_height = Mathf.Clamp(Networking.LocalPlayer.GetAvatarEyeHeightAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMinimumAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMaximumAsMeters());
         plyEyeHeight_default = default_height;
         plyEyeHeight_desired = plyEyeHeight_default;
         
     }
-
     public void LocalResetScale()
     {
         ply_scale = 1.0f;
@@ -376,7 +382,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], gameController.snd_game_sfx_clips[(int)game_sfx_name.HitSend], damage_type, 1 + 0.1f * (combo_send));
         combo_send++;
-        ply_damage_dealt += damage;
+        if (!ply_training) { ply_damage_dealt += damage; }
 
         TryHapticEvent((int)game_sfx_name.HitSend);
         // Damage indicator
@@ -402,8 +408,9 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (ply_def == 0) { ply_def = 0.01f; }
         calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
 
-        float baseLift = 0.66f; // 0.33f
+        float baseLift = 0.5f; // 0.66f
         if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
+        //modforcedirection not considering getvelocity().
 
         /*if (Networking.LocalPlayer.IsPlayerGrounded()) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
         else { modForceDirection += new Vector3(0.0f, baseLift / 2.0f, 0.0f); }
@@ -413,33 +420,32 @@ public class PlayerAttributes : UdonSharpBehaviour
         UnityEngine.Debug.Log("Resulting force direction: " + modForceDirection + " (input: " + forceDirection + ")");
         if (modForceDirection.magnitude < baseLift) { modForceDirection *= baseLift/modForceDirection.magnitude; }
         UnityEngine.Debug.Log("Resulting force direction after magnitude modification: " + modForceDirection);
+        //modForceDirection = new Vector3(modForceDirection.x * Networking.LocalPlayer.GetVelocity().normalized.x, modForceDirection.y * Networking.LocalPlayer.GetVelocity().normalized.y, modForceDirection.z * Networking.LocalPlayer.GetVelocity().normalized.z);
+        //UnityEngine.Debug.Log("Resulting force direction after factoring velocity: " + modForceDirection);
 
-        // Old formula: float xDmg = calcDmg + (ply_dp * (1.0f / ply_def));
-        // We swapped to the new one because Defense was both strong and unintuitive; having it meant you could be at 100% and not be knocked out easily while also receiving nerfed damage.
+        // Old formula: float xDmg = calcDmg + ply_dp; float calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
         float xDmg = calcDmg + ply_dp;
-        float calcMagnitude = 0.004f * Mathf.Pow(xDmg, 1.85f) + 8.0f;
-        // (100.0f + (xDmg / 3.0f))
-        // / (1 + Mathf.Exp(-0.02f * (xDmg - 100.0f)));
+        float calcMagnitude = 0.006f * Mathf.Pow(xDmg, 1.85f) + 11.0f; // originally 0.004f * and +8.0f
         UnityEngine.Debug.Log("Resulting force magnitude: " + calcMagnitude);
         calcMagnitude = Mathf.Max(calcMagnitude, Vector3.Dot(modForceDirection, Networking.LocalPlayer.GetVelocity()), Vector3.Dot(modForceDirection, -Networking.LocalPlayer.GetVelocity()));
         UnityEngine.Debug.Log("Resulting force magnitude after factoring velocity: " + calcMagnitude);
 
         Vector3 calcForce = modForceDirection;
         calcForce *= calcMagnitude;
-        
+        //calcForce += Networking.LocalPlayer.GetVelocity().normalized;
         //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
 
         // Don't apply additional force if this is a hazard or a throwable item
         if (damage_type != (int)damage_type_name.HazardBurn && damage_type != (int)damage_type_name.ItemHit)
         {
             //Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
-
-            Networking.LocalPlayer.SetVelocity(calcForce * 0.5f);
+            Vector3 velAdd = new Vector3(Networking.LocalPlayer.GetVelocity().x, Mathf.Max(Networking.LocalPlayer.GetVelocity().y, 0.0f), Networking.LocalPlayer.GetVelocity().z);
+            Networking.LocalPlayer.SetVelocity(velAdd + (calcForce * 0.5f));
         }
 
         // To-Do: make last hit by a function scaled based on damage (i.e. whoever dealt the most damage prior to the player hitting the ground gets kill credit)
         if (!hit_self) { 
-            ply_dp += calcDmg; 
+            ply_dp += Mathf.Abs(calcDmg); 
             gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitReceive], gameController.snd_game_sfx_clips[(int)game_sfx_name.HitReceive], damage_type, 1 + 0.1f * (combo_receive));
             combo_receive++;
             if (attacker_id >= 0) {
@@ -511,26 +517,26 @@ public class PlayerAttributes : UdonSharpBehaviour
         last_kill_ply = defenderPlyId;
 
         // Add to the kill combo & killstreak, playing voicelines as appropriate
-        string KOtext = "";
+        string KOtext = ""; Color KOColor = Color.white;
         if (VRCPlayerApi.GetPlayerById(defenderPlyId) != null) { KOtext = gameController.localizer.FetchText("NOTIFICATION_KILL", "You knocked out $ARG0!", VRCPlayerApi.GetPlayerById(defenderPlyId).displayName); }
         killbo_timer = 0.0f; 
         killbo++;
         killstreak++;
         if (killbo == 1) {
-            if (killstreak == KILLSTREAK_THRESHOLD_4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER4", "Bash Master! (Streak: $ARG0)", killstreak.ToString()); }
-            else if (killstreak == KILLSTREAK_THRESHOLD_3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER3", "Perfect Pummler! (Streak: $ARG0)", killstreak.ToString()); }
-            else if (killstreak == KILLSTREAK_THRESHOLD_2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER2", "Mega Menace! (Streak: $ARG0)", killstreak.ToString()); }
-            else if (killstreak == KILLSTREAK_THRESHOLD_1) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER1", "Bone Breaker! (Streak: $ARG0)", killstreak.ToString()); }
-            else if (killstreak == KILLSTREAK_THRESHOLD_0) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER0", "Knockout Spree! (Streak: $ARG0)", killstreak.ToString()); }
+            if (killstreak == KILLSTREAK_THRESHOLD_4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER4", "Bash Master! (Streak: $ARG0)", killstreak.ToString()); KOColor = Color.magenta; KOColor.r += -0.2f; }
+            else if (killstreak == KILLSTREAK_THRESHOLD_3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER3", "Perfect Pummler! (Streak: $ARG0)", killstreak.ToString()); KOColor = Color.magenta; KOColor.g += 0.1f; }
+            else if (killstreak == KILLSTREAK_THRESHOLD_2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER2", "Mega Menace! (Streak: $ARG0)", killstreak.ToString()); KOColor = Color.magenta; KOColor.g += 0.2f; }
+            else if (killstreak == KILLSTREAK_THRESHOLD_1) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER1", "Bone Breaker! (Streak: $ARG0)", killstreak.ToString()); KOColor = Color.magenta; KOColor.g += 0.3f; }
+            else if (killstreak == KILLSTREAK_THRESHOLD_0) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Streak0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_STREAK_TIER0", "Knockout Spree! (Streak: $ARG0)", killstreak.ToString()); KOColor = Color.magenta; KOColor.g += 0.4f; }
         }
-        else if (killbo == 2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER0", "Double KO!!"); }
-        else if (killbo == 3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER1", "Triple KO!!!"); }
-        else if (killbo == 4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER2", "Quadtactular!!!!"); }
-        else if (killbo == 5) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER3", "Pentulimate!!!!!"); }
-        else if (killbo >= 6) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER4", "Outscension! (KO Combo: $ARG0)", killbo.ToString()); }
+        else if (killbo == 2) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time0); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER0", "Double KO!!"); KOColor = Color.magenta; KOColor.g += 0.4f; }
+        else if (killbo == 3) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time1); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER1", "Triple KO!!!"); KOColor = Color.magenta; KOColor.g += 0.3f; }
+        else if (killbo == 4) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time2); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER2", "Quadtactular!!!!"); KOColor = Color.magenta; KOColor.g += 0.2f; }
+        else if (killbo == 5) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time3); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER3", "Pentulimate!!!!!"); KOColor = Color.magenta; KOColor.g += 0.1f; }
+        else if (killbo >= 6) { gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.KO, (int)voiceover_ko_sfx_name.Time4); KOtext += "\n" + gameController.localizer.FetchText("NOTIFICATION_KOSTREAK_COMBO_TIER4", "Outscension! (KO Combo: $ARG0)", killbo.ToString()); KOColor = Color.magenta; KOColor.r += -0.2f; }
 
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Kill], gameController.snd_game_sfx_clips[(int)game_sfx_name.Kill]);
-        gameController.AddToLocalTextQueue(KOtext);
+        gameController.AddToLocalTextQueue(KOtext, KOColor);
         TryHapticEvent((int)game_sfx_name.Kill);
 
         // If this is the first KO of the match, snap a highlight photo
@@ -593,13 +599,15 @@ public class PlayerAttributes : UdonSharpBehaviour
             //UnityEngine.Debug.Log("Whoa, you died in an unusual way! Contact a developer!");
         }
 
-        ResetPowerups();
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); gameController.local_plyweapon.CacheWeaponPos(true); }
         if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); gameController.local_secondaryweapon.CacheWeaponPos(true); }
+        ResetPowerups();
+        if (gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
 
-        bool is_boss = gameController.local_plyweapon.weapon_type == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
-        is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
-        if (is_boss) { ply_dual_wield = true; }
+        //ply_desktop_applied_dual_compensation_buff = false;
+        bool is_boss_any = gameController.local_plyweapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type_default == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+        bool is_boss_vr = is_boss_any && Networking.LocalPlayer.IsUserInVR();
+        if (is_boss_vr) { ply_dual_wield = true; }
         else { ply_dual_wield = false; }
 
         // Manage behavior based on gamemode
@@ -786,6 +794,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             ItemPowerup powerup = powerup_template.GetComponent<ItemPowerup>();
 			for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
             {
+                Debug.Log("EXPIRING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
                 switch (i)
                 {
                     case (int)powerup_stat_name.Scale:
@@ -831,6 +840,23 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (powerups_are_resetting) { return; }
 
+        if (gameController != null && gameController.local_plyweapon != null)
+        {
+            bool is_boss_any = gameController.local_plyweapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type_default == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+            if (!ply_desktop_applied_dual_compensation_buff && is_boss_any && !Networking.LocalPlayer.IsUserInVR())
+            {
+                ply_atk *= 2.0f;
+                ply_desktop_applied_dual_compensation_buff = true;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Applying compensation from ResetPowerups()");
+            }
+            else if (ply_desktop_applied_dual_compensation_buff && (!is_boss_any || Networking.LocalPlayer.IsUserInVR()))
+            {
+                ply_atk /= 2.0f;
+                ply_desktop_applied_dual_compensation_buff = false;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Removing compensation from ResetPowerups()");
+            }
+        }
+
         var index_iter = 0;
         var powerup_count = powerups_active.Length;
         powerups_are_resetting = true;
@@ -854,6 +880,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
         plyEyeHeight_change = true;
+
         powerups_are_resetting = false;
     }
 
@@ -874,12 +901,16 @@ public class PlayerAttributes : UdonSharpBehaviour
                 Networking.LocalPlayer.SetVelocity(new Vector3(plyVel.x, 4.0f + (1.0f - ply_grav), plyVel.z));
                 ply_jumps_tracking++;
             }
+            else if (!Networking.LocalPlayer.IsPlayerGrounded() && ply_jumps_tracking >= ply_jumps_add && air_thrust_enabled && air_thrust_ready)
+            {
+                AirThrust();
+            }
             ply_jump_pressed = true;
         }
         else if (!value && ply_jump_pressed) { ply_jump_pressed = false; }
     }
 
-    public override void InputLookVertical(float value, UdonInputEventArgs args)
+    /*public override void InputLookVertical(float value, UdonInputEventArgs args)
     {
         base.InputMoveVertical(value, args);
 
@@ -888,7 +919,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             AirThrust();
         }
-    }
+    }*/
 
     public void AirThrust()
     {
@@ -1092,15 +1123,20 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void ResetToDefaultStats()
     {
         ply_dp = ply_dp_default;
-        ply_damage_dealt = 0;
-        ply_lives = gameController.plysettings_lives;
-        ply_points = gameController.plysettings_points;
+        //ply_damage_dealt = 0;
+        //ply_lives = gameController.plysettings_lives;
+        //ply_points = gameController.plysettings_points;
         ply_respawn_duration = gameController.plysettings_respawn_duration;
         ply_scale = gameController.plysettings_scale;
         ply_speed = gameController.plysettings_speed;
         ply_atk = gameController.plysettings_atk;
         ply_def = gameController.plysettings_def;
-        ply_grav = gameController.plysettings_grav * gameController.mapscript_list[gameController.map_selected].map_gravity_scale;
+        ply_grav = gameController.plysettings_grav;
+        if (gameController.mapscript_list != null && gameController.map_selected >= 0 && gameController.map_selected < gameController.mapscript_list.Length && gameController.mapscript_list[gameController.map_selected] != null)
+        {
+            ply_grav *= gameController.mapscript_list[gameController.map_selected].map_gravity_scale;
+        }
+
         if (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)
         {
             //playerData.ply_lives = option_goal_value_b;
@@ -1108,6 +1144,24 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_atk = gameController.plysettings_atk + gameController.plysettings_boss_atk_mod; // (ply_parent_arr[0].Length / 4.0f);
             ply_def = gameController.plysettings_def + gameController.plysettings_boss_def_mod; //+ Mathf.Max(0.0f, -0.2f + (ply_parent_arr[0].Length * 0.2f));
             ply_speed = gameController.plysettings_speed + gameController.plysettings_boss_speed_mod;
+        }
+
+        ply_desktop_applied_dual_compensation_buff = false;
+        if (gameController.local_plyweapon != null && gameController.local_secondaryweapon != null)
+        {
+            bool is_boss_desktop = !Networking.LocalPlayer.IsUserInVR() && gameController.local_plyweapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type_default == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1);
+            if (is_boss_desktop && !ply_desktop_applied_dual_compensation_buff)
+            {
+                ply_atk *= 2.0f;
+                ply_desktop_applied_dual_compensation_buff = true;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Applying compensation from ResetToDefaultStats()");
+            }
+            /*else if (!is_boss_desktop && ply_desktop_applied_dual_compensation_buff)
+            {
+                ply_atk -= 1.0f;
+                ply_desktop_applied_dual_compensation_buff = false;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Removing compensation from ResetToDefaultStats()");
+            }*/
         }
 
         if (gameController.local_plyweapon != null)

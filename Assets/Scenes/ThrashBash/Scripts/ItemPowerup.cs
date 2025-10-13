@@ -94,11 +94,11 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkUp:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 2.5f;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 1.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.DefUp:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 2.5f;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 1.5f;
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkDown:

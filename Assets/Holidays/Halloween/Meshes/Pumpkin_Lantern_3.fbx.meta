@@ -3,7 +3,12 @@ guid: adfe2318540ed3645a89736f69cfe9e5
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Halloween_Props_MAT
+    second: {fileID: 2100000, guid: 066628cc89e46664a8e557f0f48c508a, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

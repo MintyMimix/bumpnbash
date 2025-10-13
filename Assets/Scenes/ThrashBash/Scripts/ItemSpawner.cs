@@ -126,10 +126,11 @@ public class ItemSpawner : UdonSharpBehaviour
                 if (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown) { parsed_spawn_chances[i] = 0.0f; }
                 else if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
             }
-            // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups
+            // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups and don't allow boss glove spawns
             if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.BossBash)
             {
                 if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown || i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
+                else if (parsed_spawn_chances[i] > 0 && i == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove) { parsed_spawn_chances[i] *= 0.0f; }
             }
             // If we are NOT in Infection or Boss Bash, disable debuffs (unless it's a training spawner)
             if (gamemode != (int)gamemode_name.Infection && gamemode != (int)gamemode_name.BossBash && !training_spawner)
@@ -248,7 +249,11 @@ public class ItemSpawner : UdonSharpBehaviour
             child_powerup.item_owner_id = -1;
             child_powerup.allow_effects_to_apply = apply_after_spawn;
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.item_team_id = 0; } // On Infected, only Survivors may get powerups
-            else if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
+            else if (gameController.option_teamplay) 
+            { 
+                if (item_spawn_team < gameController.team_count) { child_powerup.item_team_id = item_spawn_team; }
+                else { child_powerup.item_team_id = -1; }
+            }
             else { child_powerup.item_team_id = -1; }
             //child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_type = (int)item_type_name.Powerup;
@@ -282,7 +287,11 @@ public class ItemSpawner : UdonSharpBehaviour
                 { child_weapon.item_team_id = 0; }
                 else { child_weapon.item_team_id = item_spawn_team; }
             } 
-            else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
+            else if (gameController.option_teamplay)
+            {
+                if (item_spawn_team < gameController.team_count) { child_weapon.item_team_id = item_spawn_team; }
+                else { child_weapon.item_team_id = -1; }
+            }
             else { child_weapon.item_team_id = -1; }
             //child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.SetiWeaponStats();

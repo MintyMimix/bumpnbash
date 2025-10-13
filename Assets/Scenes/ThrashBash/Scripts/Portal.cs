@@ -26,7 +26,7 @@ public class Portal : UdonSharpBehaviour
     {
         if (cached_language_type != gameController.localizer.language_type)
         {
-            label.text = gameController.localizer.FetchText(name_localizer_variable, name_default);
+            if (label != null) { label.text = gameController.localizer.FetchText(name_localizer_variable, name_default); }
             cached_language_type = gameController.localizer.language_type;
         }
     }

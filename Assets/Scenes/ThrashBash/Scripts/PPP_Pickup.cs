@@ -41,6 +41,7 @@ public class PPP_Pickup : UdonSharpBehaviour
     public override void OnPickup()
     {
         if (!Networking.IsOwner(gameObject)) { return; }
+        if (!ppp_options.gameController.room_ready_script.warning_acknowledged) { GetComponent<VRC_Pickup>().Drop(); return; }
 
         ppp_options = ppp_options.gameController.FindPlayerOwnedObject(Networking.LocalPlayer, "PPPCanvas").GetComponent<PPP_Options>();
 

@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.ComponentModel;
 using TMPro;
 using UdonSharp;
 using UnityEngine;
@@ -9,7 +10,7 @@ using VRC.Udon;
 
 public enum language_type_name
 {
-    English, French, Japanese, SpanishLatin, SpanishEurope
+    English, French, Japanese, SpanishLatin, SpanishEurope, Italian
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
@@ -19,14 +20,23 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text lang_en_json;
     [SerializeField] private TMP_Text lang_fr_json;
     [SerializeField] private TMP_Text lang_jp_json;
-    [SerializeField] private TMP_Text lang_es_s_json;
     [SerializeField] private TMP_Text lang_es_l_json;
+    [SerializeField] private TMP_Text lang_es_s_json;
+    [SerializeField] private TMP_Text lang_it_json;
 
     [NonSerialized] public int language_type = (int)language_type_name.English;
     [NonSerialized] public DataDictionary lang_dict;
 
     [Header("Dynamic Object References")]
     [SerializeField] public GameController gameController;
+
+    [Header("Image References")]
+    [SerializeField] public Sprite[] round_option_images_en; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images_fr; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images_jp; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images_es_l; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images_es_s; // NOTE: Corresponds to gamemode_name
+    [SerializeField] public Sprite[] round_option_images_it; // NOTE: Corresponds to gamemode_name
 
     [Header("Static Object References")]
     [SerializeField] private TMP_Text RoundHeaderText;
@@ -70,6 +80,12 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text TutorialBasicsText;
     [SerializeField] private TMP_Text TutorialUIHeader;
     [SerializeField] private TMP_Text TutorialGamemodesHeader;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_0;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_1;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_2;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_3;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_4;
+    [SerializeField] private UnityEngine.UI.Image TutorialGamemodesImage_5;
     [SerializeField] private TMP_Text TutorialBasicsImageTxt;
     [SerializeField] private TMP_Text TutorialBasicsImageTxt_1_0;
     [SerializeField] private TMP_Text TutorialBasicsImageTxt_1_1;
@@ -98,8 +114,15 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text CreditsVAText;
     [SerializeField] private TMP_Text WeaponDemoHeader;
     [SerializeField] private TMP_Text PowerupDemoHeader;
-    [SerializeField] private TMP_Text WarningText_3;
-    [SerializeField] private TMP_Text WarningText_4;
+    [SerializeField] private TMP_Text WarningLanguageHeader;
+    [SerializeField] private TMP_Text WarningLanguageConfirm;
+    [SerializeField] private TMP_Text WarningColorblindnessHeader;
+    [SerializeField] private TMP_Text WarningColorblindnessToggle;
+    [SerializeField] private TMP_Text WarningColorblindnessConfirm;
+    [SerializeField] private TMP_Text WarningStreamerHeader;
+    [SerializeField] private TMP_Text WarningStreamerDescription;
+    [SerializeField] private TMP_Text WarningStreamerYes;
+    [SerializeField] private TMP_Text WarningStreamerNo;
     [SerializeField] private TMP_Text FloorJoinInstructHeader;
     [SerializeField] private TMP_Text FloorJoinInstructInvertHeader;
     [SerializeField] private TMP_Text FloorSpectateInstructHeader;
@@ -123,6 +146,8 @@ public class Localizer : UdonSharpBehaviour
         else if (language_type == (int)language_type_name.Japanese && lang_jp_json != null) { json = lang_jp_json.text; }
         else if (language_type == (int)language_type_name.SpanishLatin && lang_es_l_json != null) { json = lang_es_l_json.text; }
         else if (language_type == (int)language_type_name.SpanishEurope && lang_es_s_json != null) { json = lang_es_s_json.text; }
+        else if (language_type == (int)language_type_name.Italian && lang_it_json != null) { json = lang_it_json.text; }
+
         else if (lang_en_json != null) { json = lang_en_json.text; }
 
         if (VRCJson.TryDeserializeFromJson(json, out DataToken result))
@@ -145,7 +170,7 @@ public class Localizer : UdonSharpBehaviour
         else
         {
             // Deserialization failed. Let's see what the error was.
-            Debug.Log($"Failed to Deserialize json {json} - {result.ToString()}");
+            Debug.LogError($"[LOCALIZER_TEST]: Failed to Deserialize json {json} - {result.ToString()}");
         }
 
         return null;
@@ -162,6 +187,7 @@ public class Localizer : UdonSharpBehaviour
         }
         else
         {
+            UnityEngine.Debug.LogWarning("[LOCALIZER_TEST]: Failed to retrieve string for " + key + " for language " + language_type);
             return fallback;
         }
     }
@@ -169,6 +195,23 @@ public class Localizer : UdonSharpBehaviour
     public string FetchText(string key, string fallback="[?]", string argument_0 = "", string argument_1="", string argument_2="", string argument_3="", string argument_4="")
     {
         return TryGetText(key, fallback).Replace("$ARG0", argument_0).Replace("$ARG1", argument_1).Replace("$ARG2", argument_2).Replace("$ARG3", argument_3).Replace("$ARG4", argument_4);
+    }
+
+    public  void RefreshGamemodeImages()
+    {
+        if (language_type == (int)language_type_name.English) { gameController.round_option_images = round_option_images_en; }
+        else if (language_type == (int)language_type_name.French) { gameController.round_option_images = round_option_images_fr; }
+        else if (language_type == (int)language_type_name.Japanese) { gameController.round_option_images = round_option_images_jp; }
+        else if (language_type == (int)language_type_name.SpanishLatin) { gameController.round_option_images =  round_option_images_es_l; }
+        else if (language_type == (int)language_type_name.SpanishEurope) { gameController.round_option_images = round_option_images_es_s; }
+        else if (language_type == (int)language_type_name.Italian) { gameController.round_option_images = round_option_images_it; }
+
+        TutorialGamemodesImage_0.sprite = gameController.round_option_images[(int)gamemode_name.Survival];
+        TutorialGamemodesImage_1.sprite = gameController.round_option_images[(int)gamemode_name.Clash];
+        TutorialGamemodesImage_2.sprite = gameController.round_option_images[(int)gamemode_name.BossBash];
+        TutorialGamemodesImage_3.sprite = gameController.round_option_images[(int)gamemode_name.Infection];
+        TutorialGamemodesImage_4.sprite = gameController.round_option_images[(int)gamemode_name.FittingIn];
+        TutorialGamemodesImage_5.sprite = gameController.round_option_images[(int)gamemode_name.KingOfTheHill];
     }
 
     public void RefreshGamemodeText()
@@ -211,6 +254,7 @@ public class Localizer : UdonSharpBehaviour
     public void SetStaticText()
     {
         // The big one. This is what will change the text on EVERYTHING.
+        RefreshGamemodeImages();
         RefreshGamemodeText();
         RefreshMapscriptText();
         gameController.RefreshSetupUI();
@@ -289,13 +333,21 @@ public class Localizer : UdonSharpBehaviour
         CreditsVAText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_3", CreditsVAText.text);
         WeaponDemoHeader.text = FetchText("TRAINING_HEADER_WEAPON", WeaponDemoHeader.text);
         PowerupDemoHeader.text = FetchText("TRAINING_HEADER_POWERUP", PowerupDemoHeader.text);
-        WarningText_3.text = FetchText("LOCALOPTIONS_LANGUAGE_HEADER", WarningText_3.text);
-        WarningText_4.text = FetchText("LOCALOPTIONS_LANGUAGE_WARNING", WarningText_4.text);
+        WarningLanguageHeader.text = FetchText("LOCALOPTIONS_TAB_LANGUAGE", WarningLanguageHeader.text);
+        WarningLanguageConfirm.text = FetchText("BUTTON_GENERIC_CONFIRM", WarningLanguageConfirm.text);
+        WarningStreamerHeader.text = FetchText("LOCALOPTIONS_STREAMER_WARNING_HEADER", WarningStreamerHeader.text);
+        WarningStreamerDescription.text = FetchText("LOCALOPTIONS_STREAMER_WARNING_DESCRIPTION", WarningStreamerDescription.text);
+        WarningStreamerYes.text = FetchText("BUTTON_GENERIC_YES", WarningStreamerYes.text);
+        WarningStreamerNo.text = FetchText("BUTTON_GENERIC_NO", WarningStreamerNo.text);
         FloorJoinInstructHeader.text = FetchText("NOTIFICATION_START_0", "Stand in the square to join the game!");
         FloorJoinInstructInvertHeader.text = "↓" + FloorJoinInstructHeader.text + "↓";
         FloorJoinInstructHeader.text = "↑" + FloorJoinInstructHeader.text + "↑";
         FloorSpectateInstructHeader.text = FetchText("NOTIFICATION_START_1", "Alternatively, you can spectate by using the 'Game' Tab in the Local Options menu!");
         FloorSpectateInstructInvertHeader.text = FloorSpectateInstructHeader.text;
+
+        WarningColorblindnessHeader.text = FetchText("LOCALOPTIONS_GAME_COLORBLIND_HEADER", WarningColorblindnessHeader.text);
+        WarningColorblindnessToggle.text = FetchText("LOCALOPTIONS_GAME_COLORBLIND_SYMBOL_TOGGLE", WarningColorblindnessToggle.text);
+        WarningColorblindnessConfirm.text = FetchText("BUTTON_GENERIC_CONFIRM", WarningColorblindnessConfirm.text);
 
         if (gameController != null && gameController.local_ppp_options != null)
         {

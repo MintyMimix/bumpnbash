@@ -113,7 +113,9 @@ public class PPP_Options : UdonSharpBehaviour
         Transform harmtester_transform = GlobalHelperFunctions.GetChildTransformByName(transform, "HarmTester");
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
-        ResetColorblindNames(true);
+        ResetColorblindNames(ref ui_colorblind_dropdown, true);
+        ResetColorblindNames(ref gameController.room_ready_script.ui_colorblind_dropdown, true);
+
         ResetMusicNames(true);
 
         if (canvas_pos_init == Vector3.zero)
@@ -282,11 +284,11 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateMusicOverride();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "AudioLink"))
+                if (!PlayerData.HasKey(player, "AudioLinkPref"))
                 {
                     if (gameController != null && gameController.flag_for_mobile_vr != null)
                     {
-                        if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = false; }
+                        if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = true; }
                         else
                         {
                             ui_audiolink_toggle.isOn = false;
@@ -383,9 +385,10 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIWrist();
                     continue;
                 }
-                if (!PlayerData.HasKey(player, "LanguageType"))
+                if (!PlayerData.HasKey(player, "LangType"))
                 {
                     UpdateLangEnglish();
+                    gameController.room_ready_script.SetWarningStage(1);
                     continue;
                 }
                 if (!PlayerData.HasKey(player, "MotionSicknessCage"))
@@ -544,7 +547,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         bool out_AudioLink;
-        if (PlayerData.TryGetBool(Networking.LocalPlayer, "AudioLink", out out_AudioLink))
+        if (PlayerData.TryGetBool(Networking.LocalPlayer, "AudioLinkPref", out out_AudioLink))
         {
             if (gameController != null && gameController.flag_for_mobile_vr != null)
             {
@@ -560,7 +563,7 @@ public class PPP_Options : UdonSharpBehaviour
         {
             if (gameController != null && gameController.flag_for_mobile_vr != null)
             {
-                if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = false; }
+                if (!gameController.flag_for_mobile_vr.activeInHierarchy) { ui_audiolink_toggle.isOn = true; }
                 else
                 {
                     ui_audiolink_toggle.isOn = false;
@@ -626,12 +629,21 @@ public class PPP_Options : UdonSharpBehaviour
         }
 
         int out_LanguageType;
-        if (PlayerData.TryGetInt(Networking.LocalPlayer, "LanguageType", out out_LanguageType))
+        if (PlayerData.TryGetInt(Networking.LocalPlayer, "LangType", out out_LanguageType))
         {
+            UnityEngine.Debug.Log("FOUND LANGTYPE KEY: " + out_LanguageType);
+            if (out_LanguageType == (int)language_type_name.English) { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLangEnglish(); }
+            else if (out_LanguageType == (int)language_type_name.French) { ui_language_toggles[(int)language_type_name.French].isOn = true; UpdateLangFrench(); }
+            else if (out_LanguageType == (int)language_type_name.Japanese) { ui_language_toggles[(int)language_type_name.Japanese].isOn = true; UpdateLangJapanese(); }
+            else if (out_LanguageType == (int)language_type_name.SpanishLatin) { ui_language_toggles[(int)language_type_name.SpanishLatin].isOn = true; UpdateLangSpanishLatin(); }
+            else if (out_LanguageType == (int)language_type_name.SpanishEurope) { ui_language_toggles[(int)language_type_name.SpanishEurope].isOn = true; UpdateLangSpanishEurope(); }
+            else if (out_LanguageType == (int)language_type_name.Italian) { ui_language_toggles[(int)language_type_name.Italian].isOn = true; UpdateLangItalian(); }
+
             UpdateLanguage(out_LanguageType);
         }
         else
         {
+            gameController.room_ready_script.SetWarningStage(1);
             UpdateLangEnglish();
         }
 
@@ -781,7 +793,7 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("MusicVolume", ui_uimusicslider.value);
         PlayerData.SetFloat("SoundVolume", ui_uisoundslider.value);
         PlayerData.SetFloat("MusicOverride", ui_musicoverride_dropdown.value);
-        PlayerData.SetBool("AudioLink", ui_audiolink_toggle.isOn);
+        PlayerData.SetBool("AudioLinkPref", ui_audiolink_toggle.isOn);
         PlayerData.SetFloat("VOVolume", ui_uivovolumelider.value);
         PlayerData.SetBool("VOPref_A", ui_vo_pref_a_toggle.isOn);
         PlayerData.SetBool("VOPref_B", ui_vo_pref_b_toggle.isOn);
@@ -791,7 +803,7 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetInt("ColorblindChoice", ui_colorblind_dropdown.value);
         PlayerData.SetBool("HitboxShow", ui_hitboxtoggle.isOn);
         PlayerData.SetBool("HurtboxShow", ui_hurtboxtoggle.isOn);
-        PlayerData.SetInt("LanguageType", localizer.language_type);
+        PlayerData.SetInt("LangType", localizer.language_type);
         PlayerData.SetBool("MotionSicknessCage", ui_motionsicknesscagetoggle.isOn);
         PlayerData.SetBool("MotionSicknessFloor", ui_motionsicknessfloortoggle.isOn);
         if (!gameController.flag_for_mobile_vr.activeInHierarchy) { PlayerData.SetBool("ParticleShow", ui_particletoggle.isOn); }
@@ -978,7 +990,7 @@ public class PPP_Options : UdonSharpBehaviour
         colorblind_choice = ui_colorblind_dropdown.value;
         colorblind = ui_colorblind_toggle.isOn;
         gameController.SetColorOptions(colorblind_choice);
-        SetColorblindFlagColors();
+        SetColorblindFlagColors(ref ui_colorblind_dropdown_caption, ref colorblind_flags);
         gameController.RefreshSetupUI();
         UpdateUIWrist(false);
         //ShowDemoUI();
@@ -1209,37 +1221,45 @@ public class PPP_Options : UdonSharpBehaviour
     public void UpdateLangEnglish()
     {
         if (ui_language_toggles[(int)language_type_name.English].isOn) { UpdateLanguage((int)language_type_name.English); }
-        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn) 
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn) 
         { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangFrench()
     {
         if (ui_language_toggles[(int)language_type_name.French].isOn) { UpdateLanguage((int)language_type_name.French); }
-        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn)
         { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangJapanese()
     {
         if (ui_language_toggles[(int)language_type_name.Japanese].isOn) { UpdateLanguage((int)language_type_name.Japanese); }
-        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn)
         { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangSpanishLatin()
     {
         if (ui_language_toggles[(int)language_type_name.SpanishLatin].isOn) { UpdateLanguage((int)language_type_name.SpanishLatin); }
-        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn)
         { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
 
     public void UpdateLangSpanishEurope()
     {
         if (ui_language_toggles[(int)language_type_name.SpanishEurope].isOn) { UpdateLanguage((int)language_type_name.SpanishEurope); }
-        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn)
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn)
         { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
     }
+
+    public void UpdateLangItalian()
+    {
+        if (ui_language_toggles[(int)language_type_name.Italian].isOn) { UpdateLanguage((int)language_type_name.Italian); }
+        else if (!ui_language_toggles[(int)language_type_name.English].isOn && !ui_language_toggles[(int)language_type_name.French].isOn && !ui_language_toggles[(int)language_type_name.Japanese].isOn && !ui_language_toggles[(int)language_type_name.SpanishLatin].isOn && !ui_language_toggles[(int)language_type_name.SpanishEurope].isOn && !ui_language_toggles[(int)language_type_name.Italian].isOn)
+        { ui_language_toggles[(int)language_type_name.English].isOn = true; UpdateLanguage((int)language_type_name.English); } // If NO languages are selected, set english to be on
+    }
+
 
     public void UpdateSpectatorIntent()
     {
@@ -1321,47 +1341,50 @@ public class PPP_Options : UdonSharpBehaviour
         }
         gameController.RefreshSetupUI();
     }*/
-
-    public void ColorblindTemplateInit()
+    //ui_colorblind_grid
+    //ui_colorblind_dropdown_caption
+    //colorblind_flags
+    public void ColorblindTemplateInit(ref GameObject template, ref UnityEngine.UI.GridLayoutGroup grid, ref TMP_Text caption, ref GameObject[] flags)
     {
         // Setup the colorblind flag objects for demonstration
-        colorblind_flags = new GameObject[gameController.team_colors_base.Length];
+        flags = new GameObject[gameController.team_colors_base.Length];
         for (int j = 0; j < gameController.team_colors_base.Length; j++)
         {
-            colorblind_flags[j] = Instantiate(template_colorblind_flag, ui_colorblind_grid.transform);
-            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]); 
+            flags[j] = Instantiate(template, grid.transform);
+            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]); 
         }
-        SetColorblindFlagColors();
+        SetColorblindFlagColors(ref caption, ref flags);
         // After making the copies, set the template to be inactive
-        template_colorblind_flag.SetActive(false);
+        template.SetActive(false);
     }
 
-    public void SetColorblindFlagColors()
+    public void SetColorblindFlagColors(ref TMP_Text caption, ref GameObject[] flags)
     {
-        ui_colorblind_dropdown_caption.text = ui_colorblind_dropdown_caption.text.Replace("  ", "\n");
+        caption.text = caption.text.Replace("  ", "\n");
 
-        if (colorblind_flags == null) { return; }
-        for (int j = 0; j < colorblind_flags.Length; j++)
+        if (flags == null) { return; }
+        for (int j = 0; j < flags.Length; j++)
         {
-            colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().color = gameController.team_colors[j];
-            colorblind_flags[j].transform.GetChild(1).GetComponent<TMP_Text>().color = gameController.team_colors_bright[j];
+            flags[j].GetComponent<UnityEngine.UI.Image>().color = gameController.team_colors[j];
+            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().color = gameController.team_colors_bright[j];
             if (colorblind)
             {
-                colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().sprite = gameController.team_sprites[j];
-                colorblind_flags[j].transform.GetChild(0).gameObject.SetActive(false);
+                flags[j].GetComponent<UnityEngine.UI.Image>().sprite = gameController.team_sprites[j];
+                flags[j].transform.GetChild(0).gameObject.SetActive(false);
             }
             else
             {
-                colorblind_flags[j].GetComponent<UnityEngine.UI.Image>().sprite = ui_flag_base_sprite;
-                colorblind_flags[j].transform.GetChild(0).gameObject.SetActive(true);
+                flags[j].GetComponent<UnityEngine.UI.Image>().sprite = ui_flag_base_sprite;
+                flags[j].transform.GetChild(0).gameObject.SetActive(true);
             }
         }
     }
 
-    public void ResetColorblindNames(bool init = false)
+    //ui_colorblind_dropdown
+    public void ResetColorblindNames(ref TMP_Dropdown dropdown, bool init = false)
     {
         // Due to the way this is implemented, the value will be forced to 0. So, we store the original value and then reset to that value after refreshing the options.
-        int stored_value = ui_colorblind_dropdown.value;
+        int stored_value = dropdown.value;
         // Make sure our placeholder newline character is replaced with the real version (inspector doesn't interpret it correctly when manually typed)
 
         for (int i = 0; i < ui_colorblind_dropdown_names.Length; i++)
@@ -1369,9 +1392,9 @@ public class PPP_Options : UdonSharpBehaviour
             if (!init) { ui_colorblind_dropdown_names[i] = gameController.localizer.FetchText("LOCALOPTIONS_GAME_COLORBLIND_SELECT_" + i.ToString(), ui_colorblind_dropdown_names[i]).Replace("#", "  "); }
             else { ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("#", "  "); }
         }
-        ui_colorblind_dropdown.ClearOptions();
-        ui_colorblind_dropdown.AddOptions(ui_colorblind_dropdown_names);
-        ui_colorblind_dropdown.value = stored_value;
+        dropdown.ClearOptions();
+        dropdown.AddOptions(ui_colorblind_dropdown_names);
+        dropdown.value = stored_value;
     }
 
     public void ResetMusicNames(bool init = false)

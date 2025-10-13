@@ -24,7 +24,7 @@ public enum game_sfx_name
 }
 public enum ready_sfx_name
 {
-    QueueStart, TimerTick, QueueCancel, LoadStart, ENUM_LENGTH
+    QueueStart, TimerTick, QueueCancel, LoadStart, JoinGame, JoinMidGame, LeaveGame, WarningPressNext, WarningPressDone, ENUM_LENGTH
 }
 public enum announcement_sfx_name
 {
@@ -1080,13 +1080,22 @@ public class GameController : GlobalHelperFunctions
         if (local_plyAttr == null) { local_plyAttr = FindPlayerAttributes(Networking.LocalPlayer); }
         if (local_plyAttr != null)
         {
+            // Check previous team, if going from waiting for lobby to something new, then play a nice noise
+            int old_team = local_plyAttr.ply_team;
             local_plyAttr.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            if (old_team == (int)player_tracking_name.WaitingForLobby && local_plyAttr.ply_team >= 0) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.JoinGame); }
+            else if ((old_team == (int)player_tracking_name.WaitingForLobby || old_team >= 0) && local_plyAttr.ply_team < 0 && old_team != local_plyAttr.ply_team) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+            else if (old_team != (int)player_tracking_name.WaitingForLobby && local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.JoinMidGame); }
+            else if (old_team != (int)player_tracking_name.Spectator && local_plyAttr.ply_team == (int)player_tracking_name.Spectator) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+            else if (old_team != (int)player_tracking_name.Unassigned && local_plyAttr.ply_team == (int)player_tracking_name.Unassigned) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+
             if (local_plyAttr.ply_state == (int)player_state_name.Spectator) {
                 if (local_plyAttr.ply_team >= 0 || local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby) { local_plyAttr.ply_state = (int)player_state_name.Joined; }
                 else if (local_plyAttr.ply_team != (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
                 else { } // If state & team are already spectator, leave as-is
             }
             else if (local_plyAttr.ply_team == (int)player_tracking_name.Spectator && !local_plyAttr.ply_training) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
+            if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
         }
 
         if (ui_round_mapselect != null)
@@ -1527,7 +1536,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_a = Mathf.FloorToInt((float)Mathf.Pow((float)ply_count, 1.5f));
             goal_input_b = 2 + Mathf.FloorToInt((float)ply_count / (float)10.0f);
             ui_round_length_input.text = "300";
-            ui_round_length_toggle.isOn = false;
+            ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "3";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
@@ -1738,6 +1747,8 @@ public class GameController : GlobalHelperFunctions
 
         plysettings_item_debuff = ui_adv_option_item_debuff_toggle.isOn;
 
+        if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
+
         RequestSerialization();
         RefreshSetupUI();
     }
@@ -1839,7 +1850,10 @@ public class GameController : GlobalHelperFunctions
             }
             if (game_is_functional) { local_plyhitbox = ply_object_plyhitbox[ply_owners_cnt]; }
             local_ppp_options = plyPPPCanvas.GetComponent<PPP_Options>();
-            local_ppp_options.ColorblindTemplateInit();
+
+            local_ppp_options.ColorblindTemplateInit(ref local_ppp_options.template_colorblind_flag, ref local_ppp_options.ui_colorblind_grid, ref local_ppp_options.ui_colorblind_dropdown_caption, ref local_ppp_options.colorblind_flags);
+            local_ppp_options.ColorblindTemplateInit(ref room_ready_script.template_colorblind_flag, ref room_ready_script.ui_colorblind_grid, ref room_ready_script.ui_colorblind_dropdown_caption, ref room_ready_script.colorblind_flags);
+
             //local_ppp_options.RefreshAllOptions();
 
             template_ItemSpawner = FindPlayerOwnedObject(player, "ItemSpawnerTemplate");
@@ -1931,6 +1945,7 @@ public class GameController : GlobalHelperFunctions
     {
         // Enable collision on ready room
         if (!player.isLocal) { return; }
+        platformHook.custom_force_unhook = false;
         if (local_plyAttr != null)
         {
             local_plyAttr.ply_scale = 1.0f;
@@ -1942,6 +1957,7 @@ public class GameController : GlobalHelperFunctions
             local_plyAttr.in_ready_room = true;
             //local_plyAttr.air_thrust_enabled = false;
             local_plyAttr.ResetPowerups();
+            local_plyAttr.ResetToDefaultStats();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
             if (local_secondaryweapon != null) { local_secondaryweapon.ResetWeaponToDefault(); }
         }
@@ -1951,12 +1967,14 @@ public class GameController : GlobalHelperFunctions
             else if (local_plyAttr.ply_state != (int)player_state_name.Spectator) {
                 local_plyAttr.ply_team = (int)player_tracking_name.Unassigned;
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Unassigned, false);
-                local_plyAttr.ply_state = (int)player_state_name.Inactive; 
+                local_plyAttr.ply_state = (int)player_state_name.Inactive;
+                if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(false); }
             }
             else 
             {
                 local_plyAttr.ply_team = (int)player_tracking_name.Spectator;
                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, (int)player_tracking_name.Spectator, false);
+                if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
             }
         }
         if (local_plyweapon != null && local_plyweapon.pickup_component != null) { local_plyweapon.pickup_component.Drop(); local_plyweapon.gameObject.SetActive(false); }
@@ -2106,10 +2124,12 @@ public class GameController : GlobalHelperFunctions
         UnityEngine.Debug.Log("[DICT_TEST]: ROUND START - " + ConvertIntArrayToString(ply_parent_arr[0]) + " | " + ConvertIntArrayToString(ply_parent_arr[1]));
 
         // We need to remove the extended map BEFORE we teleport the player
-        if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
-        else { mapscript_list[map_selected].room_game_extended.SetActive(false); }
+        if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room && mapscript_list[map_selected].room_game_extended != null) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
+        else if (ply_parent_arr[0].Length < mapscript_list[map_selected].min_players_to_extend_room && mapscript_list[map_selected].room_game_extended != null) { mapscript_list[map_selected].room_game_extended.SetActive(false); }
+        if (option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(true); }
+        else if (!option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(false); }
 
-        var gamemode_description = ModifyModeDescription(round_option_descriptions[option_gamemode]);
+            var gamemode_description = ModifyModeDescription(round_option_descriptions[option_gamemode]);
         var personal_description = "";
         var player_description = "";
 
@@ -2142,12 +2162,14 @@ public class GameController : GlobalHelperFunctions
             playerData.ply_atk = plysettings_atk;
             playerData.ply_def = plysettings_def;
             playerData.ply_grav = plysettings_grav * mapscript_list[map_selected].map_gravity_scale;
+            playerData.ply_desktop_applied_dual_compensation_buff = false;
             playerData.killstreak = 0;
             playerData.killbo = 0;
             playerData.combo_receive = 0;
             playerData.combo_send = 0;
             playerData.ply_state = (int)player_state_name.Alive;
             playerData.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
+            if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
             playerData.air_thrust_enabled = true;
 
             if (option_gamemode == (int)gamemode_name.BossBash && playerData.ply_team == 1)
@@ -2255,7 +2277,7 @@ public class GameController : GlobalHelperFunctions
                 local_uiplytoself.ForceUpdateAllUI();
             }
 
-            if (option_teamplay && !option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(); }
+            if (option_teamplay) { TeleportLocalPlayerToGameSpawnZone(); }
             ToggleReadyRoomCollisions(false);
             ToggleTrainingRoom(false);
 
@@ -2305,7 +2327,7 @@ public class GameController : GlobalHelperFunctions
             if (plytoothers != null) { plytoothers.ResetCache(); }
 
             if (player.isLocal) {
-                if (!option_teamplay || option_enforce_team_limits) { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
+                if (!option_teamplay) { TeleportLocalPlayerToGameSpawnZone(i % mapscript_list[map_selected].map_spawnzones.Length); }
                 continue; 
             }
         }
@@ -2445,7 +2467,22 @@ public class GameController : GlobalHelperFunctions
 
         if (Networking.IsOwner(gameObject))
         {
-            if (map_selected >= mapscript_list.Length) { map_selected = 0; }
+            if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
+            // If we're on Facing Worlds, increase default speed to compensate for map size
+            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
+                && (plysettings_speed < 1.91f || plysettings_atk < 2.99f))
+            {
+                plysettings_speed = 1.91f;
+                plysettings_atk = 2.99f;
+            }
+            // And reset if the game master forgot to
+            else if (mapscript_list[map_selected].map_name != localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
+                && (plysettings_speed == 1.91f || plysettings_atk == 2.99f))
+            { 
+                plysettings_speed = 1.0f;
+                plysettings_atk = 1.0f;
+            }
+
             LocalRoundStart();
         }
         else { wait_for_sync_for_round_start = true; }
@@ -2469,6 +2506,26 @@ public class GameController : GlobalHelperFunctions
         {
             ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = localizer.FetchText("SCOREBOARD_HEADER_DEFAULT", "Scoreboard");
             ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.color = Color.white;
+        }
+
+        if (Networking.IsOwner(gameObject))
+        {
+            if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
+            // If we're on Facing Worlds, increase default speed to compensate for map size
+            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
+                && (plysettings_speed < 1.91f || plysettings_atk < 2.99f))
+            {
+                plysettings_speed = 1.91f;
+                plysettings_atk = 2.99f;
+            }
+            // And reset if the game master forgot to
+            else if (mapscript_list[map_selected].map_name != localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
+                && (plysettings_speed == 1.91f || plysettings_atk == 2.99f))
+            {
+                plysettings_speed = 1.0f;
+                plysettings_atk = 1.0f;
+            }
+            RequestSerialization();
         }
         RefreshSetupUI();
     }
@@ -3150,7 +3207,12 @@ public class GameController : GlobalHelperFunctions
 
             //if (snd_game_music_source.volume < music_volume_stored) { snd_game_music_source.volume = music_volume_stored; }
             snd_game_music_source.pitch = 1.0f;
-            if (winner_name != null && winner_name.Length > 0 && local_is_winner)
+            if (!option_teamplay && winner_name != null && winner_name.Length > 0)
+            {
+                PlaySFXFromArray(snd_game_music_source, snd_victory_music_clips, option_gamemode, 1, true);
+                vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.End);
+            }
+            else if (winner_name != null && winner_name.Length > 0 && local_is_winner)
             {
                 PlaySFXFromArray(snd_game_music_source, snd_victory_music_clips, option_gamemode, 1, true);
                 if (option_gamemode == (int)gamemode_name.Infection) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.Infection_End_Victory); }
@@ -3159,7 +3221,7 @@ public class GameController : GlobalHelperFunctions
             }
             else
             {
-                PlaySFXFromArray(snd_game_music_source, snd_defeat_music_clips, option_gamemode, 1, true);
+                PlaySFXFromArray(snd_game_music_source, snd_defeat_music_clips, option_gamemode, 1, true); 
                 if (option_gamemode == (int)gamemode_name.Infection) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.Infection_End_Defeat); }
                 else if (local_plyAttr != null && local_plyAttr.ply_team < 0) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.End); }
                 else { vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.Defeat); }
@@ -3217,7 +3279,7 @@ public class GameController : GlobalHelperFunctions
         }
     }
 
-    public void TeleportLocalPlayerToGameSpawnZone(int spawnZoneIndex = -1)
+    public void TeleportLocalPlayerToGameSpawnZone(int spawnZoneIndex = -1, bool force_at_index = false)
     {
         if (mapscript_list == null || map_selected >= mapscript_list.Length || mapscript_list[map_selected].map_spawnzones == null || mapscript_list[map_selected].map_spawnzones.Length == 0) { return; }
         map_element_spawn spawnzone = null;
@@ -3225,12 +3287,12 @@ public class GameController : GlobalHelperFunctions
         {
             spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex];
             // Note: we need to ensure KO
-            if (spawnzone == null
+            if ((spawnzone == null
                 || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0 )
                 || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id == -2) // FFA-only
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || !spawnzone.gameObject.activeInHierarchy || !spawnzone.gameObject.activeSelf
-                ) { spawnZoneIndex = -1; }
+                ) && (!force_at_index)) { spawnZoneIndex = -1; }
         }
         // If no spawn is specified, try gettting the farthest away from all other players
         else
@@ -3271,13 +3333,16 @@ public class GameController : GlobalHelperFunctions
         Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
         if (spawnzone.orient_towards != null)
         {
-            rotateTo = RotateTowards(Networking.LocalPlayer.GetPosition(), spawnzone.orient_towards.position);
+            rotateTo = RotateTowards(Networking.LocalPlayer.GetPosition(), spawnzone.orient_towards.position) * Quaternion.Euler(new Vector3(0, 90.0f, 0));
         }
         Networking.LocalPlayer.TeleportTo(new Vector3(rx, spawnZoneBounds.center.y, rz), rotateTo);
         UnityEngine.Debug.Log("Teleporting player to spawn zone " + spawnZoneIndex);
         platformHook.custom_force_unhook = false;
 
-        if (local_plyAttr != null) { local_plyAttr.in_ready_room = false; local_plyAttr.air_thrust_enabled = true; }
+        if (local_plyAttr != null) 
+        { 
+            local_plyAttr.in_ready_room = false; local_plyAttr.air_thrust_enabled = true; 
+        }
     }
 
     [NetworkCallable]
@@ -3322,6 +3387,7 @@ public class GameController : GlobalHelperFunctions
             }
             else if (local_plyAttr.ply_state != (int)player_state_name.Dead) { local_plyAttr.ply_state = (int)player_state_name.Joined; }
             local_plyAttr.ResetPowerups();
+            local_plyAttr.ResetToDefaultStats();
             if (local_plyweapon != null) { local_plyweapon.ResetWeaponToDefault(); }
             if (local_secondaryweapon != null) { local_secondaryweapon.ResetWeaponToDefault(); }
             local_plyAttr.ply_scale = 1.0f;
@@ -3521,9 +3587,16 @@ public class GameController : GlobalHelperFunctions
         if (player_id == Networking.LocalPlayer.playerId) 
         {
             // Since the master never gets an OnDeserialization event, we can just change their personal team here
+            if (local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby && new_team >= 0) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.JoinGame); }
+            else if ((local_plyAttr.ply_team == (int)player_tracking_name.WaitingForLobby || local_plyAttr.ply_team >= 0) && new_team < 0 && new_team != local_plyAttr.ply_team) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+            else if (local_plyAttr.ply_team != (int)player_tracking_name.WaitingForLobby && new_team == (int)player_tracking_name.WaitingForLobby) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.JoinMidGame); }
+            else if (local_plyAttr.ply_team != (int)player_tracking_name.Spectator && new_team == (int)player_tracking_name.Spectator) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+            else if (local_plyAttr.ply_team != (int)player_tracking_name.Unassigned && new_team == (int)player_tracking_name.Unassigned) { PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LeaveGame); }
+
             local_plyAttr.ply_team = new_team;
             if (new_team == (int)player_tracking_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Spectator; }
             else if (local_plyAttr.ply_state == (int)player_state_name.Spectator) { local_plyAttr.ply_state = (int)player_state_name.Inactive; }
+            if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
         } 
 
         RefreshSetupUI();
@@ -3542,6 +3615,7 @@ public class GameController : GlobalHelperFunctions
             }
         }
 
+        
         //PlayerHitbox plyHitbox = GetPlayerHitboxFromID(player_id);
         //if (plyHitbox != null) { plyHitbox.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetTeamColor", new_team); }
 
@@ -3849,7 +3923,18 @@ public class GameController : GlobalHelperFunctions
     [NetworkCallable]
     public void NetworkAddToTextQueue(string input, Color color, float duration)
     {
-        if (local_uiplytoself != null) { local_uiplytoself.AddToTextQueue(input, color, duration); }
+        if (local_uiplytoself != null) 
+        { 
+            if (input.Contains(localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", "").Trim())
+                && local_plyAttr != null 
+                 && ((local_plyAttr.ply_state != (int)player_state_name.Alive && local_plyAttr.ply_state != (int)player_state_name.Inactive)
+                 || local_plyAttr.ply_team < 0 || local_plyAttr.in_ready_room)
+                )
+            {
+                return;
+            }
+            local_uiplytoself.AddToTextQueue(input, color, duration); 
+        }
     }
 
     public string ModifyModeDescription(string input)

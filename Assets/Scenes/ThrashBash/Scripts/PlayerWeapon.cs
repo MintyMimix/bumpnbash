@@ -648,7 +648,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         float throwForce = 11.0f;
         if (pickup_rb != null) { velocity_stored = pickup_rb.velocity + (throwDir * throwForce); }
         //}
-        else if (pickup_rb != null) { velocity_stored = pickup_rb.velocity * 2.5f; }
+        //else if (pickup_rb != null) { velocity_stored = pickup_rb.velocity * 2.5f; }
 
         FireWeapon();
         //waiting_for_toss = false;
@@ -678,7 +678,18 @@ public class PlayerWeapon : UdonSharpBehaviour
         else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
             pitch_low = 1.0f; pitch_high = 1.0f; use_melee = false;
-            if (gameController.local_plyAttr != null) { pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+            if (gameController.local_plyAttr != null) 
+            {
+                if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null)
+                {
+                    if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) { pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+                    else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) { pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+                }
+                else
+                {
+                    pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f;
+                }
+            }
         }
         gameController.PlaySFXFromArray(
             snd_source_weaponfire
@@ -690,6 +701,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         float distance = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Distance];
         if (owner_attributes == null) { return; }
         distance *= owner_attributes.ply_scale; // scale distance with player size
+        float base_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Duration];
+        float duration = base_duration * 1.0f / Mathf.Max(0.001f, owner_attributes.ply_speed); // scale duration inversely with player speed
+        duration = (base_duration + duration) / 2.0f; // And average it out
 
         PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH);  // ENUM_LENGTH is used for weapon fire
 
@@ -717,7 +731,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                 , weapon_type
                 , pos_start
                 , transform.rotation
-                , new Vector3(distance, owner_attributes.ply_scale, weapon_extra_data)
+                , new Vector4(distance, owner_attributes.ply_scale, weapon_extra_data, duration)
                 , velocity_stored
                 , use_melee
                 , Networking.LocalPlayer.playerId
@@ -737,13 +751,14 @@ public class PlayerWeapon : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id, float duration_mul)
+    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector4 float_in, Vector3 fire_velocity, bool keep_parent, int player_id, float duration_mul)
     {
         float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
 
         float distance = float_in.x;
         float player_scale = float_in.y;
         byte extra_data = (byte)float_in.z;
+        float duration = float_in.w;
 
         WeaponProjectile projectile = GetInactiveProjectile();
         if (projectile == null) { return; }
@@ -766,7 +781,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         projectile.weapon_type = weapon_type;
 
         projectile.projectile_type = (int)stats_from_weapon[(int)weapon_stats_name.Projectile_Type];
-        projectile.projectile_duration = stats_from_weapon[(int)weapon_stats_name.Projectile_Duration];
+        projectile.projectile_duration = duration;
         projectile.projectile_start_ms = Networking.GetServerTimeInSeconds();
         projectile.pos_start = fire_start_pos;
         projectile.projectile_distance = distance;
@@ -849,11 +864,11 @@ public class PlayerWeapon : UdonSharpBehaviour
             //hurtbox.hurtbox_rb.MoveRotation(rotation);
         }
 
-        bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
+        //bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
 
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
-        if (is_boss && !Networking.LocalPlayer.IsUserInVR()) { hurtbox.hurtbox_damage *= 2.0f; }
+        //if (is_boss && !Networking.LocalPlayer.IsUserInVR()) { hurtbox.hurtbox_damage *= 2.0f; }
         hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
         hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
         hurtbox.hurtbox_timer_network = 0.0f;

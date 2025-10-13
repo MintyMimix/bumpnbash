@@ -15,11 +15,11 @@
     "vrchat.jordo.easyquestswitch": {
       "version": "1.4.0"
     },
-    "com.vrchat.worlds": {
-      "version": "3.8.2"
-    },
     "com.llealloo.audiolink": {
       "version": "2.1.0"
+    },
+    "com.vrchat.worlds": {
+      "version": "3.9.0"
     }
   },
   "locked": {
@@ -49,18 +49,18 @@
       "version": "1.4.0",
       "dependencies": {}
     },
+    "com.llealloo.audiolink": {
+      "version": "2.1.0",
+      "dependencies": {}
+    },
     "com.vrchat.worlds": {
-      "version": "3.8.2",
+      "version": "3.9.0",
       "dependencies": {
-        "com.vrchat.base": "3.8.2"
+        "com.vrchat.base": "3.9.0"
       }
     },
     "com.vrchat.base": {
-      "version": "3.8.2",
-      "dependencies": {}
-    },
-    "com.llealloo.audiolink": {
-      "version": "2.1.0",
+      "version": "3.9.0",
       "dependencies": {}
     }
   }
