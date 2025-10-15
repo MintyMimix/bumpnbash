@@ -642,8 +642,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
         if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null) 
         { 
-            if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward; }
-            else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward; }
+            if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.up; }
+            else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.up; }
         }
         float throwForce = 11.0f;
         if (pickup_rb != null) { velocity_stored = pickup_rb.velocity + (throwDir * throwForce); }

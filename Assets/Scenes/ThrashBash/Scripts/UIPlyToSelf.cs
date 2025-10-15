@@ -169,7 +169,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         stored_local_pos_ptstoppanel = PTSTopPanel.transform.localPosition;
         stored_local_pos_ptstextstackparent = PTSTextStackParent.localPosition;
         stored_local_pos_ptstextstack = new Vector3[PTSTextStack.Length];
-        for (int i = 0; i < text_queue_limited_lines; i++)
+        /*for (int i = 0; i < text_queue_limited_lines; i++)
         {
             //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
             float size_delta = PTSCanvas.sizeDelta.y / 10.0f;
@@ -188,7 +188,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     , (-(i - half_line) * size_delta) - (size_delta / 2)
                     , PTSTextStack[i].localPosition.z);
             }
-        }
+        }*/
         for (int i = 0; i < PTSTextStack.Length; i++)
         {
             stored_local_pos_ptstextstack[i] = PTSTextStack[i].transform.localPosition;
@@ -555,16 +555,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
         string[] splitStr = text_queue_full_str.Split(text_queue_separator);
         for (int i = 0; i < text_queue_limited_lines; i++)
         {
-            if (i < text_queue_full_colors.Length) { PTSTextStack_Label[i].color = text_queue_full_colors[i]; } // Needs to happen first, because alpha is modified after
+            if (i < text_queue_full_colors.Length) { PTSTextStack_Label[i].color = text_queue_full_colors[i]; PTSTextStack_Label[i].gameObject.SetActive(true); } // Needs to happen first, because alpha is modified after
             if (i < splitStr.Length)
             {
-                 PTSTextStack_Label[i].text = splitStr[i].ToUpper();
+                PTSTextStack_Label[i].gameObject.SetActive(true);
+                PTSTextStack_Label[i].text = splitStr[i].ToUpper();
                 float duration_modified = text_queue_full_durations[i];
                 float fade_time = duration_modified - (text_queue_limited_fade_time_percent * duration_modified);
                 if (text_queue_limited_timers[i] >= fade_time) {  PTSTextStack_Label[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
                 else {  PTSTextStack_Label[i].alpha = 1.0f; }
             }
-            else {  PTSTextStack_Label[i].text = ""; }
+            else {  PTSTextStack_Label[i].text = ""; PTSTextStack_Label[i].gameObject.SetActive(false); }
         }
 
         // Tick down demo timer
@@ -1337,10 +1338,17 @@ public class UIPlyToSelf : UdonSharpBehaviour
     public Vector3 SetUIForward()
     {
         float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
-        float scaleUI = 1.0f;
+        float scaleUI = 1.0f * 0.5f;
         float distanceUI = 1.0f;
         float offsetUI = 0.0f;
         int useWrist = 0;
+        float UI_WIDTH = 750.0f;
+        float UI_HEIGHT = 450.0f;
+
+        float VRSCALECONST = Networking.LocalPlayer.IsUserInVR() ? 0.6f : 1.0f;
+        scaleUI *= VRSCALECONST;
+        float VRSTRETCHCONST = Networking.LocalPlayer.IsUserInVR() ? 0.8f : 1.0f;
+
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
@@ -1357,35 +1365,36 @@ public class UIPlyToSelf : UdonSharpBehaviour
 
             scaleUI *= (ppp_options.ui_scale);
             //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
-            PTSCanvas.sizeDelta = new Vector2(500, 300);
+            //PTSCanvas.sizeDelta = new Vector2(500, 300);
+            PTSCanvas.sizeDelta = new Vector2(UI_WIDTH, UI_HEIGHT);
             float x_separation = (PTSTimerTransform.localPosition.x - PTSTeamTransform.localPosition.x) / 2.0f;
             PTSLivesTransform.localPosition = new Vector3(
-                x_separation * ppp_options.ui_stretch //150
+                x_separation * ppp_options.ui_stretch * VRSTRETCHCONST //150
                 , PTSLivesTransform.localPosition.y
                 , PTSLivesTransform.localPosition.z
                 );
             PTSDamageTransform.localPosition = new Vector3(
-                -x_separation * ppp_options.ui_stretch //150
+                -x_separation * ppp_options.ui_stretch * VRSTRETCHCONST //150
                 , PTSDamageTransform.localPosition.y
                 , PTSDamageTransform.localPosition.z
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
             if (useWrist == 0) 
             {
-                PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300 * ppp_options.ui_separation ); 
+                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * ppp_options.ui_stretch * VRSTRETCHCONST, UI_HEIGHT * ppp_options.ui_separation ); 
             }
             else 
             { 
-                PTSCanvas.sizeDelta = new Vector2(500 * ppp_options.ui_stretch, 300); 
+                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * ppp_options.ui_stretch * VRSTRETCHCONST, UI_HEIGHT); 
             }
             PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
 
-            ((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
+            /*((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
                 ((RectTransform)PTSTextStack[0].parent).sizeDelta.x
                 , text_queue_limited_lines * (PTSCanvas.sizeDelta.y / 10.0f)
-                );
+                );*/
 
-            for (int i = 0; i < text_queue_limited_lines; i++)
+            /*for (int i = 0; i < text_queue_limited_lines; i++)
             {
                 //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
                 float size_delta = PTSCanvas.sizeDelta.y / 10.0f;
@@ -1405,7 +1414,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                         , PTSTextStack[i].localPosition.z);
                 }
 
-            }
+            }*/
 
             
             //ppp_options.ui_separation * (5.0f / 3.0f)
@@ -1680,6 +1689,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
             ((RectTransform)PTSTopPanel.transform).anchorMax = new Vector2(1, 0);
             working_pos.y = -working_pos.y;
             PTSTopPanel.transform.localPosition = working_pos;
+
+            working_pos = stored_local_pos_ptschargepanel;
+            working_pos.y = -working_pos.y;
+            ((RectTransform)PTSChargePanel).anchorMin = new Vector2(0, 0);
+            ((RectTransform)PTSChargePanel).anchorMax = new Vector2(1, 0);
+            PTSChargePanel.localPosition = working_pos;
+
             // Top stretch
             working_pos = stored_local_pos_ptspoweruppanel;
             ((RectTransform)PTSPowerupPanel).anchorMin = new Vector2(0, 1);
@@ -1687,11 +1703,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
             working_pos.y = -working_pos.y;
             PTSPowerupPanel.localPosition = working_pos;
 
-            working_pos = stored_local_pos_ptschargepanel;
+            working_pos = stored_local_pos_ptstextstackparent;
+            ((RectTransform)PTSTextStackParent).anchorMin = new Vector2(0, 1);
+            ((RectTransform)PTSTextStackParent).anchorMax = new Vector2(1, 1);
             working_pos.y = -working_pos.y;
-            ((RectTransform)PTSChargePanel).anchorMin = new Vector2(0, 1);
-            ((RectTransform)PTSChargePanel).anchorMax = new Vector2(1, 1);
-            PTSChargePanel.localPosition = working_pos;
+            PTSTextStackParent.localPosition = working_pos;
 
             // Offset all elements by the inverse of their Y
             working_pos = stored_local_pos_ptsairthrust;
@@ -1706,14 +1722,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
             working_pos = stored_local_pos_ptsscorepanel;
             working_pos.y = -working_pos.y;
             PTSScorePanel.localPosition = working_pos;
-            working_pos = stored_local_pos_ptstextstackparent;
-            working_pos.y = -working_pos.y;
-            PTSTextStackParent.localPosition = working_pos;
-            for (int i = 0; i < PTSTextStack.Length; i++)
+            /*for (int i = 0; i < PTSTextStack.Length; i++)
             {
                 // Invert the order of the text stack
                 PTSTextStack[i].transform.localPosition = stored_local_pos_ptstextstack[PTSTextStack.Length - 1 - i];
-            }
+            }*/
         }
         else
         {
@@ -1721,22 +1734,28 @@ public class UIPlyToSelf : UdonSharpBehaviour
             ((RectTransform)PTSTopPanel.transform).anchorMin = new Vector2(0, 1);
             ((RectTransform)PTSTopPanel.transform).anchorMax = new Vector2(1, 1);
             PTSTopPanel.transform.localPosition = stored_local_pos_ptstoppanel;
+
+            ((RectTransform)PTSChargePanel).anchorMin = new Vector2(0, 1);
+            ((RectTransform)PTSChargePanel).anchorMax = new Vector2(1, 1);
+            PTSChargePanel.localPosition = stored_local_pos_ptschargepanel;
+
             // Bottom stretch
             ((RectTransform)PTSPowerupPanel).anchorMin = new Vector2(0, 0);
             ((RectTransform)PTSPowerupPanel).anchorMax = new Vector2(1, 0);
             PTSPowerupPanel.localPosition = stored_local_pos_ptspoweruppanel;
-            ((RectTransform)PTSChargePanel).anchorMin = new Vector2(0, 0);
-            ((RectTransform)PTSChargePanel).anchorMax = new Vector2(1, 0);
+
+            ((RectTransform)PTSTextStackParent).anchorMin = new Vector2(0, 0);
+            ((RectTransform)PTSTextStackParent).anchorMax = new Vector2(1, 0);
+            PTSTextStackParent.localPosition = stored_local_pos_ptstextstackparent;
+
             PTSAirThrustMeterBGSprite.transform.localPosition = stored_local_pos_ptsairthrust;
-            PTSChargePanel.localPosition = stored_local_pos_ptschargepanel;
             PTSWeaponPanel.localPosition = stored_local_pos_ptsweaponpanel;
             PTSCapturePanel.localPosition = stored_local_pos_ptscapturepanel;
             PTSScorePanel.localPosition = stored_local_pos_ptsscorepanel;
-            PTSTextStackParent.localPosition = stored_local_pos_ptstextstackparent;
-            for (int i = 0; i < PTSTextStack.Length; i++)
+            /*for (int i = 0; i < PTSTextStack.Length; i++)
             {
                 PTSTextStack[i].transform.localPosition = stored_local_pos_ptstextstack[i];
-            }
+            }*/
         }
         PTSCanvas.sizeDelta = hold_sizedelta;
         SetUIForward();

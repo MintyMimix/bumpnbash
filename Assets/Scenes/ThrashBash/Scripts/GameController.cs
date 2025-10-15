@@ -224,7 +224,7 @@ public class GameController : GlobalHelperFunctions
     [Tooltip("Starting Damage %")]
     [UdonSynced] public float plysettings_dp = 0.0f;
     [Tooltip("Respawn Invulnerability Time, in seconds")]
-    [UdonSynced] public float plysettings_respawn_duration = 3.0f;
+    [UdonSynced] public float plysettings_respawn_duration = 7.0f;
     [Tooltip("Starting Lives")]
     [UdonSynced] public ushort plysettings_lives = 3;
     [Tooltip("Starting Points")]
@@ -1800,7 +1800,7 @@ public class GameController : GlobalHelperFunctions
         var plyHitboxObj = FindPlayerOwnedObject(player, "PlayerHitbox");
         var plyUIToOthers = FindPlayerOwnedObject(player, "UIPlyToOthers");
         var plyUIToSelf = FindPlayerOwnedObject(player, "UIPlyToSelf");
-        var plyUIMessagesToSelf = FindPlayerOwnedObject(player, "UIMessagesToSelf");
+        //var plyUIMessagesToSelf = FindPlayerOwnedObject(player, "UIMessagesToSelf");
         var plyPPPCanvas = FindPlayerOwnedObject(player, "PPPCanvas");
         var plyLandingCircleObj = FindPlayerOwnedObject(player, "PlayerLandingCircle");
 
@@ -1823,8 +1823,8 @@ public class GameController : GlobalHelperFunctions
         Networking.SetOwner(player, plyUIToSelf);
         plyUIToSelf.GetComponent<UIPlyToSelf>().owner = player;
         plyUIToSelf.GetComponent<UIPlyToSelf>().playerAttributes = plyAttributesComponent;
-        Networking.SetOwner(player, plyUIMessagesToSelf);
-        plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>().owner = player;
+        //Networking.SetOwner(player, plyUIMessagesToSelf);
+        //plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>().owner = player;
         Networking.SetOwner(player, plyLandingCircleObj);
         plyLandingCircleObj.GetComponent<PlayerLandingCircle>().owner = player;
         plyLandingCircleObj.GetComponent<PlayerLandingCircle>().playerAttributes = plyAttributesComponent;
@@ -1834,7 +1834,7 @@ public class GameController : GlobalHelperFunctions
             //networkJoinTime = Networking.GetServerTimeInSeconds();
             local_uiplytoself = plyUIToSelf.GetComponent<UIPlyToSelf>();
             PreallocGlobalObj((int)prealloc_obj_name.UIHarmNumber);
-            local_uiplytoself.local_uimessagestoself = plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>();
+            //local_uiplytoself.local_uimessagestoself = plyUIMessagesToSelf.GetComponent<UIMessagesToSelf>();
             local_plyAttr = plyAttributesComponent;
             if (game_is_functional) { local_plyweapon = ply_object_plyweapon[ply_owners_cnt]; }
             if (local_plyweapon != null) 
@@ -1872,7 +1872,7 @@ public class GameController : GlobalHelperFunctions
             plyUIToOthers.SetActive(false);
             plyUIToSelf.SetActive(true);
             plyLandingCircleObj.SetActive(true);
-            plyUIMessagesToSelf.SetActive(true);
+            //plyUIMessagesToSelf.SetActive(true);
             plyPPPCanvas.SetActive(true);
             if (game_is_functional) { ply_object_plyhitbox[ply_owners_cnt].ToggleHitbox(false); }
             ForceResetHitboxes();
@@ -1882,7 +1882,7 @@ public class GameController : GlobalHelperFunctions
             plyUIToOthers.SetActive(true);
             plyUIToSelf.SetActive(false);
             plyLandingCircleObj.SetActive(false);
-            plyUIMessagesToSelf.SetActive(false);
+            //plyUIMessagesToSelf.SetActive(false);
         }
 
 
@@ -2104,16 +2104,41 @@ public class GameController : GlobalHelperFunctions
 
         map_selected_local = map_selected;
 
+        // Setup gamemode-specific objects
+        SetupGamemodeMapObjects();
+
         //if (mapscript_list[map_selected].voice_distance >= 0)
         //{
-            //voice_distance_near = mapscript_list[map_selected].voice_distance;
-            //voice_distance_far = (1 + voice_distance_near) * 25;
-            AdjustVoiceRange();
+        //voice_distance_near = mapscript_list[map_selected].voice_distance;
+        //voice_distance_far = (1 + voice_distance_near) * 25;
+        AdjustVoiceRange();
         //}
 
         mapscript_list[map_selected].room_spectator_area.SetActive(false);
 
         RefreshSetupUI();
+    }
+
+    public void SetupGamemodeMapObjects()
+    {
+        if (map_selected > 0 && mapscript_list != null && map_selected < mapscript_list.Length)
+        {
+            map_element_gamemode_specific[] gm_specific_list = mapscript_list[map_selected].map_gm_specific_list;
+            if (gm_specific_list != null && gm_specific_list.Length > 0)
+            {
+                for (int i = 0; i < gm_specific_list.Length; i++)
+                {
+                    if (gm_specific_list[i].gamemode_enabled != null && option_gamemode >= 0 && option_gamemode < gm_specific_list[i].gamemode_enabled.Length && gm_specific_list[i].gamemode_enabled[option_gamemode])
+                    {
+                        gm_specific_list[i].gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        gm_specific_list[i].gameObject.SetActive(false);
+                    }
+                }
+            }
+        }
     }
 
     // This function gets called only AFTER a client's team arrays have been fully synced up.
@@ -2126,10 +2151,12 @@ public class GameController : GlobalHelperFunctions
         // We need to remove the extended map BEFORE we teleport the player
         if (ply_parent_arr[0].Length >= mapscript_list[map_selected].min_players_to_extend_room && mapscript_list[map_selected].room_game_extended != null) { mapscript_list[map_selected].room_game_extended.SetActive(true); }
         else if (ply_parent_arr[0].Length < mapscript_list[map_selected].min_players_to_extend_room && mapscript_list[map_selected].room_game_extended != null) { mapscript_list[map_selected].room_game_extended.SetActive(false); }
-        if (option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(true); }
-        else if (!option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(false); }
+        SetupGamemodeMapObjects();
 
-            var gamemode_description = ModifyModeDescription(round_option_descriptions[option_gamemode]);
+        //if (option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(true); }
+        //else if (!option_enforce_team_limits && mapscript_list[map_selected].room_game_asymmetrical_blocker != null) { mapscript_list[map_selected].room_game_asymmetrical_blocker.SetActive(false); }
+
+        var gamemode_description = ModifyModeDescription(round_option_descriptions[option_gamemode]);
         var personal_description = "";
         var player_description = "";
 
@@ -2148,7 +2175,7 @@ public class GameController : GlobalHelperFunctions
             // To-do: IsNetworkSettled / IsClogged check for this player data
             PlayerAttributes playerData = FindPlayerAttributes(Networking.LocalPlayer);
             playerData.ply_training = false;
-            playerData.ResetTutorialMessage();
+            //playerData.ResetTutorialMessage();
 
             playerData.ply_deaths = 0;
             playerData.ply_dp = plysettings_dp;
@@ -2277,10 +2304,9 @@ public class GameController : GlobalHelperFunctions
                 local_uiplytoself.ForceUpdateAllUI();
             }
 
-            if (option_teamplay) { TeleportLocalPlayerToGameSpawnZone(); }
+            if (option_teamplay) { TeleportLocalPlayerToGameSpawnZone(-1, true); }
             ToggleReadyRoomCollisions(false);
             ToggleTrainingRoom(false);
-
 
             //if (option_gamemode == (int)gamemode_name.Survival) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Survival); }
             //else if (option_gamemode == (int)gamemode_name.Clash) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Clash); }
@@ -3279,7 +3305,7 @@ public class GameController : GlobalHelperFunctions
         }
     }
 
-    public void TeleportLocalPlayerToGameSpawnZone(int spawnZoneIndex = -1, bool force_at_index = false)
+    public void TeleportLocalPlayerToGameSpawnZone(int spawnZoneIndex = -1, bool force_use_team = false)
     {
         if (mapscript_list == null || map_selected >= mapscript_list.Length || mapscript_list[map_selected].map_spawnzones == null || mapscript_list[map_selected].map_spawnzones.Length == 0) { return; }
         map_element_spawn spawnzone = null;
@@ -3287,17 +3313,17 @@ public class GameController : GlobalHelperFunctions
         {
             spawnzone = mapscript_list[map_selected].map_spawnzones[spawnZoneIndex];
             // Note: we need to ensure KO
-            if ((spawnzone == null
-                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0 )
-                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id == -2) // FFA-only
+            if (spawnzone == null
+                || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id != GetGlobalTeam(Networking.LocalPlayer.playerId) && spawnzone.team_id >= 0) 
+                || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id == -2) // FFA-only
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || !spawnzone.gameObject.activeInHierarchy || !spawnzone.gameObject.activeSelf
-                ) && (!force_at_index)) { spawnZoneIndex = -1; }
+                ) { spawnZoneIndex = -1; }
         }
         // If no spawn is specified, try gettting the farthest away from all other players
         else
         {
-            int[] eligible_spawns = GetEligibleSpawnsForPlayer(Networking.LocalPlayer.playerId);
+            int[] eligible_spawns = GetEligibleSpawnsForPlayer(Networking.LocalPlayer.playerId, force_use_team);
             int index_within_eligible_spawns = -1;
             if (eligible_spawns != null && eligible_spawns.Length > 0) 
             { 
@@ -3343,6 +3369,42 @@ public class GameController : GlobalHelperFunctions
         { 
             local_plyAttr.in_ready_room = false; local_plyAttr.air_thrust_enabled = true; 
         }
+    }
+
+    public void TeleportLocalPlayerToKOTHtainer()
+    {
+        if (mapscript_list == null || map_selected >= mapscript_list.Length || mapscript_list[map_selected].map_spawnzones == null || mapscript_list[map_selected].map_spawnzones.Length == 0) { return; }
+        bool found_kothtainer = false;
+        foreach (map_element_kothtainer kothtainer in mapscript_list[map_selected].map_kothtainers)
+        {
+            if (option_teamplay && kothtainer.team_id == GetGlobalTeam(Networking.LocalPlayer.playerId) && kothtainer.start_zone != null) 
+            { 
+                found_kothtainer = true;
+                kothtainer.gameObject.SetActive(true);
+                platformHook.custom_force_unhook = true;
+                float scaleFactor = 1.0f; float scaleMaxBias = 4.0f;
+                if (local_plyAttr != null) 
+                { 
+                    scaleFactor = local_plyAttr.ply_scale; 
+                    local_plyAttr.ResetPowerups();
+                    local_plyAttr.cached_kothtainer = kothtainer;
+                }
+                scaleFactor *= 2.0f;
+                Bounds zoneBounds = kothtainer.start_zone.bounds;
+                float min_x = Mathf.Lerp(zoneBounds.min.x, zoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
+                float max_x = Mathf.Lerp(zoneBounds.max.x, zoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
+                float min_z = Mathf.Lerp(zoneBounds.min.z, zoneBounds.center.z, (scaleFactor - 1.0f) / scaleMaxBias);
+                float max_z = Mathf.Lerp(zoneBounds.max.z, zoneBounds.center.z, (scaleFactor - 1.0f) / scaleMaxBias);
+                var rx = UnityEngine.Random.Range(min_x, max_x);
+                var rz = UnityEngine.Random.Range(min_z, max_z);
+
+                platformHook.custom_force_unhook = true;
+                Quaternion rotateTo = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
+                Networking.LocalPlayer.TeleportTo(new Vector3(rx, zoneBounds.center.y, rz), rotateTo);
+                platformHook.custom_force_unhook = false;
+            }
+        }
+        if (!found_kothtainer) { TeleportLocalPlayerToGameSpawnZone(); }
     }
 
     [NetworkCallable]
@@ -3789,7 +3851,7 @@ public class GameController : GlobalHelperFunctions
         return DictValueFromKey(player_id, ply_tracking_dict_keys_arr, ply_tracking_dict_values_arr);
     }
 
-    public int[] GetEligibleSpawnsForPlayer(int player_id)
+    public int[] GetEligibleSpawnsForPlayer(int player_id, bool force_use_team = false)
     {
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
         if (player == null || map_selected > mapscript_list.Length || mapscript_list[map_selected] == null || mapscript_list[map_selected].map_spawnzones == null) { return null; }
@@ -3800,8 +3862,8 @@ public class GameController : GlobalHelperFunctions
         {
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
             if (spawnzone == null
-                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
-                || (option_teamplay && !option_enforce_team_limits && spawnzone.team_id == -1) // Universal spawnzone
+                || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
+                || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id == -2) // FFA-only
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
                 ) { continue; }
@@ -3818,7 +3880,7 @@ public class GameController : GlobalHelperFunctions
         return spawnzones;
     }
 
-    public int GetSpawnFarthestFromPlayers(int player_id, int[] spawnzones)
+    public int GetSpawnFarthestFromPlayers(int player_id, int[] spawnzones, bool force_use_team = false)
     {
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(player_id);
         int[][] plyInGame = GetPlayersInGame(); //|| plyInGame.Length < 2 
@@ -3838,7 +3900,7 @@ public class GameController : GlobalHelperFunctions
             for (int j = 0; j < plyInGame[0].Length; j++)
             {
                 VRCPlayerApi test_player = VRCPlayerApi.GetPlayerById(plyInGame[0][j]);
-                if (test_player == null || test_player == player || (option_teamplay && !option_enforce_team_limits && plyInGame[1][j] == team_id)) { continue; }
+                if (test_player == null || test_player == player || (option_teamplay && (force_use_team || !option_enforce_team_limits) && plyInGame[1][j] == team_id)) { continue; }
                 float testDistance = Mathf.Abs(Vector3.Distance(spawnzone.transform.position, test_player.GetPosition()));
                 if (plyDistanceMinInZone > testDistance || plyDistanceMinInZone < 0) { plyDistanceMinInZone = testDistance; }
                 debug_test_list[j] = Mathf.RoundToInt(testDistance);

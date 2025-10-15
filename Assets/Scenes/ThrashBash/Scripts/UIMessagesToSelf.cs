@@ -24,7 +24,7 @@ public class UIMessagesToSelf : UdonSharpBehaviour
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
     }
-    
+    /*
     private void Update()
     {
         if (owner == null && Networking.IsOwner(gameObject))
@@ -143,5 +143,5 @@ public class UIMessagesToSelf : UdonSharpBehaviour
        
         return;
     }
-
+    */
 }

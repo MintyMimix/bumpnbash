@@ -97,6 +97,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public string[] local_tutorial_message_str_vr;
 
     [NonSerialized] [UdonSynced] public byte infection_special = 0;
+    [NonSerialized] public map_element_kothtainer cached_kothtainer;
     [NonSerialized] public float local_tick_timer = 0.0f;
 
     [NonSerialized] public bool tutorial_messages_ready = false;
@@ -184,12 +185,19 @@ public class PlayerAttributes : UdonSharpBehaviour
             ply_respawn_timer += Time.deltaTime;
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
+            // Update KOTH timers, if applicable
+            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && cached_kothtainer != null) { cached_kothtainer.RefreshTimers(ply_respawn_duration - ply_respawn_timer + 1); }
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
             ply_state = (int)player_state_name.Alive;
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
+            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            {
+                if (cached_kothtainer != null) { cached_kothtainer.gameObject.SetActive(false); cached_kothtainer = null; }
+                gameController.TeleportLocalPlayerToGameSpawnZone();
+            }
         }
         else if (ply_state == (int)player_state_name.Dead && gameController.round_state == (int)round_state_name.Ongoing)
         {
@@ -265,12 +273,12 @@ public class PlayerAttributes : UdonSharpBehaviour
         // To-do: this more efficiently
         if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) {
             float koth_mod = 1.0f;
-            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training) { koth_mod = 0.01f; }
+            //if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training) { koth_mod = 0.01f; }
             Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetRunSpeed(4.0f * ply_speed * koth_mod);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
             if (in_grav_well) { Networking.LocalPlayer.SetGravityStrength(0.0f); }
-            else { Networking.LocalPlayer.SetGravityStrength(1.0f * ply_grav * (1.0f / koth_mod)); }
+            else { Networking.LocalPlayer.SetGravityStrength(Mathf.Max(0.125f, 1.0f * ply_grav * (1.0f / koth_mod))); }
             Networking.LocalPlayer.SetJumpImpulse(4.0f + (1.0f - ply_grav)); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
@@ -361,7 +369,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (!Networking.IsOwner(gameObject)) { return; }
         ResetPowerups();
-        if (gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
+        if (gameController.option_gamemode != (int)gamemode_name.Infection && gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
 
         float default_height = Mathf.Clamp(Networking.LocalPlayer.GetAvatarEyeHeightAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMinimumAsMeters(), Networking.LocalPlayer.GetAvatarEyeHeightMaximumAsMeters());
         plyEyeHeight_default = default_height;
@@ -581,10 +589,10 @@ public class PlayerAttributes : UdonSharpBehaviour
             { 
                 ply_lives--;
             }
-            else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training)
-            {
-                gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_KOTH_RESPAWN_FREEZE", "Frozen during respawn invulnerability! ($ARG0 seconds)", Mathf.RoundToInt(ply_respawn_duration).ToString()), Color.cyan, ply_respawn_duration);
-            }
+            //else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && !ply_training)
+            //{
+            //    gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_KOTH_RESPAWN_FREEZE", "Frozen during respawn invulnerability! ($ARG0 seconds)", Mathf.RoundToInt(ply_respawn_duration).ToString()), Color.cyan, ply_respawn_duration);
+            //}
         }
         else if (ply_state == (int)player_state_name.Dead || gameController.round_state == (int)round_state_name.Ready)
         {
@@ -602,7 +610,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (gameController.local_plyweapon != null) { gameController.local_plyweapon.ResetWeaponToDefault(); gameController.local_plyweapon.CacheWeaponPos(true); }
         if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.ResetWeaponToDefault(); gameController.local_secondaryweapon.CacheWeaponPos(true); }
         ResetPowerups();
-        if (gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
+        if (gameController.option_gamemode != (int)gamemode_name.Infection && gameController.option_gamemode != (int)gamemode_name.FittingIn) { ResetToDefaultStats(); }
 
         //ply_desktop_applied_dual_compensation_buff = false;
         bool is_boss_any = gameController.local_plyweapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_secondaryweapon.weapon_type_default == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
@@ -648,7 +656,11 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.CheckSingleTeamLives(0, gameController.cached_ply_in_game_dict, ref members_alive, ref total_lives);
             if (gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1 && gameController.GetGlobalTeam(Networking.LocalPlayer.playerId) == 0
                 && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
-            else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
+            else 
+            { 
+                if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { gameController.TeleportLocalPlayerToGameSpawnZone(); }
+                else { gameController.TeleportLocalPlayerToKOTHtainer(); }
+            }
         }
         else if (!ply_training)
         {

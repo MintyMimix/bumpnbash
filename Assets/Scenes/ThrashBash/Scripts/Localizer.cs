@@ -385,6 +385,9 @@ public class Localizer : UdonSharpBehaviour
             string tutorial_method = FetchText("LOCALOPTIONS_TUTORIAL_DESKTOP", "pushing your E or F key");
             if (Networking.LocalPlayer.IsUserInVR()) { tutorial_method = gameController.localizer.FetchText("LOCALOPTIONS_TUTORIAL_VR", "grabbing behind your head"); }
             gameController.local_ppp_options.tutorial_text.text = gameController.local_ppp_options.tutorial_text.text.Replace("$METHOD", tutorial_method);
+            gameController.local_ppp_options.ResetColorBlindnamesAll(false);
+            gameController.local_ppp_options.UpdateColorblind();
+            gameController.room_ready_script.UpdateColorblind();
         }
     }
 }

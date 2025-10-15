@@ -43,12 +43,15 @@ public class CaptureZone : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
     [NonSerialized] [UdonSynced] public float initial_lock_timer = 0.0f;
     [NonSerialized] [UdonSynced] public int hold_points = 0;
-    [NonSerialized] [UdonSynced] public float point_grant_timer = 0.0f;
+    [NonSerialized] public float point_grant_timer = 0.0f;
     [NonSerialized] [UdonSynced] public bool is_locked = true;
     [NonSerialized] [UdonSynced] public int hold_id = -1;
     [NonSerialized] [UdonSynced] public int contest_id = -1;
     [NonSerialized] [UdonSynced] public float contest_progress = 0.0f;
     [NonSerialized] [UdonSynced] public bool overtime_enabled = false; // This will only be true if there is both a holder and a contestor.
+    [NonSerialized] public bool overtime_vo_played = false; // Play the Overtime voiceline ONLY if we haven't already
+    [NonSerialized] public bool contest_ongoing = false;
+    [NonSerialized] public bool local_is_on_point = false;
     [NonSerialized] public int[] players_on_point;
     [NonSerialized] public int global_index;
 
@@ -131,7 +134,7 @@ public class CaptureZone : UdonSharpBehaviour
                 if (Networking.IsOwner(gameObject))
                 {
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
-                    if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
+                    /*if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
                     {
                         // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
                         // However, the pause timer for contesting is instant if they aren't on point!
@@ -140,19 +143,43 @@ public class CaptureZone : UdonSharpBehaviour
                             contest_pause_timer = contest_pause_duration;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
                         }
-
-                        // We will, however, want one voice line for when we reach the 1 second mark exactly, and playing only once
-                        if (hold_index >= 0 && Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 2 && overtime_enabled)
-                        {
-                            gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_Overtime);
-                        }
                     }
                     else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
                     {
                         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
                     }
                     else if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
+                    */
+                }
 
+                // Handle SFX locally
+                if (contest_id >= 0 && contest_ongoing && hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2) //&& overtime_enabled
+                {
+                    // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
+                    // However, the pause timer for contesting is instant if they aren't on point!
+                    if (contest_id >= 0 && contest_pause_timer > 0.0f)
+                    {
+                        UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Point is being contested by " + contest_id + " WHILE IN OVERTIME; play KOTH_Contest_Progress");
+                        contest_pause_timer = contest_pause_duration;
+                        PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
+                    }
+                }
+                else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
+                {
+                    UnityEngine.Debug.Log("[KOTH_SFX_TEST]: A team is about to win! Play KOTH_Victory_Near for " + hold_id);
+                    PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
+                }
+                else if (contest_id >= 0 && contest_ongoing) { UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Point is being contested by " + contest_id + "; play KOTH_Contest_Progress"); PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
+
+                // Play a voiceline when we reach the 1 second mark exactly, and playing only once
+                if (!overtime_vo_played && hold_index >= 0 && Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 1 && overtime_enabled)
+                {
+                    gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_Overtime);
+                    overtime_vo_played = true;
+                }
+                else if (overtime_vo_played && Mathf.FloorToInt(hold_points) > gameController.option_gm_goal - 1 && !overtime_enabled)
+                {
+                    overtime_vo_played = false;
                 }
 
                 /*if (gameController.koth_respawn_wave_duration != null && gameController.koth_respawn_wave_duration.Length > 0)
@@ -164,29 +191,29 @@ public class CaptureZone : UdonSharpBehaviour
                     }
                 }*/
 
-                /*int local_id = 0;
-                if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
-                else { local_id = Networking.LocalPlayer.playerId; }
-                int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
-                if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
-                {
-                    // To-do: Make this not conflict with other capture zones
-                    //gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
-                    gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration; 
+                    /*int local_id = 0;
+                    if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
+                    else { local_id = Networking.LocalPlayer.playerId; }
+                    int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
+                    if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
+                    {
+                        // To-do: Make this not conflict with other capture zones
+                        //gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
+                        gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration; 
 
-                    // Respawn duration is always longer for the holder
-                    if ((
-                        (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
-                        || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
-                        ))
-                    { gameController.local_plyAttr.ply_respawn_duration *= 2.0f; }
-                    // Respawn duration is slightly longer for the contestor
-                    if ((
-                        (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
-                        || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
-                        ))
-                    { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
-                }*/
+                        // Respawn duration is always longer for the holder
+                        if ((
+                            (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
+                            || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
+                            ))
+                        { gameController.local_plyAttr.ply_respawn_duration *= 2.0f; }
+                        // Respawn duration is slightly longer for the contestor
+                        if ((
+                            (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
+                            || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
+                            ))
+                        { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
+                    }*/
             }
         }
         else
@@ -201,12 +228,12 @@ public class CaptureZone : UdonSharpBehaviour
                 (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
                 || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
                 )
-            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.6f; }
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.3f; } // *1.6f
             else if (
                 (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
                 || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
                 )
-            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.3f; }
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.15f; } // *1.3f
             else { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration; }
         }
 
@@ -324,6 +351,8 @@ public class CaptureZone : UdonSharpBehaviour
             // Even if no special condition is ongoing, if the contestor is on the point, make sure not to drain their progress
             contest_pause_timer = 0.0f;
         }
+
+        contest_ongoing = contestor_on_point || others_unique_count > 0;
     }
 
     [NetworkCallable]
@@ -370,6 +399,13 @@ public class CaptureZone : UdonSharpBehaviour
         // Point contesting progress SFX
         else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Contest_Progress)
         {
+            UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Attempting to play KOTH_Contest_Progress with override ID " + override_id);
+            if (contest_ongoing && local_is_on_point)
+            {
+                UnityEngine.Debug.Log("[KOTH_SFX_TEST]: contest_ongoing && local_is_on_point; play KOTH_Contest_Progress");
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+            }
+            /*
             if ((
                 (gameController.option_teamplay && gameController.local_plyAttr != null && override_id == gameController.local_plyAttr.ply_team)
                 || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
@@ -392,11 +428,11 @@ public class CaptureZone : UdonSharpBehaviour
                     gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
                 }
             }
-            // If we are not the one contesting the point and we are near end goal, locally play the victory near sound instead
-            else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10 && !(hold_points >= gameController.option_gm_goal - 2 && overtime_enabled))
+            // If we are not the one holding or contesting the point and we are near end goal, locally play the victory near sound instead
+            else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10 && !(Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 1 && overtime_enabled))
             {
                 PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
-            }
+            }*/
         }
         else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Victory_Near)
         {
@@ -702,6 +738,8 @@ public class CaptureZone : UdonSharpBehaviour
         }
         add_players[players_on_point.Length] = player_id;
         players_on_point = add_players;
+
+        if (!local_is_on_point && player_id == Networking.LocalPlayer.playerId) { local_is_on_point = true; }
     }
 
     public void RemovePlayerOnPoint(int player_id)
@@ -728,6 +766,8 @@ public class CaptureZone : UdonSharpBehaviour
             }
         }
         players_on_point = remove_players;
+
+        if (local_is_on_point && player_id == Networking.LocalPlayer.playerId) { local_is_on_point = false; }
     }
 
     private void OnTriggerEnter(Collider other)

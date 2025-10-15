@@ -113,8 +113,7 @@ public class PPP_Options : UdonSharpBehaviour
         Transform harmtester_transform = GlobalHelperFunctions.GetChildTransformByName(transform, "HarmTester");
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
-        ResetColorblindNames(ref ui_colorblind_dropdown, true);
-        ResetColorblindNames(ref gameController.room_ready_script.ui_colorblind_dropdown, true);
+        ResetColorBlindnamesAll(true);
 
         ResetMusicNames(true);
 
@@ -1366,6 +1365,7 @@ public class PPP_Options : UdonSharpBehaviour
         for (int j = 0; j < flags.Length; j++)
         {
             flags[j].GetComponent<UnityEngine.UI.Image>().color = gameController.team_colors[j];
+            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]);
             flags[j].transform.GetChild(1).GetComponent<TMP_Text>().color = gameController.team_colors_bright[j];
             if (colorblind)
             {
@@ -1381,6 +1381,12 @@ public class PPP_Options : UdonSharpBehaviour
     }
 
     //ui_colorblind_dropdown
+    public void ResetColorBlindnamesAll(bool init)
+    {
+        ResetColorblindNames(ref ui_colorblind_dropdown, init);
+        ResetColorblindNames(ref gameController.room_ready_script.ui_colorblind_dropdown, init);
+    }
+
     public void ResetColorblindNames(ref TMP_Dropdown dropdown, bool init = false)
     {
         // Due to the way this is implemented, the value will be forced to 0. So, we store the original value and then reset to that value after refreshing the options.
@@ -1389,8 +1395,8 @@ public class PPP_Options : UdonSharpBehaviour
 
         for (int i = 0; i < ui_colorblind_dropdown_names.Length; i++)
         {
-            if (!init) { ui_colorblind_dropdown_names[i] = gameController.localizer.FetchText("LOCALOPTIONS_GAME_COLORBLIND_SELECT_" + i.ToString(), ui_colorblind_dropdown_names[i]).Replace("#", "  "); }
-            else { ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("#", "  "); }
+            if (!init) { ui_colorblind_dropdown_names[i] = gameController.localizer.FetchText("LOCALOPTIONS_GAME_COLORBLIND_SELECT_" + i.ToString(), ui_colorblind_dropdown_names[i]).Replace("\n", "#").Replace("#", "  "); }
+            else { ui_colorblind_dropdown_names[i] = ui_colorblind_dropdown_names[i].Replace("\n", "#").Replace("#", "  "); }
         }
         dropdown.ClearOptions();
         dropdown.AddOptions(ui_colorblind_dropdown_names);
