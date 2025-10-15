@@ -2495,16 +2495,24 @@ public class GameController : GlobalHelperFunctions
         {
             if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
             // If we're on Facing Worlds, increase default speed to compensate for map size
-            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
-                && (plysettings_speed < 1.91f || plysettings_atk < 2.99f))
+            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds"))
             {
-                plysettings_speed = 1.91f;
-                plysettings_atk = 2.99f;
+                if (plysettings_speed < 1.91f || plysettings_atk < 2.99f)
+                {
+                    plysettings_speed = 1.91f;
+                    plysettings_atk = 2.99f;
+                }
+            }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_UNDERWATER", "Deep Blues"))
+            {
+                if (plysettings_speed < 1.61f)
+                {
+                    plysettings_speed = 1.61f;
+                }
             }
             // And reset if the game master forgot to
-            else if (mapscript_list[map_selected].map_name != localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
-                && (plysettings_speed == 1.91f || plysettings_atk == 2.99f))
-            { 
+            else
+                    { 
                 plysettings_speed = 1.0f;
                 plysettings_atk = 1.0f;
             }

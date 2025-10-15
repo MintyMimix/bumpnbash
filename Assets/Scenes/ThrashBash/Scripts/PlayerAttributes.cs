@@ -161,7 +161,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             if (owner_secondweapon == null) { owner_secondweapon = gameController.GetSecondaryWeaponFromID(Networking.GetOwner(gameObject).playerId); }
             if (owner_plyhitbox == null) { owner_plyhitbox = gameController.GetPlayerHitboxFromID(Networking.GetOwner(gameObject).playerId); }
 
-            if (owner_plyweapon != null
+            if (owner_plyweapon != null && owner_plyhitbox != null
                 && (in_ready_room || in_spectator_area || gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over)
                 && !(ply_training || (ply_team >= 0 && (ply_state == (int)player_state_name.Alive || ply_state == (int)player_state_name.Respawning)))
                 )
@@ -169,7 +169,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 owner_plyweapon.ToggleActive(false);
                 owner_plyhitbox.ToggleHitbox(false);
             }
-            else if (owner_plyweapon != null)
+            else if (owner_plyweapon != null && owner_plyhitbox != null) 
             { 
                 owner_plyweapon.ToggleActive(true);
                 owner_plyhitbox.ToggleHitbox(true);

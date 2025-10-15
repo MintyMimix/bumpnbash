@@ -640,10 +640,19 @@ public class PlayerWeapon : UdonSharpBehaviour
         //if (!weapon_was_tossed)
         //{
         Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.up * 0.33f;
         if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null) 
         { 
-            if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.up; }
-            else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) { throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.up; }
+            if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) 
+            { 
+                throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.right;
+                throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * 1.5f; // * 0.66f;
+            }
+            else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) 
+            { 
+                throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.right;
+                throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * 1.5f; //* 0.66f;
+            }
         }
         float throwForce = 11.0f;
         if (pickup_rb != null) { velocity_stored = pickup_rb.velocity + (throwDir * throwForce); }
@@ -682,12 +691,21 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null)
                 {
-                    if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) { pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
-                    else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) { pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+                    if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) 
+                    { 
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.right * gameController.local_plyAttr.ply_scale * 0.5f;
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    }
+                    else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) 
+                    { 
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.right * gameController.local_plyAttr.ply_scale * 0.5f;
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    }
                 }
                 else
                 {
-                    pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f;
+                    pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    //pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.up * gameController.local_plyAttr.ply_scale * 0.5f;
                 }
             }
         }
