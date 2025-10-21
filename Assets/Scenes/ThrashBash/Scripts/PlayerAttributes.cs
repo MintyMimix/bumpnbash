@@ -44,14 +44,14 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] [UdonSynced] public float ply_def = 1.0f;
     [NonSerialized] public float ply_grav = 1.0f;
     [NonSerialized] public bool in_grav_well = false;
-    [NonSerialized] [UdonSynced] public int ply_jumps_add = 0;
+    [NonSerialized] public int ply_jumps_add = 0; //[UdonSynced] 
     [NonSerialized] public int ply_jumps_tracking = 0;
     [NonSerialized] public bool ply_jump_pressed = false;
     [NonSerialized] public float ply_firerate = 1.0f;
-    [NonSerialized][UdonSynced] public bool ply_dual_wield = false;
+    [NonSerialized] [UdonSynced] public bool ply_dual_wield = false;
     [NonSerialized] public bool ply_desktop_applied_dual_compensation_buff = false;
 
-    [NonSerialized] public float ply_respawn_duration;
+    [NonSerialized] [UdonSynced] public float ply_respawn_duration;
     [NonSerialized] public VRCPlayerApi last_hit_by_ply;
     [NonSerialized] public float last_hit_by_duration = 20.0f;
     [NonSerialized] public float last_hit_by_timer = 0.0f;
@@ -60,7 +60,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public float last_kill_timer = 0.0f;
 
     [SerializeField] public GameController gameController;
-    [NonSerialized] public float ply_respawn_timer = 0.0f;
+    [NonSerialized] [UdonSynced] public float ply_respawn_timer = 0.0f;
 
     [NonSerialized] public int combo_receive, combo_send = 0;
     [NonSerialized] public float combo_send_duration = 2.0f;
@@ -85,8 +85,8 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NonSerialized] public PlayerWeapon owner_secondweapon;
     [NonSerialized] public PlayerHitbox owner_plyhitbox;
 
-    [NonSerialized][UdonSynced] public float plyEyeHeight_default = 0.0f;
-    [NonSerialized][UdonSynced] public float plyEyeHeight_desired = 0.0f;
+    [NonSerialized] public float plyEyeHeight_default = 0.0f; //[UdonSynced]
+    [NonSerialized] public float plyEyeHeight_desired = 0.0f; //[UdonSynced]
     [Tooltip("How long a size-changing animation should play on a player")]
     [SerializeField] public double plyEyeHeight_lerp_duration = 2.5f;
     [NonSerialized] public double plyEyeHeight_lerp_start_ms = 0.0f;
@@ -186,14 +186,14 @@ public class PlayerAttributes : UdonSharpBehaviour
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
             // Update KOTH timers, if applicable
-            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && cached_kothtainer != null) { cached_kothtainer.RefreshTimers(ply_respawn_duration - ply_respawn_timer + 1); }
+            if (((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) && cached_kothtainer != null) { cached_kothtainer.RefreshTimers(ply_respawn_duration - ply_respawn_timer + 1); }
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
             ply_state = (int)player_state_name.Alive;
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
-            if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
                 if (cached_kothtainer != null) { cached_kothtainer.gameObject.SetActive(false); cached_kothtainer = null; }
                 gameController.TeleportLocalPlayerToGameSpawnZone();
@@ -279,7 +279,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
             if (in_grav_well) { Networking.LocalPlayer.SetGravityStrength(0.0f); }
             else { Networking.LocalPlayer.SetGravityStrength(Mathf.Max(0.125f, 1.0f * ply_grav * (1.0f / koth_mod))); }
-            Networking.LocalPlayer.SetJumpImpulse(4.0f + (1.0f - ply_grav)); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
+            float jump_height = 4.0f + (1.0f - ply_grav);
+            jump_height = 0.5f * (jump_height + (jump_height * Mathf.Max(1.0f, ply_scale))); // Jump height scales with player at half rate (i.e. 2x = 1.5x jump height, 3x = 2x jump height, etc.)
+            Networking.LocalPlayer.SetJumpImpulse(jump_height); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
         {
@@ -309,7 +311,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void LocalPerTickUpdate()
     {
         // Update size
-        if (plyEyeHeight_change && Networking.IsOwner(gameObject))
+        if (Networking.IsOwner(gameObject) && plyEyeHeight_change)
         {
             var plyCurrentEyeHeight = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
             var lerp_delta = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), plyEyeHeight_lerp_start_ms);
@@ -329,7 +331,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 plyEyeHeight_change = false; 
             }
         }
-        else if (in_ready_room && !ply_training && plyEyeHeight_desired != plyEyeHeight_default && !plyEyeHeight_change) 
+        else if (Networking.IsOwner(gameObject) && in_ready_room && !ply_training && plyEyeHeight_desired != plyEyeHeight_default && !plyEyeHeight_change) 
         { 
             LocalResetScale(); 
         }
@@ -570,6 +572,8 @@ public class PlayerAttributes : UdonSharpBehaviour
 
     public void HandleLocalPlayerDeath()
     {
+
+        bool ply_was_invul = false;
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Death], gameController.snd_game_sfx_clips[(int)game_sfx_name.Death]);
         TryHapticEvent((int)game_sfx_name.Death);
         ply_respawn_timer = 0;
@@ -600,6 +604,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
+            ply_was_invul = true;
             //if (gameController.option_gamemode == (int)gamemode_name.FittingIn && local_respawn_count >= gameController.option_gm_goal) { ply_lives = 0; }
         }
         else
@@ -625,12 +630,12 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", Networking.LocalPlayer.playerId, 1, false);
             ply_team = 1;
             //ply_points = 0;
-            InfectionStatReset();
+            InfectionStatReset(ply_was_invul);
             gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_DEATH", "-- You are now Infected! --"), Color.red);
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.Infection && ply_team == 1)
         {
-            InfectionStatReset();
+            InfectionStatReset(ply_was_invul);
         }
         else if (!ply_training && gameController.option_gamemode == (int)gamemode_name.FittingIn && last_hit_by_ply != null)
         {
@@ -658,8 +663,8 @@ public class PlayerAttributes : UdonSharpBehaviour
                 && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
             else 
             { 
-                if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill) { gameController.TeleportLocalPlayerToGameSpawnZone(); }
-                else { gameController.TeleportLocalPlayerToKOTHtainer(); }
+                if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) { gameController.TeleportLocalPlayerToKOTHtainer(); }
+                else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
             }
         }
         else if (!ply_training)
@@ -937,7 +942,14 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
         if (Networking.IsOwner(gameObject) && air_thrust_enabled)
         {
-            Networking.LocalPlayer.SetVelocity(Networking.LocalPlayer.GetVelocity() + Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * Networking.LocalPlayer.GetRunSpeed() * 2.0f);
+            Networking.LocalPlayer.SetVelocity(
+                Networking.LocalPlayer.GetVelocity() 
+                + Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation 
+                * Vector3.forward
+                * 4.0f * ((1.0f + ply_speed) / 2.0f)
+                * 2.0f
+                //* Networking.LocalPlayer.GetRunSpeed() * 2.0f
+                );
             air_thrust_ready = false;
             air_thrust_timer = 0.0f;
         }
@@ -1075,10 +1087,18 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void BecomeZombig()
+    public void BecomeZombig(bool isFirst)
     {
         ResetToDefaultStats();
-        gameController.TeleportLocalPlayerToGameSpawnZone();
+        if (isFirst) 
+        {
+            TryHapticEvent((int)game_sfx_name.Death);
+            ply_respawn_timer = 0;
+            ply_respawn_duration = gameController.plysettings_respawn_duration * 1.5f;
+            ply_state = (int)player_state_name.Respawning;
+            gameController.TeleportLocalPlayerToKOTHtainer();
+        }
+        else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
         infection_special = 2;
         ply_dp = ply_dp_default;
         ply_scale *= 2.5f;
@@ -1101,19 +1121,27 @@ public class PlayerAttributes : UdonSharpBehaviour
         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
         plyEyeHeight_change = true;
 
-        gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_LOCAL", "You are the ZomBig! Crush the Survivors into dust!"), gameController.team_colors_bright[1]);
+        if (isFirst) { gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_LOCAL", "You are the ZomBig! Crush the Survivors into dust!"), gameController.team_colors_bright[1]); }
     }
 
     [NetworkCallable]
-    public void InfectionStatReset()
+    public void InfectionStatReset(bool ply_was_invul)
     {
         if (infection_special == 2)
         {
             // ZomBig
-            ResetToDefaultStats();
-            infection_special = 1; // We set this to 1 because GameController will automatically resolve it down to 0 if the player count condition is met
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForZombigs", Networking.LocalPlayer.playerId);
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_DEATH", "The ZomBig has been defeated!"), Color.red, 5.0f);
+            if (ply_was_invul)
+            {
+                BecomeZombig(false);
+            }
+            else
+            {
+                ResetToDefaultStats();
+                ply_respawn_duration = gameController.plysettings_respawn_duration;
+                infection_special = 1; // We set this to 1 because GameController will automatically resolve it down to 0 if the player count condition is met
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForZombigs", Networking.LocalPlayer.playerId);
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_DEATH", "The ZomBig has been defeated!"), Color.red, 5.0f);
+            }
         }
         else if (infection_special == 1)
         {
@@ -1138,7 +1166,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         //ply_damage_dealt = 0;
         //ply_lives = gameController.plysettings_lives;
         //ply_points = gameController.plysettings_points;
-        ply_respawn_duration = gameController.plysettings_respawn_duration;
+        //ply_respawn_duration = gameController.plysettings_respawn_duration;
         ply_scale = gameController.plysettings_scale;
         ply_speed = gameController.plysettings_speed;
         ply_atk = gameController.plysettings_atk;

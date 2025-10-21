@@ -29,7 +29,7 @@ public class PPP_Pickup : UdonSharpBehaviour
             OnPickup();
         }
 
-        float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
+        float heightUI = 0.5f * Mathf.Max(0.25f, (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f));
         Vector3 plyForward = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * -1.2f * heightUI; //too short: -1.0f; too long: -1.333f;
         Vector3 posFinal = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + plyForward;
         transform.SetPositionAndRotation(

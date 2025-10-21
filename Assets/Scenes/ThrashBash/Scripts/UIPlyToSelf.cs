@@ -8,6 +8,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UIElements;
+using VRC.SDK3.Rendering;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
@@ -67,6 +68,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [NonSerialized] public RectTransform[] PTSCaptureSprites;
     [NonSerialized] public RectTransform[] PTSCaptureOverlays;
     [NonSerialized] public TMP_Text[] PTSCaptureTexts;
+    [NonSerialized] public TMP_Text[] PTSContestTexts;
 
     [SerializeField] public Transform PTSScorePanel;
     [NonSerialized] public RectTransform[] PTSScoreParents;
@@ -137,7 +139,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
     [SerializeField] private Vector3 stored_local_pos_ptspoweruppanel;
     [SerializeField] private Vector3 stored_local_pos_ptstoppanel;
     [SerializeField] private Vector3 stored_local_pos_ptstextstackparent;
-    [SerializeField] private Vector3[] stored_local_pos_ptstextstack;
+    [SerializeField] private Vector4 stored_local_anchor_ptstextstackparent;
 
     // Cached stats for UI update referencing
     [NonSerialized] public float cached_scale = -1.0f;
@@ -168,7 +170,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         stored_local_pos_ptspoweruppanel = PTSPowerupPanel.localPosition;
         stored_local_pos_ptstoppanel = PTSTopPanel.transform.localPosition;
         stored_local_pos_ptstextstackparent = PTSTextStackParent.localPosition;
-        stored_local_pos_ptstextstack = new Vector3[PTSTextStack.Length];
+        stored_local_anchor_ptstextstackparent = new Vector4(PTSTextStackParent.anchorMin.x, PTSTextStackParent.anchorMin.y, PTSTextStackParent.anchorMax.x, PTSTextStackParent.anchorMax.y);
         /*for (int i = 0; i < text_queue_limited_lines; i++)
         {
             //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
@@ -189,10 +191,6 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     , PTSTextStack[i].localPosition.z);
             }
         }*/
-        for (int i = 0; i < PTSTextStack.Length; i++)
-        {
-            stored_local_pos_ptstextstack[i] = PTSTextStack[i].transform.localPosition;
-        }
 
         text_queue_limited_timers = new float[text_queue_limited_lines];
         for (int t = 0; t < text_queue_limited_timers.Length; t++)
@@ -236,6 +234,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
         PTSCaptureSprites = new RectTransform[capture_size];
         PTSCaptureOverlays = new RectTransform[capture_size];
         PTSCaptureTexts = new TMP_Text[capture_size];
+        PTSContestTexts = new TMP_Text[capture_size];
+
         foreach (Transform child in (Transform)PTSCapturePanel)
         {
             if (child.name.Contains("PTSCaptureSprite"))
@@ -245,7 +245,14 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 foreach (Transform subchild in child)
                 {
                     if (subchild.name.Contains("PTSCaptureOverlay")) { PTSCaptureOverlays[capture_index] = (RectTransform)subchild; }
-                    if (subchild.name.Contains("PTSCaptureText")) { PTSCaptureTexts[capture_index] = subchild.GetComponent<TMP_Text>(); ; }
+                    if (subchild.name.Contains("PTSCaptureInnerPanel"))
+                    {
+                        foreach (Transform verysubchild in subchild)
+                        {
+                            if (verysubchild.name.Contains("PTSCaptureText")) { PTSCaptureTexts[capture_index] = verysubchild.GetComponent<TMP_Text>(); }
+                            if (verysubchild.name.Contains("PTSContestText")) { PTSContestTexts[capture_index] = verysubchild.GetComponent<TMP_Text>(); }
+                        }
+                    }
                 }
                 capture_index++;
             }
@@ -556,7 +563,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         for (int i = 0; i < text_queue_limited_lines; i++)
         {
             if (i < text_queue_full_colors.Length) { PTSTextStack_Label[i].color = text_queue_full_colors[i]; PTSTextStack_Label[i].gameObject.SetActive(true); } // Needs to happen first, because alpha is modified after
-            if (i < splitStr.Length)
+            if (i < splitStr.Length && splitStr[i] != "")
             {
                 PTSTextStack_Label[i].gameObject.SetActive(true);
                 PTSTextStack_Label[i].text = splitStr[i].ToUpper();
@@ -565,7 +572,8 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 if (text_queue_limited_timers[i] >= fade_time) {  PTSTextStack_Label[i].alpha = 1 - ((text_queue_limited_timers[i] - fade_time) / (duration_modified - fade_time)); }
                 else {  PTSTextStack_Label[i].alpha = 1.0f; }
             }
-            else {  PTSTextStack_Label[i].text = ""; PTSTextStack_Label[i].gameObject.SetActive(false); }
+            else if (ui_demo_enabled && !ui_show_intro_text) { PTSTextStack_Label[i].text = gameController.localizer.FetchText("SAMPLE_TEXT", "Sample Text"); PTSTextStack_Label[i].gameObject.SetActive(true); PTSTextStack_Label[i].alpha = 1.0f; }
+            else { PTSTextStack_Label[i].text = ""; PTSTextStack_Label[i].gameObject.SetActive(false); }
         }
 
         // Tick down demo timer
@@ -1159,7 +1167,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             for (int i = 0; i < PTSCaptureSprites.Length; i++)
             {
                 PTSCaptureSprites[i].transform.gameObject.SetActive(false);
-                PTSCaptureTexts[i].text = "";
+                PTSCaptureTexts[i].text = ""; PTSContestTexts[i].text = "";
                 if (i >= gameController.mapscript_list[gameController.map_selected].map_capturezones.Length) { break; }
                 if (gameController.mapscript_list[gameController.map_selected].map_capturezones.Length > PTSCaptureSprites.Length) { UnityEngine.Debug.LogWarning("There are more capture zones (" + gameController.mapscript_list[gameController.map_selected].map_capturezones.Length + ") than sprites available to draw (" + PTSCaptureSprites.Length + ")!"); }
 
@@ -1177,7 +1185,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     { 
                         hold_text = gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.hold_id, gameController.team_names[capturezone.hold_id].Substring(0, Mathf.Min(hold_text.Length, 3)));
                         hold_color = gameController.team_colors[capturezone.hold_id];
-                        PTSCaptureTexts[i].color = gameController.team_colors_bright[capturezone.hold_id];
+                        //PTSCaptureTexts[i].color = gameController.team_colors_bright[capturezone.hold_id];
                     }
                     else
                     {
@@ -1188,28 +1196,36 @@ public class UIPlyToSelf : UdonSharpBehaviour
                             if (hold_ply.playerId == Networking.LocalPlayer.playerId) 
                             {
                                 hold_color = gameController.team_colors[0];
-                                PTSCaptureTexts[i].color = gameController.team_colors_bright[0];
+                                //PTSCaptureTexts[i].color = gameController.team_colors_bright[0];
                             }
                             else 
                             {
                                 hold_color = gameController.team_colors[1];
-                                PTSCaptureTexts[i].color = gameController.team_colors_bright[1];
+                                //PTSCaptureTexts[i].color = gameController.team_colors_bright[1];
                             }
                         }
                         hold_text = hold_text.Substring(0, Mathf.Min(hold_text.Length, 3));
                     }
+                    hold_text += '\n';
+                    float timeLeft = gameController.option_gm_goal - capturezone.dict_points_values_arr[hold_index];
+                    if (timeLeft < 0.0f) { hold_text += string.Format("{0:F1}", timeLeft); }
+                    else { hold_text += timeLeft.ToString(); }
+
                     PTSCaptureTexts[koth_iter].color = Color.white;
+                    PTSContestTexts[koth_iter].color = Color.white;
                 }
                 else if (capturezone.is_locked)
                 {
-                    hold_color = Color.gray;
-                    PTSCaptureTexts[koth_iter].color = Color.gray;
+                    hold_color = Color.black;
+                    PTSCaptureTexts[koth_iter].color = Color.white;
+                    PTSContestTexts[koth_iter].color = Color.white;
                     hold_text = "X";
                 }
                 else
                 {
-                    hold_color = Color.white;
+                    hold_color = Color.gray;
                     PTSCaptureTexts[koth_iter].color = Color.white;
+                    PTSContestTexts[koth_iter].color = Color.white;
                     hold_text = "O";
                 }
                 hold_color.a = 0.8f;
@@ -1219,19 +1235,22 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 // Display contest progress as an overlay
                 int contest_index = -1;
                 if (capturezone.dict_points_keys_arr != null && capturezone.dict_points_keys_arr.Length > 0) { contest_index = GlobalHelperFunctions.DictIndexFromKey(capturezone.contest_id, capturezone.dict_points_keys_arr); }
-                 Color contest_color = Color.white;
+                string contest_text = ""; Color contest_color = Color.white;
                 if (contest_index >= 0 && capturezone.dict_points_keys_arr != null && contest_index < capturezone.dict_points_keys_arr.Length)
                 {
+                    contest_text += '(';
                     PTSCaptureOverlays[koth_iter].offsetMax = new Vector2(PTSCaptureOverlays[koth_iter].offsetMax.x, Mathf.Lerp(-PTSCaptureSprites[i].sizeDelta.y, 0, capturezone.contest_progress / gameController.option_gm_config_a));
                     if (gameController.option_teamplay)
                     {
                         contest_color = gameController.team_colors[capturezone.contest_id];
+                        contest_text += gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.contest_id, gameController.team_names[capturezone.contest_id].Substring(0, Mathf.Min(contest_text.Length, 3)));
                     }
                     else
                     {
                         VRCPlayerApi contest_ply = VRCPlayerApi.GetPlayerById(capturezone.contest_id);
                         if (contest_ply != null)
                         {
+                            contest_text += contest_ply.displayName;
                             if (contest_ply.playerId == Networking.LocalPlayer.playerId)
                             {
                                 contest_color = gameController.team_colors[0];
@@ -1241,7 +1260,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
                                 contest_color = gameController.team_colors[2];
                             }
                         }
+                        contest_text = hold_text.Substring(0, Mathf.Min(hold_text.Length, 3));
                     }
+                    contest_text += ")\n";
+                    contest_text += Mathf.Round(100.0f * (capturezone.contest_progress / gameController.option_gm_config_a)).ToString() + "%";
+
                 }
                 else 
                 { 
@@ -1250,6 +1273,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 }
                 contest_color.a = 0.8f;
                 PTSCaptureOverlays[koth_iter].GetComponent<UnityEngine.UI.Image>().color = contest_color;
+                PTSContestTexts[koth_iter].text = contest_text;
 
                 koth_iter++;
 
@@ -1339,86 +1363,119 @@ public class UIPlyToSelf : UdonSharpBehaviour
     {
         float heightUI = 0.5f * (Networking.LocalPlayer.GetAvatarEyeHeightAsMeters() / 1.6f);
         float scaleUI = 1.0f * 0.5f;
+        float stretchUI = 1.0f;
+        float separationUI = 1.0f;
         float distanceUI = 1.0f;
         float offsetUI = 0.0f;
+        float angleUI = 0.0f;
         int useWrist = 0;
+
         float UI_WIDTH = 750.0f;
         float UI_HEIGHT = 450.0f;
+        float desktop_ratio = Networking.LocalPlayer.IsUserInVR() ? (UI_WIDTH / UI_HEIGHT) : VRCCameraSettings.ScreenCamera.Aspect;
+        UI_WIDTH *= desktop_ratio;
+        UI_HEIGHT = UI_WIDTH / desktop_ratio;
 
-        float VRSCALECONST = Networking.LocalPlayer.IsUserInVR() ? 0.6f : 1.0f;
-        scaleUI *= VRSCALECONST;
-        float VRSTRETCHCONST = Networking.LocalPlayer.IsUserInVR() ? 0.8f : 1.0f;
+        //float VRSCALECONST = Networking.LocalPlayer.IsUserInVR() ? 0.9f : 1.0f;
+        //scaleUI *= VRSCALECONST;
+        //float VRSTRETCHCONST = Networking.LocalPlayer.IsUserInVR() ? 0.8f : 1.0f;
+        //float VRSEPARATIONCONST = Networking.LocalPlayer.IsUserInVR() ? 
 
         if (gameController != null && gameController.local_ppp_options != null)
         {
             PPP_Options ppp_options = gameController.local_ppp_options;
             useWrist = ppp_options.ui_wrist;
 
-            offsetUI = ppp_options.ui_yoffset / 10.0f;
+            distanceUI *= ppp_options.ui_distance;
+            scaleUI *= ppp_options.ui_scale;
+            stretchUI *= ppp_options.ui_stretch;
+            separationUI *= ppp_options.ui_separation;
+            angleUI = ppp_options.ui_angle;
 
-            /*for (int i = 0; i < text_queue_limited_lines; i++)
+            // new default setting: if UI in front and default, scale = 0.9x, vertical = 0.8x, horizontal = 0.8x, distance = 1.2x, yoffset = -60, [inverted = on --> these two will be in PPP Options]
+            if (useWrist == 0 && Networking.LocalPlayer.IsUserInVR()) 
+            { 
+                scaleUI *= 0.9f * 0.8f;
+                stretchUI *= 0.8f * 0.8f;
+                separationUI *= 0.8f * 0.8f;
+                distanceUI *= 1.2f;
+                offsetUI = (ppp_options.ui_yoffset - 6.0f) / 10.0f;
+            }
+            else
             {
-                PTSTextStack[i].gameObject.SetActive(useWrist > 0);
-            }*/
+                offsetUI = ppp_options.ui_yoffset / 10.0f;
+            }
 
-            distanceUI *= (ppp_options.ui_distance);
-
-            scaleUI *= (ppp_options.ui_scale);
             //PTSCanvas.sizeDelta = new Vector2(ppp_options.ui_separation * (5.0f / 3.0f), ppp_options.ui_separation);
             //PTSCanvas.sizeDelta = new Vector2(500, 300);
             PTSCanvas.sizeDelta = new Vector2(UI_WIDTH, UI_HEIGHT);
             float x_separation = (PTSTimerTransform.localPosition.x - PTSTeamTransform.localPosition.x) / 2.0f;
             PTSLivesTransform.localPosition = new Vector3(
-                x_separation * ppp_options.ui_stretch * VRSTRETCHCONST //150
+                x_separation * stretchUI //150
                 , PTSLivesTransform.localPosition.y
                 , PTSLivesTransform.localPosition.z
                 );
             PTSDamageTransform.localPosition = new Vector3(
-                -x_separation * ppp_options.ui_stretch * VRSTRETCHCONST //150
+                -x_separation * stretchUI //150
                 , PTSDamageTransform.localPosition.y
                 , PTSDamageTransform.localPosition.z
                 );
             PTSInvulTransform.localPosition = PTSDamageTransform.localPosition;
             if (useWrist == 0) 
             {
-                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * ppp_options.ui_stretch * VRSTRETCHCONST, UI_HEIGHT * ppp_options.ui_separation ); 
+                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * stretchUI, UI_HEIGHT * separationUI); 
             }
             else 
             { 
-                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * ppp_options.ui_stretch * VRSTRETCHCONST, UI_HEIGHT); 
+                PTSCanvas.sizeDelta = new Vector2(UI_WIDTH * stretchUI, UI_HEIGHT * separationUI); 
             }
-            PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * ppp_options.ui_separation, 0.0f);
+            PTSPainDirTemplate.transform.GetChild(0).localPosition = new Vector3(0.0f, 86.0f * separationUI, 0.0f);
 
-            /*((RectTransform)PTSTextStack[0].parent).sizeDelta = new Vector2(
-                ((RectTransform)PTSTextStack[0].parent).sizeDelta.x
-                , text_queue_limited_lines * (PTSCanvas.sizeDelta.y / 10.0f)
-                );*/
-
-            /*for (int i = 0; i < text_queue_limited_lines; i++)
+            float textScale = ppp_options.ui_textscale >= 1.0f
+                 ? Mathf.Lerp(0.111f, 0.622f, ((ppp_options.ui_textscale * 10.0f) - 10.0f) / (ppp_options.ui_uitextscaleslider.maxValue - 10.0f))
+                 : Mathf.Lerp(0.0f, 0.111f, ppp_options.ui_textscale);
+            PTSTextStackParent.sizeDelta = new Vector2(
+                PTSTextStackParent.sizeDelta.x
+                , PTSCanvas.sizeDelta.y * textScale
+                );
+            //
+            if (ppp_options.ui_textoffset < -0.33f) 
             {
-                //PTSTextStack[i].sizeDelta = new Vector2(PTSTextStack[i].sizeDelta.x, PTSCanvas.sizeDelta.y / 10.0f);
-                float size_delta = PTSCanvas.sizeDelta.y / 10.0f;
-                float half_line = (text_queue_limited_lines / 2);
-                if (i < half_line)
-                {
-                    PTSTextStack[i].localPosition = new Vector3(
-                        PTSTextStack[i].localPosition.x
-                        , ((half_line - i) * size_delta) - (size_delta / 2)
-                        , PTSTextStack[i].localPosition.z);
-                }
-                else
-                {
-                    PTSTextStack[i].localPosition = new Vector3(
-                        PTSTextStack[i].localPosition.x
-                        , (-(i - half_line) * size_delta) - (size_delta / 2)
-                        , PTSTextStack[i].localPosition.z);
-                }
-
-            }*/
-
+                // Anchored to bottom
+                PTSTextStackParent.anchorMin = new Vector2(0.0f, 0.0f);
+                PTSTextStackParent.anchorMax = new Vector2(1.0f, 0.0f);
+                PTSTextStackParent.localPosition = new Vector3(
+                    PTSTextStackParent.localPosition.x
+                    , (stored_local_pos_ptstextstackparent.y * (ppp_options.ui_inverted ? -1 : 1)) - Mathf.LerpUnclamped(PTSCanvas.sizeDelta.y / 2.0f, 0.0f, ppp_options.ui_textoffset + 1.0f)
+                    , PTSTextStackParent.localPosition.z
+                );
+            }
+            else if (ppp_options.ui_textoffset > 0.33f)
+            {
+                // Anchored to top
+                PTSTextStackParent.anchorMin = new Vector2(0.0f, 1.0f);
+                PTSTextStackParent.anchorMax = new Vector2(1.0f, 1.0f);
+                PTSTextStackParent.localPosition = new Vector3(
+                    PTSTextStackParent.localPosition.x
+                    , (stored_local_pos_ptstextstackparent.y * (ppp_options.ui_inverted ? -1 : 1)) - Mathf.LerpUnclamped(PTSCanvas.sizeDelta.y / 2.0f, 0.0f, ppp_options.ui_textoffset + 1.0f)
+                    // - Mathf.LerpUnclamped(PTSCanvas.sizeDelta.y / 2.0f, 0.0f, ppp_options.ui_textoffset < 0.0f ? ppp_options.ui_textoffset + 1.0f : ppp_options.ui_textoffset - 1.0f),
+                    , PTSTextStackParent.localPosition.z
+                    // 0.0 is correct for center
+                );
+            }
+            else
+            {
+                // Anchored to center
+                PTSTextStackParent.anchorMin = new Vector2(0.0f, 0.5f);
+                PTSTextStackParent.anchorMax = new Vector2(1.0f, 0.5f);
+                PTSTextStackParent.localPosition = new Vector3(
+                    PTSTextStackParent.localPosition.x
+                    , (stored_local_pos_ptstextstackparent.y * (ppp_options.ui_inverted ? -1 : 1)) + Mathf.Lerp(-PTSCanvas.sizeDelta.y / 2.0f, PTSCanvas.sizeDelta.y / 2.0f, (ppp_options.ui_textoffset + 1.0f) / 2.0f)
+                    , PTSTextStackParent.localPosition.z
+                );
+            }
             
-            //ppp_options.ui_separation * (5.0f / 3.0f)
-            //ppp_options.ui_scale
+
         }
 
 
@@ -1443,7 +1500,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * heightUI * scaleUI;
         transform.SetPositionAndRotation(
             posFinal
-            , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation
+            , Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Quaternion.Euler(new Vector3(angleUI, 0.0f, 0.0f))
             );
 
         if (useWrist > 0)
@@ -1451,7 +1508,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
             Vector3 wrist_pos;
             Quaternion wrist_rot;
             float offset_height = 0.10f * playerAttributes.ply_scale;
-            if (gameController != null && gameController.local_ppp_options != null) { offset_height *= gameController.local_ppp_options.ui_separation; }
+            //offset_height *= separationUI; 
             Quaternion offset_rot = Quaternion.Euler(180.0f, -55.0f, 0.0f);
             Vector3 offset_pos = new Vector3(0.0f, offset_height, 0.0f);
             Vector3 distance_pos = new Vector3(0.0f, offsetUI, 0.20f * (distanceUI - 1.0f));
@@ -1703,11 +1760,11 @@ public class UIPlyToSelf : UdonSharpBehaviour
             working_pos.y = -working_pos.y;
             PTSPowerupPanel.localPosition = working_pos;
 
-            working_pos = stored_local_pos_ptstextstackparent;
+            /*working_pos = stored_local_pos_ptstextstackparent;
             ((RectTransform)PTSTextStackParent).anchorMin = new Vector2(0, 1);
             ((RectTransform)PTSTextStackParent).anchorMax = new Vector2(1, 1);
             working_pos.y = -working_pos.y;
-            PTSTextStackParent.localPosition = working_pos;
+            PTSTextStackParent.localPosition = working_pos;*/
 
             // Offset all elements by the inverse of their Y
             working_pos = stored_local_pos_ptsairthrust;
@@ -1744,9 +1801,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
             ((RectTransform)PTSPowerupPanel).anchorMax = new Vector2(1, 0);
             PTSPowerupPanel.localPosition = stored_local_pos_ptspoweruppanel;
 
-            ((RectTransform)PTSTextStackParent).anchorMin = new Vector2(0, 0);
-            ((RectTransform)PTSTextStackParent).anchorMax = new Vector2(1, 0);
-            PTSTextStackParent.localPosition = stored_local_pos_ptstextstackparent;
+            /*((RectTransform)PTSTextStackParent).anchorMin = new Vector2(stored_local_anchor_ptstextstackparent.x, stored_local_anchor_ptstextstackparent.y);
+            ((RectTransform)PTSTextStackParent).anchorMax = new Vector2(stored_local_anchor_ptstextstackparent.z, stored_local_anchor_ptstextstackparent.w);
+            PTSTextStackParent.localPosition = stored_local_pos_ptstextstackparent;*/
 
             PTSAirThrustMeterBGSprite.transform.localPosition = stored_local_pos_ptsairthrust;
             PTSWeaponPanel.localPosition = stored_local_pos_ptsweaponpanel;

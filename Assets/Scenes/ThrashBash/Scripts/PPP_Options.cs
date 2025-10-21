@@ -49,6 +49,9 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Slider ui_uistretchslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uidistanceslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiyoffsetslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uiangleslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uitextscaleslider;
+    [SerializeField] public UnityEngine.UI.Slider ui_uitextoffsetslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiotherscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uiharmscaleslider;
     [SerializeField] public UnityEngine.UI.Slider ui_uimusicslider;
@@ -59,6 +62,9 @@ public class PPP_Options : UdonSharpBehaviour
     [SerializeField] public TMP_Text ui_uistretchtext;
     [SerializeField] public TMP_Text ui_uidistancetext;
     [SerializeField] public TMP_Text ui_uiyoffsettext;
+    [SerializeField] public TMP_Text ui_uiangletext;
+    [SerializeField] public TMP_Text ui_uitextscaletext;
+    [SerializeField] public TMP_Text ui_uitextoffsettext;
     [SerializeField] public TMP_Text ui_uiotherscaletext;
     [SerializeField] public TMP_Text ui_uiharmscaletext;
     [SerializeField] public TMP_Text ui_uimusictext;
@@ -83,6 +89,9 @@ public class PPP_Options : UdonSharpBehaviour
     [NonSerialized] public float ui_separation = 300.0f;
     [NonSerialized] public float ui_stretch = 1.0f;
     [NonSerialized] public float ui_yoffset = 0.0f;
+    [NonSerialized] public float ui_angle = 0.0f;
+    [NonSerialized] public float ui_textscale = 1.0f;
+    [NonSerialized] public float ui_textoffset = 0.0f;
     [NonSerialized] public float ui_distance = 1.0f;
     [NonSerialized] public float ui_harm_scale = 1.0f;
     [NonSerialized] public float ui_other_scale = 1.0f;
@@ -114,8 +123,8 @@ public class PPP_Options : UdonSharpBehaviour
         if (harmtester_transform != null) { harmTester = harmtester_transform.gameObject; }
 
         ResetColorBlindnamesAll(true);
-
         ResetMusicNames(true);
+        PopulateVOPacks(true);
 
         if (canvas_pos_init == Vector3.zero)
         {
@@ -247,6 +256,24 @@ public class PPP_Options : UdonSharpBehaviour
                     UpdateUIYOffset();
                     continue;
                 }
+                if (!PlayerData.HasKey(player, "UIAngle"))
+                {
+                    ui_uiangleslider.value = Networking.LocalPlayer.IsUserInVR() ? 30.0f : 0.0f;
+                    UpdateUIAngle();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UITextScale"))
+                {
+                    ui_uitextscaleslider.value = 15.0f;
+                    UpdateUITextScale();
+                    continue;
+                }
+                if (!PlayerData.HasKey(player, "UITextOffset"))
+                {
+                    ui_uitextoffsetslider.value = Networking.LocalPlayer.IsUserInVR() ? -3.0f : -6.0f;
+                    UpdateUITextOffset();
+                    continue;
+                }
                 if (!PlayerData.HasKey(player, "UIOtherScale"))
                 {
                     ui_uiotherscaleslider.value = 10.0f;
@@ -261,7 +288,7 @@ public class PPP_Options : UdonSharpBehaviour
                 }
                 if (!PlayerData.HasKey(player, "UIInverted"))
                 {
-                    ui_uiinvertedtoggle.isOn = false;
+                    ui_uiinvertedtoggle.isOn = Networking.LocalPlayer.IsUserInVR();
                     UpdateUIInverted();
                     continue;
                 }
@@ -477,6 +504,39 @@ public class PPP_Options : UdonSharpBehaviour
             UpdateUIYOffset();
         }
 
+        float out_UIAngle;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIAngle", out out_UIAngle))
+        {
+            ui_uiangleslider.value = out_UIAngle;
+        }
+        else
+        {
+            ui_uiangleslider.value = Networking.LocalPlayer.IsUserInVR() ? 30.0f : 0.0f;
+            UpdateUIAngle();
+        }
+
+        float out_UITextScale;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UITextScale", out out_UITextScale))
+        {
+            ui_uitextscaleslider.value = out_UITextScale;
+        }
+        else
+        {
+            ui_uitextscaleslider.value = 15.0f;
+            UpdateUITextScale();
+        }
+
+        float out_UITextOffset;
+        if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UITextOffset", out out_UITextOffset))
+        {
+            ui_uitextoffsetslider.value = out_UITextOffset;
+        }
+        else
+        {
+            ui_uitextoffsetslider.value = Networking.LocalPlayer.IsUserInVR() ? -3.0f : -6.0f;
+            UpdateUITextOffset();
+        }
+
 
         float out_UIOtherScale;
         if (PlayerData.TryGetFloat(Networking.LocalPlayer, "UIOtherScale", out out_UIOtherScale))
@@ -507,7 +567,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
         else
         {
-            ui_uiinvertedtoggle.isOn = false;
+            ui_uiinvertedtoggle.isOn = Networking.LocalPlayer.IsUserInVR();
             UpdateUIInverted();
         }
 
@@ -786,6 +846,9 @@ public class PPP_Options : UdonSharpBehaviour
         PlayerData.SetFloat("UIStretch", ui_uistretchslider.value);
         PlayerData.SetFloat("UIDistance", ui_uidistanceslider.value);
         PlayerData.SetFloat("UIYOffset", ui_uiyoffsetslider.value);
+        PlayerData.SetFloat("UIAngle", ui_uiangleslider.value);
+        PlayerData.SetFloat("UITextScale", ui_uitextscaleslider.value);
+        PlayerData.SetFloat("UITextOffset", ui_uitextoffsetslider.value);
         PlayerData.SetFloat("UIOtherScale", ui_uiotherscaleslider.value);
         PlayerData.SetFloat("UIHarmScale", ui_uiharmscaleslider.value);
         PlayerData.SetBool("UIInverted", ui_uiinvertedtoggle.isOn);
@@ -811,7 +874,6 @@ public class PPP_Options : UdonSharpBehaviour
         should_sync = false;
         sync_timer = 0.0f;
     }
-
 
     public void UpdateUIScale()
     {
@@ -873,6 +935,48 @@ public class PPP_Options : UdonSharpBehaviour
         if (ui_yoffset > 0) { ui_uiyoffsettext.color = Color.cyan; }
         else if (ui_yoffset < 0) { ui_uiyoffsettext.color = new Color32(255, 153, 0, 255); }
         else { ui_uiyoffsettext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateUIAngle()
+    {
+        ui_angle = ui_uiangleslider.value;
+        ShowDemoUI();
+        ui_uiangletext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_ANGLE", "UI Angle: $ARG0°", (ui_angle).ToString());
+        if (ui_angle > 0) { ui_uiangletext.color = Color.cyan; }
+        else if (ui_angle < 0) { ui_uiangletext.color = new Color32(255, 153, 0, 255); }
+        else { ui_uiangletext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateUITextScale()
+    {
+        ui_textscale = ui_uitextscaleslider.value / 10.0f;
+        ShowDemoUI();
+        ui_uitextscaletext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_TEXTSCALE", "UI Text Scale: $ARG0%", (ui_textscale * 100.0f).ToString());
+        if ((ui_textscale * 10.0f) <= ui_uitextscaleslider.minValue) { ui_uitextscaletext.color = Color.red; }
+        else { ui_uitextscaletext.color = Color.white; }
+
+        if (waiting_on_playerdata) { return; }
+        should_sync = true;
+        sync_timer = 0.0f;
+    }
+
+    public void UpdateUITextOffset()
+    {
+        // Value range: -10 to 10, default 0
+        ui_textoffset = ui_uitextoffsetslider.value / 10.0f;
+        ShowDemoUI();
+        ui_uitextoffsettext.text = gameController.localizer.FetchText("LOCALOPTIONS_UI_TEXTOFFSET", "UI Text Position: $ARG0%", (ui_textoffset * 100.0f).ToString());
+        if (ui_textoffset > 0.5f) { ui_uitextoffsettext.color = Color.cyan; }
+        else if (ui_textoffset < -0.5f) { ui_uitextoffsettext.color = new Color32(255, 153, 0, 255); }
+        else { ui_uitextoffsettext.color = Color.white; }
 
         if (waiting_on_playerdata) { return; }
         should_sync = true;
@@ -1184,7 +1288,6 @@ public class PPP_Options : UdonSharpBehaviour
         vo_pref_a = ui_vo_pref_a_toggle.isOn;
         vo_pref_b = ui_vo_pref_b_toggle.isOn;
         vo_pref_c = ui_vo_pref_c_toggle.isOn;
-        // To-do: set voiceover toggles in gameController
 
         voiceover_type = ui_uivotype_dropdown.value;
         if (gameController.voiceover_packs != null && voiceover_type < gameController.voiceover_packs.Length)
@@ -1291,12 +1394,15 @@ public class PPP_Options : UdonSharpBehaviour
         ui_uistretchslider.value = 10.0f;
         ui_uidistanceslider.value = 10.0f;
         ui_uiyoffsetslider.value = 0.0f;
+        ui_uiangleslider.value = Networking.LocalPlayer.IsUserInVR() ? 30.0f : 0.0f;
+        ui_uitextscaleslider.value = Networking.LocalPlayer.IsUserInVR() ? 15.0f : 10.0f;
+        ui_uitextoffsetslider.value = Networking.LocalPlayer.IsUserInVR() ? -3.0f : -6.0f;
         ui_uiotherscaleslider.value = 10.0f;
         ui_uiharmscaleslider.value = 10.0f;
         ui_wristtoggle_n.isOn = true;
         ui_wristtoggle_l.isOn = false;
         ui_wristtoggle_r.isOn = false;
-        ui_uiinvertedtoggle.isOn = false;
+        ui_uiinvertedtoggle.isOn = Networking.LocalPlayer.IsUserInVR();
     }
 
     public void ResetPPPCanvas()
@@ -1422,4 +1528,21 @@ public class PPP_Options : UdonSharpBehaviour
         ui_musicoverride_dropdown.value = stored_value;
     }
 
+    public void PopulateVOPacks(bool init = false)
+    {
+        // Due to the way this is implemented, the value will be forced to 0. So, we store the original value and then reset to that value after refreshing the options.
+        int stored_value = ui_uivotype_dropdown.value;
+
+        ui_uivotype_dropdown.ClearOptions();
+        string[] vo_names = new string[gameController.voiceover_packs.Length];
+
+        for (int i = 0; i < gameController.voiceover_packs.Length; i++)
+        {
+            if (gameController.voiceover_packs[i] == null) { continue; } 
+            vo_names[i] = gameController.voiceover_packs[i].vo_name;
+            // To-do: make these localizer keys, localized only for Japanese
+        }
+        ui_uivotype_dropdown.AddOptions(vo_names);
+        ui_uivotype_dropdown.value = stored_value;
+    }
 }

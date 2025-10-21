@@ -84,15 +84,15 @@ public class BouncePad : UdonSharpBehaviour
         }
     }
 
-    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
-        if (player != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || cooldown_timer < cooldown_duration) { return; }
         Bounce(player);
     }
 
-    public override void OnPlayerCollisionEnter(VRCPlayerApi player)
+    public override void OnPlayerCollisionStay(VRCPlayerApi player)
     {
-        if (player != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || cooldown_timer < cooldown_duration) { return; }
         Bounce(player);
     }
 

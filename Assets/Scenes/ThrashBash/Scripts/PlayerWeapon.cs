@@ -476,8 +476,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         float ply_scale_offset = 1.0f;
         if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_scale != 1.0f) { ply_scale_offset = gameController.local_plyAttr.ply_scale; }
 
-        if (resetElevation) { cached_desktop_offset = (Networking.LocalPlayer.GetRotation() * Vector3.forward * 0.5f * 1.33f * ply_scale_offset); }
-        else { cached_desktop_offset = (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * 1.33f * ply_scale_offset); }
+        if (resetElevation) { cached_desktop_offset = (Networking.LocalPlayer.GetRotation() * Vector3.forward * 0.5f * 1.66f * ply_scale_offset); }
+        else { cached_desktop_offset = (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.5f * 1.66f * ply_scale_offset); }
 
         if (!pickup_component.IsHeld)
         {

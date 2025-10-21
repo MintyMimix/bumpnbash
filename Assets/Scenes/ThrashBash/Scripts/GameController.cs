@@ -920,12 +920,12 @@ public class GameController : GlobalHelperFunctions
                     if (last_survivor != null && last_survivor == Networking.LocalPlayer)
                     {
                         //local_plyAttr.ply_speed *= 1.5f;
-                        local_plyAttr.ply_atk *= 1.5f;
+                        local_plyAttr.ply_atk *= 4.5f;
                         local_plyAttr.ply_def *= 1.0f;
                         local_plyweapon.weapon_temp_ammo = -1;
                         local_plyweapon.weapon_temp_duration = -1;
                         local_plyweapon.weapon_temp_timer = 0.0f;
-                        local_plyweapon.weapon_type = (int)weapon_type_name.Rocket;
+                        local_plyweapon.weapon_type = (int)weapon_type_name.HyperGlove;
                         local_plyweapon.weapon_type_default = local_plyweapon.weapon_type;
                         local_plyweapon.weapon_extra_data = 0;
                         if (local_uiplytoself != null && template_ItemSpawner != null)
@@ -974,7 +974,7 @@ public class GameController : GlobalHelperFunctions
                 && infected[0].Length >= survivors[0].Length)
             {
                 local_plyAttr.infection_special = 0;
-                local_plyAttr.InfectionStatReset();
+                local_plyAttr.InfectionStatReset(false);
                 AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_INFECTION_HALFTIME", "Half of the Survivors are dead! You are no longer buffed!"));
             }
 
@@ -982,7 +982,7 @@ public class GameController : GlobalHelperFunctions
             if (Networking.IsOwner(gameObject))
             {
                 // If we hit a certain threshold of players and timer is met and we have not yet spawned X number of zombigs, spawn one
-                if (!infection_zombig_active && ((TimeLeft <= (round_length / 2.0f) && infection_zombigs_spawned < 1) || (TimeLeft < 30.0f && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
+                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 2.0f) && infection_zombigs_spawned < 2)  || (TimeLeft < 30.0f && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
                 {
                     int pick_player_id = UnityEngine.Random.Range(0, infected[0].Length);
                     VRCPlayerApi pick_player = VRCPlayerApi.GetPlayerById(infected[0][pick_player_id]);
@@ -991,7 +991,7 @@ public class GameController : GlobalHelperFunctions
                         PlayerAttributes zombig_attr = FindPlayerAttributes(pick_player);
                         if (zombig_attr != null && zombig_attr.infection_special != 2)
                         {
-                            zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig");
+                            zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig", true);
                             infection_zombig_active = true;
                             infection_zombigs_spawned++;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_GLOBAL", "Incoming ZomBig: $ARG0!", pick_player.displayName), Color.red, 5.0f);
@@ -1519,7 +1519,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_a = 3;
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "3";
+            ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.Clash)
@@ -1528,7 +1528,7 @@ public class GameController : GlobalHelperFunctions
             if (option_teamplay) { goal_input_a *= Mathf.Max(1, Mathf.RoundToInt(ply_count / team_count)); }
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "3";
+            ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
@@ -1537,7 +1537,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_b = 2 + Mathf.FloorToInt((float)ply_count / (float)10.0f);
             ui_round_length_input.text = "300";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "3";
+            ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         else if (option_gamemode == (int)gamemode_name.Infection)
@@ -1545,7 +1545,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)8.0f);
             ui_round_length_input.text = "180";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "3";
+            ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
 
         }
@@ -1556,7 +1556,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_b = 2;
             ui_round_length_input.text = "300";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "12"; // Respawn duration will be higher on KOTH by default
+            ui_adv_option_respawn_duration.text = "14"; // Respawn duration will be higher on KOTH by default
             if (ui_ply_option_atk.text == "100") { ui_ply_option_atk.text = "250"; } 
         }
 
@@ -1566,7 +1566,7 @@ public class GameController : GlobalHelperFunctions
             goal_input_b = 100;
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "3";
+            ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
         }
         ui_round_option_goal_input_a.text = goal_input_a.ToString();
@@ -2121,7 +2121,7 @@ public class GameController : GlobalHelperFunctions
 
     public void SetupGamemodeMapObjects()
     {
-        if (map_selected > 0 && mapscript_list != null && map_selected < mapscript_list.Length)
+        if (map_selected >= 0 && mapscript_list != null && map_selected < mapscript_list.Length)
         {
             map_element_gamemode_specific[] gm_specific_list = mapscript_list[map_selected].map_gm_specific_list;
             if (gm_specific_list != null && gm_specific_list.Length > 0)
@@ -2228,7 +2228,7 @@ public class GameController : GlobalHelperFunctions
                     {
                         personal_description = localizer.FetchText("NOTIFICATION_ROUNDSTART_INFECTION_INFECTED", "You are an Infected!");
                         playerData.infection_special = 1;
-                        playerData.InfectionStatReset();
+                        playerData.InfectionStatReset(false);
                         //vopack_selected.PlayVoiceover((int)voiceover_event_name.Tutorial, (int)voiceover_tutorial_sfx_name.Mode_Infection_B);
 
                     }

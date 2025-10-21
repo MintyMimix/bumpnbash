@@ -72,8 +72,8 @@ public class ItemWeapon : ItemGeneric
             }
         }
 
-        if (iweapon_type >= 0 && iweapon_type < iweapon_ammo_list.Length && iweapon_ammo_list[iweapon_type] != 2) { iweapon_ammo = iweapon_ammo_list[iweapon_type]; }
-        if (iweapon_type >= 0 && iweapon_type < iweapon_duration_list.Length && iweapon_duration_list[iweapon_type] != 2) { iweapon_duration = iweapon_duration_list[iweapon_type]; }
+        if (iweapon_type >= 0 && iweapon_type < iweapon_ammo_list.Length && iweapon_ammo_list[iweapon_type] != -2) { iweapon_ammo = iweapon_ammo_list[iweapon_type]; }
+        if (iweapon_type >= 0 && iweapon_type < iweapon_duration_list.Length && iweapon_duration_list[iweapon_type] != -2) { iweapon_duration = iweapon_duration_list[iweapon_type]; }
     }
 
     private void Update()

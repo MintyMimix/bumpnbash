@@ -314,12 +314,12 @@ public class ItemSpawner : UdonSharpBehaviour
             child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * item_spawn_duration_mul);
             child_weapon.iweapon_duration *= item_spawn_duration_mul;
             // All pickups are halved duration during Infection 
-            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
+            /*if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
             {
                 if ((child_weapon.iweapon_ammo * 0.5f) > 0.0f && (child_weapon.iweapon_ammo * 0.5f) < 1.0f) { child_weapon.iweapon_ammo = 1; }
                 else if (child_weapon.iweapon_ammo > 0) { child_weapon.iweapon_ammo = Mathf.RoundToInt(child_weapon.iweapon_ammo * 0.5f); }
                 if ((child_weapon.iweapon_duration * 0.5f) > 0.0f) { child_weapon.iweapon_duration *= 0.5f; }
-            } 
+            } */
             //child_weapon.allow_multiple_owners = false;
             child_weapon.apply_after_spawn = apply_after_spawn;
             child_weapon.gameObject.SetActive(true);

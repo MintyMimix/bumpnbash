@@ -16,11 +16,11 @@ public class CaptureZone : UdonSharpBehaviour
 {
 
     [Tooltip("How long should this point be locked before it can be captured?")]
-    [SerializeField] public float initial_lock_duration = 30.0f;
+    [SerializeField] public float initial_lock_duration = 5.0f;
     //[Tooltip("How often should this capture point perform a Physics check for player hitboxes?")]
     //[SerializeField] public float check_players_impulse = 0.5f;
     [Tooltip("How long should the contestor be allowed to remain outside of the capture zone before their progress fades? (MUST be > check_players_impulse)")]
-    [SerializeField] [UdonSynced] public float contest_pause_duration = 4.0f;
+    [SerializeField] public float contest_pause_duration = 1.5f; //[UdonSynced] 
     [Tooltip("How often should a capture point grant points? (While there shouldn't be much reason for this to not be 1, it's good to be prepared.)")]
     [SerializeField] public float point_grant_impulse = 1.0f;
     [Tooltip("What's the minimum number of players required for this point to be active? (-1 = no requirement)")]
@@ -28,6 +28,7 @@ public class CaptureZone : UdonSharpBehaviour
 
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject captureDisplayArea;
+    [SerializeField] public ChangeColorWithSetting tubeArea;
     [SerializeField] public GameObject UITeamFlagCanvas;
     [SerializeField] public UnityEngine.UI.Image UITeamLockImage;
     [SerializeField] public UnityEngine.UI.Image UITeamFlagImage;
@@ -175,46 +176,11 @@ public class CaptureZone : UdonSharpBehaviour
                 {
                     overtime_vo_played = false;
                 }
-
-                /*if (gameController.koth_respawn_wave_duration != null && gameController.koth_respawn_wave_duration.Length > 0)
-                {
-                    for (int i = 0; i < gameController.koth_respawn_wave_duration.Length; i++)
-                    {
-                        if (hold_id >= 0 && hold_id < gameController.koth_respawn_wave_duration.Length) { gameController.koth_respawn_wave_duration[hold_id] = gameController.plysettings_respawn_duration * 2.0f; }
-                        if (contest_id >= 0 && contest_id < gameController.koth_respawn_wave_duration.Length) { gameController.koth_respawn_wave_duration[contest_id] = gameController.plysettings_respawn_duration * 1.5f; }
-                    }
-                }*/
-
-                    /*int local_id = 0;
-                    if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
-                    else { local_id = Networking.LocalPlayer.playerId; }
-                    int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
-                    if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
-                    {
-                        // To-do: Make this not conflict with other capture zones
-                        //gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
-                        gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration; 
-
-                        // Respawn duration is always longer for the holder
-                        if ((
-                            (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
-                            || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
-                            ))
-                        { gameController.local_plyAttr.ply_respawn_duration *= 2.0f; }
-                        // Respawn duration is slightly longer for the contestor
-                        if ((
-                            (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
-                            || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
-                            ))
-                        { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
-                    }*/
             }
         }
         else
         {
             point_grant_timer += networkTimeDelta;
-            //UnityEngine.Debug.Log("[KOTH_TEST] point_grant_timer = " + point_grant_timer + "; currentNetworkTime = " + currentNetworkTime + " vs last_network_time = " + cache_last_network_time + "(networkTimeDelta = " + networkTimeDelta + ")");
-
         }
 
         // Respawn duration should scale with progress
@@ -687,6 +653,8 @@ public class CaptureZone : UdonSharpBehaviour
                 t.GetComponent<Renderer>().material.color = color;
             }
         }
+
+        if (tubeArea != null) { tubeArea.set_color = color; }  
     }
 
     public void RecolorDisplayArea(Color32 color)
