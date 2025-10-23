@@ -982,7 +982,7 @@ public class GameController : GlobalHelperFunctions
             if (Networking.IsOwner(gameObject))
             {
                 // If we hit a certain threshold of players and timer is met and we have not yet spawned X number of zombigs, spawn one
-                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 2.0f) && infection_zombigs_spawned < 2)  || (TimeLeft < 30.0f && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
+                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 3.0f) && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
                 {
                     int pick_player_id = UnityEngine.Random.Range(0, infected[0].Length);
                     VRCPlayerApi pick_player = VRCPlayerApi.GetPlayerById(infected[0][pick_player_id]);
@@ -2439,7 +2439,7 @@ public class GameController : GlobalHelperFunctions
                 {
                     capturezone.dict_points_keys_arr = ply_parent_arr[0];
                     capturezone.dict_points_values_arr = ply_parent_arr[1];
-                   // koth_respawn_wave_start_ms = new double[ply_parent_arr[0].Length];
+                    // koth_respawn_wave_start_ms = new double[ply_parent_arr[0].Length];
                     //koth_respawn_wave_duration = new double[team_count];
                     for (int i = 0; i < ply_parent_arr[0].Length; i++)
                     {
@@ -3279,13 +3279,18 @@ public class GameController : GlobalHelperFunctions
                 if (capturezone == null || capturezone.gameObject == null) { continue; }
                 if (Networking.IsOwner(gameObject))
                 {
-                    capturezone.dict_points_keys_arr = new int[0];
-                    capturezone.dict_points_keys_str = "";
-                    capturezone.dict_points_values_arr = new int[0];
-                    capturezone.dict_points_values_str = "";
+                    //capturezone.dict_points_keys_arr = new int[0];
+                    //capturezone.dict_points_keys_str = "";
+                    //capturezone.dict_points_values_arr = new int[0];
+                    //capturezone.dict_points_values_str = "";
+                    //capturezone.RequestSerialization(); // Continous sync probably doesn't require this, but just in case
+                    capturezone.hold_id = -1;
+                    capturezone.contest_id = -1;
+                    capturezone.is_locked = true;
                     capturezone.RequestSerialization(); // Continous sync probably doesn't require this, but just in case
-                }
 
+                }
+                
                 capturezone.gameObject.SetActive(false);
             }
         }

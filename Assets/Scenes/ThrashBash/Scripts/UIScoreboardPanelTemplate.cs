@@ -67,7 +67,34 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
         if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
             if (points_image.sprite != timer_sprite) { points_image.sprite = timer_sprite; }
-            points_text.text = (gameController.option_gm_goal - plyAttr.ply_points).ToString();
+
+            bool koth_is_valid = true;
+            if (gameController.mapscript_list == null || gameController.map_selected < 0 || gameController.map_selected > gameController.mapscript_list.Length
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones == null || gameController.mapscript_list[gameController.map_selected].map_capturezones.Length <= 0
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones[0].dict_points_keys_arr == null
+                ) { koth_is_valid = false; }
+            if (koth_is_valid)
+            {
+                CaptureZone capturezone = gameController.mapscript_list[gameController.map_selected].map_capturezones[0];
+                float timeLeft = gameController.option_gm_goal; int koth_index = 0;
+                int margin_time = Networking.IsOwner(capturezone.gameObject) ? 0 : 1;
+
+                if (gameController.option_teamplay && plyAttr.ply_team >= 0 && capturezone.dict_points_values_arr != null) 
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(plyAttr.ply_team, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                else if (!gameController.option_teamplay && plyAttr.ply_team >= 0 && capturezone.dict_points_values_arr != null) 
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(Networking.LocalPlayer.playerId, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                timeLeft = Mathf.Max(0, timeLeft);
+                points_text.text = timeLeft.ToString();
+            }
+
         }
         else
         {

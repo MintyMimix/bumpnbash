@@ -129,7 +129,8 @@ public class ItemSpawner : UdonSharpBehaviour
             // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups and don't allow boss glove spawns
             if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.BossBash)
             {
-                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown || i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
+                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown)) { parsed_spawn_chances[i] = 0.0f; }
+                else if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.2f; }
                 else if (parsed_spawn_chances[i] > 0 && i == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove) { parsed_spawn_chances[i] *= 0.0f; }
             }
             // If we are NOT in Infection or Boss Bash, disable debuffs (unless it's a training spawner)

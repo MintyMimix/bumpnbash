@@ -918,16 +918,36 @@ public class UIPlyToSelf : UdonSharpBehaviour
             // If this is King of the Hill, display the total capture time remaining
             else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
-                float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points;
-                LivesText = timeLeft.ToString();
-                PTSLives.color = new Color(
-                    Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
-                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
-                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
-                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
-                    );
-                PTSLivesImage.color = PTSTeamFlagImage.color;
-                PTSLivesImage.sprite = PTSTimerImage;
+                bool koth_is_valid = true;
+                if (gameController.mapscript_list == null || gameController.map_selected < 0 || gameController.map_selected > gameController.mapscript_list.Length
+                    || gameController.mapscript_list[gameController.map_selected].map_capturezones == null || gameController.mapscript_list[gameController.map_selected].map_capturezones.Length <= 0
+                    || gameController.mapscript_list[gameController.map_selected].map_capturezones[0].dict_points_keys_arr == null
+                    ) { koth_is_valid = false; }
+                if (koth_is_valid)
+                {
+                    CaptureZone capturezone = gameController.mapscript_list[gameController.map_selected].map_capturezones[0];
+                    float timeLeft = gameController.option_gm_goal; int koth_index = 0;
+                    int margin_time = Networking.IsOwner(capturezone.gameObject) ? 0 : 1;
+                    if (gameController.option_teamplay && playerAttributes.ply_team >= 0 && capturezone.dict_points_values_arr != null)
+                    {
+                        koth_index = GlobalHelperFunctions.DictIndexFromKey(playerAttributes.ply_team, capturezone.dict_points_keys_arr);
+                        if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+                    }
+                    else if (!gameController.option_teamplay && playerAttributes.ply_team >= 0 && capturezone.dict_points_values_arr != null)
+                    {
+                        koth_index = GlobalHelperFunctions.DictIndexFromKey(Networking.LocalPlayer.playerId, capturezone.dict_points_keys_arr);
+                        if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+                    }
+                    LivesText = timeLeft.ToString();
+                    PTSLives.color = new Color(
+                        Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
+                        , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
+                        , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
+                        , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
+                        );
+                    PTSLivesImage.color = PTSTeamFlagImage.color;
+                    PTSLivesImage.sprite = PTSTimerImage;
+                }
             }
             // If this is Fitting In, display the number of deaths
             else if (gameController.option_gamemode == (int)gamemode_name.FittingIn)
@@ -1160,7 +1180,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
     public void UI_Capturezones()
     {
         // Handle capture zones
-        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing) && gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && gameController.map_selected >= 0 && gameController.mapscript_list != null && gameController.map_selected < gameController.mapscript_list.Length && gameController.mapscript_list[gameController.map_selected].map_capturezones != null)
+        if ((gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing)
+            && gameController.option_gamemode == (int)gamemode_name.KingOfTheHill 
+            && gameController.map_selected >= 0 
+            && gameController.mapscript_list != null && gameController.map_selected < gameController.mapscript_list.Length 
+            && gameController.mapscript_list[gameController.map_selected].map_capturezones != null
+            && (playerAttributes == null || (playerAttributes != null && !playerAttributes.ply_training && (playerAttributes.ply_state == (int)player_state_name.Alive || playerAttributes.ply_state == (int)player_state_name.Respawning)))
+            )
         {
             PTSCapturePanel.gameObject.SetActive(true);
             byte koth_iter = 0;
@@ -1207,7 +1233,9 @@ public class UIPlyToSelf : UdonSharpBehaviour
                         hold_text = hold_text.Substring(0, Mathf.Min(hold_text.Length, 3));
                     }
                     hold_text += '\n';
-                    float timeLeft = gameController.option_gm_goal - capturezone.dict_points_values_arr[hold_index];
+                    int margin_time = Networking.IsOwner(capturezone.gameObject) ? 0 : 1;
+                    float timeLeft = gameController.option_gm_goal - capturezone.dict_points_values_arr[hold_index] - margin_time;
+                    timeLeft = Mathf.Max(0, timeLeft);
                     if (timeLeft < 0.0f) { hold_text += string.Format("{0:F1}", timeLeft); }
                     else { hold_text += timeLeft.ToString(); }
 

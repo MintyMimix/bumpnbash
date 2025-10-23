@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Globalization;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -7,7 +8,7 @@ using VRC.Udon;
 
 public class GlobalHelperFunctions : UdonSharpBehaviour
 {
-    public const string BUILD_VERSION = "0.29.3";
+    public const string BUILD_VERSION = "0.29.5";
 
     // Enum replacement helper
     public static int KeyToPowerupType(string enum_str_name)
@@ -128,6 +129,35 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
         }
         return result;
     }
+
+    /*public static float[] ConvertStrToFloatArray(string str)
+    {
+        if (str == "" || str == null) { return null; }
+        string[] splitStr = str.Split(',');
+        if (splitStr == null) { return null; }
+        float[] arrOut = new float[splitStr.Length];
+
+        for (int i = 0; i < splitStr.Length; i++)
+        {
+            var intAttempt = StringToInt(splitStr[i]);
+            if (intAttempt != 404) { arrOut[i] = intAttempt; }
+        }
+        return arrOut;
+    }
+
+    // To-do: replace all references of this with a String.Join() [or alternatively, just make that what internally happens here]
+    public static string ConvertFloatArrayToString(float[] arrIn)
+    {
+        if (arrIn == null || arrIn.Length == 0) return "";
+
+        string result = arrIn[0].ToString("F3", CultureInfo.InvariantCulture);
+        for (int i = 1; i < arrIn.Length; i++)
+        {
+            result += ',';
+            result += arrIn[i].ToString();
+        }
+        return result;
+    }*/
 
     public static int[] AddToIntArray(int inValue, int[] inArr)
     {

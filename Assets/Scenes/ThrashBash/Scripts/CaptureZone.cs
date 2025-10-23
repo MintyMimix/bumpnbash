@@ -9,6 +9,7 @@ using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 using static UnityEngine.UI.Image;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
@@ -60,6 +61,8 @@ public class CaptureZone : UdonSharpBehaviour
     [NonSerialized] public int[] dict_points_values_arr;
     [NonSerialized][UdonSynced] public string dict_points_values_str = "";
 
+    [NonSerialized] public float avg_network_delay = 0.0f;
+
     // To redo this, we'll have a global tracking array of POINTS, that will then be evaluated by a unique function in GameController for each team/player, evaluated against ALL PLAYERS / TEAMS, regardless of in-game or not (to prevent array fuckery with sorting from joining/leaving players).
     // Then, every interval, grant points to the array. Reset this interval timer every grant or capture.
     // Finally, don't grant the last point if it is contested (display "OVERTIME" instead).
@@ -100,6 +103,13 @@ public class CaptureZone : UdonSharpBehaviour
         }
     }
 
+    public override void OnDeserialization(DeserializationResult result)
+    {
+        base.OnDeserialization(result);
+        float network_diff = result.receiveTime - result.sendTime;
+        avg_network_delay = network_diff > 0 ? (avg_network_delay + network_diff) / 2.0f : avg_network_delay;
+    }
+
     private void Update()
     {
         HandleUI();
@@ -124,22 +134,26 @@ public class CaptureZone : UdonSharpBehaviour
         // Impulse point granting (also used for any events which will occur every second)
         if (point_grant_timer >= point_grant_impulse)
         {
+            int points_to_grant = Mathf.FloorToInt(1 + point_grant_timer - point_grant_impulse + avg_network_delay);
             //UnityEngine.Debug.Log("[KOTH_POINT_TEST] point_grant_timer = " + point_grant_timer + "; currentNetworkTime = " + currentNetworkTime + " vs last_network_time = " + cache_last_network_time + "(networkTimeDelta = " + networkTimeDelta + ")");
             point_grant_timer = 0.0f;
             if (!is_locked && dict_points_keys_arr != null && dict_points_values_arr != null)
             {
                 int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
-                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
-                {
-                    hold_points = dict_points_values_arr[hold_index];
-                    if (hold_points < gameController.option_gm_goal - 1) { dict_points_values_arr[hold_index]++; } // Normal condition
-                    else if (!overtime_enabled) { dict_points_values_arr[hold_index]++; } // Victory condition
-                    else { } // Overtime condition
-                }
 
                 if (Networking.IsOwner(gameObject))
                 {
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
+                    if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
+                    {
+                        hold_points = dict_points_values_arr[hold_index];
+                        if (hold_points < gameController.option_gm_goal - 1) { dict_points_values_arr[hold_index] += points_to_grant; } // Normal condition
+                        else if (!overtime_enabled) { dict_points_values_arr[hold_index] += points_to_grant; } // Victory condition
+                        else { } // Overtime condition
+                        hold_points = dict_points_values_arr[hold_index];
+                        gameController.CheckForRoundGoal();
+                    }
+
+                    //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
                     // (SFX handling used to be here as networked events, but has since been moved outside this block as local events)
                 }
 
@@ -239,8 +253,8 @@ public class CaptureZone : UdonSharpBehaviour
             int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
             if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && (gameController.option_gm_goal - dict_points_values_arr[hold_index]) <= 5) {
                 dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6;
-                if (!Networking.IsOwner(gameObject)) { LocalGrantPoints(); }
-                else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
+                //if (!Networking.IsOwner(gameObject)) { LocalGrantPoints(); }
+                //else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
             }
 
             contest_progress = 0.0f;
@@ -526,11 +540,13 @@ public class CaptureZone : UdonSharpBehaviour
             }
 
             float timeLeft = gameController.option_gm_goal;
-            if (hold_index >= 0) 
-            {
-                dict_points_values_arr = GlobalHelperFunctions.ConvertStrToIntArray(dict_points_values_str);
-                timeLeft -= dict_points_values_arr[hold_index]; 
-            }
+            //if (hold_index >= 0) 
+            //{
+            //    dict_points_values_arr = GlobalHelperFunctions.ConvertStrToIntArray(dict_points_values_str);
+            int margin_time = Networking.IsOwner(gameObject) ? 1 : 2;
+            timeLeft -= (hold_points + margin_time);
+            timeLeft = Mathf.Max(0, timeLeft);
+            //}
             //displayText += "\n ";
             if (timeLeft < 0.0f) { timerText = string.Format("{0:F1}", timeLeft); } 
             else { timerText = timeLeft.ToString(); }
@@ -675,7 +691,7 @@ public class CaptureZone : UdonSharpBehaviour
 
     }
 
-    [NetworkCallable]
+    /*[NetworkCallable]
     public void LocalGrantPoints()
     {
         if (dict_points_keys_arr == null || dict_points_values_arr == null) { return; }
@@ -693,6 +709,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
     }
+    */
 
     public void AddPlayerOnPoint(int player_id)
     {

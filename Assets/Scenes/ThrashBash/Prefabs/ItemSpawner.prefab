@@ -635,7 +635,7 @@ MonoBehaviour:
   - {fileID: 21300000, guid: 03935ecb1f6914444b80399e9d4b0efe, type: 3}
   - {fileID: 21300000, guid: 5a5db19e15566b04799190610dcb24c9, type: 3}
   - {fileID: 21300000, guid: 3e36bc5f5ff480e419955b8cd55607cc, type: 3}
-  iweapon_ammo_list: ffffffff0100000006000000ffffffffffffffffffffffff0300000001000000
+  iweapon_ammo_list: ffffffff0200000005000000ffffffffffffffffffffffff0300000002000000
   iweapon_duration_list:
   - -1
   - -1

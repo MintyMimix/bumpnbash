@@ -6996,12 +6996,13 @@ MonoBehaviour:
     PrefabModifications: []
     SerializationNodes: []
   _udonSharpBackingUdonBehaviour: {fileID: 2960884397599416212}
-  initial_lock_duration: 10
-  contest_pause_duration: 3
+  initial_lock_duration: 4
+  contest_pause_duration: 1
   point_grant_impulse: 1
   min_players: -1
   gameController: {fileID: 0}
   captureDisplayArea: {fileID: 168288762274814493}
+  tubeArea: {fileID: 0}
   UITeamFlagCanvas: {fileID: 3717725737753278501}
   UITeamLockImage: {fileID: 2852489190395787183}
   UITeamFlagImage: {fileID: 3151357746409141320}
