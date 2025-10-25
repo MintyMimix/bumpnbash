@@ -802,7 +802,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             }
 
             gameController.PlaySFXFromArray(powerup.item_snd_source, powerup.powerup_snd_clips, powerup.powerup_type);
-            Debug.Log(gameObject.name + ": Attempting to play sound " + powerup.powerup_snd_clips[powerup.powerup_type].name + " for type " + powerup.powerup_type);
+            //Debug.Log(gameObject.name + ": Attempting to play sound " + powerup.powerup_snd_clips[powerup.powerup_type].name + " for type " + powerup.powerup_type);
             powerups_active = GlobalHelperFunctions.AddToGameObjectArray(powerup_template, powerups_active);
 		}
 
@@ -811,7 +811,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             ItemPowerup powerup = powerup_template.GetComponent<ItemPowerup>();
 			for (int i = 0; i < powerup.powerup_stat_behavior.Length; i++)
             {
-                Debug.Log("EXPIRING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
+                //Debug.Log("EXPIRING POWERUP WITH STAT BEHAVIORS " + powerup.powerup_stat_behavior[i].ToString() + " AND STAT VALUES " + powerup.powerup_stat_value[i].ToString());
                 switch (i)
                 {
                     case (int)powerup_stat_name.Scale:

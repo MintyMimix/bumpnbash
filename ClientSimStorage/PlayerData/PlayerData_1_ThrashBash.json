@@ -1,6 +1,6 @@
 {
   "UIScale": {
-    "LastUpdated": "2025-10-11T18:40:46.5232107-04:00",
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
     "Key": "UIScale",
     "Value": {
       "type": "Float",
@@ -8,7 +8,7 @@
     }
   },
   "UIVertical": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
     "Key": "UIVertical",
     "Value": {
       "type": "Float",
@@ -16,7 +16,7 @@
     }
   },
   "UIStretch": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-15T15:09:25.2045025-04:00",
     "Key": "UIStretch",
     "Value": {
       "type": "Float",
@@ -24,7 +24,7 @@
     }
   },
   "UIDistance": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
     "Key": "UIDistance",
     "Value": {
       "type": "Float",
@@ -32,7 +32,7 @@
     }
   },
   "UIYOffset": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-15T15:00:16.7185415-04:00",
     "Key": "UIYOffset",
     "Value": {
       "type": "Float",
@@ -40,7 +40,7 @@
     }
   },
   "UIOtherScale": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
     "Key": "UIOtherScale",
     "Value": {
       "type": "Float",
@@ -48,7 +48,7 @@
     }
   },
   "UIHarmScale": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
     "Key": "UIHarmScale",
     "Value": {
       "type": "Float",
@@ -56,7 +56,7 @@
     }
   },
   "UIInverted": {
-    "LastUpdated": "2025-10-11T18:40:46.5272144-04:00",
+    "LastUpdated": "2025-10-16T14:27:32.0418141-04:00",
     "Key": "UIInverted",
     "Value": {
       "type": "Bool",
@@ -64,7 +64,7 @@
     }
   },
   "MusicVolume": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T11:05:11.730262-04:00",
     "Key": "MusicVolume",
     "Value": {
       "type": "Float",
@@ -72,7 +72,7 @@
     }
   },
   "SoundVolume": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
     "Key": "SoundVolume",
     "Value": {
       "type": "Float",
@@ -80,23 +80,23 @@
     }
   },
   "MusicOverride": {
-    "LastUpdated": "2025-10-12T18:33:59.7464421-04:00",
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
     "Key": "MusicOverride",
     "Value": {
       "type": "Float",
       "value": 0.0
     }
   },
-  "AudioLink": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
-    "Key": "AudioLink",
+  "AudioLinkPref": {
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
+    "Key": "AudioLinkPref",
     "Value": {
       "type": "Bool",
       "value": false
     }
   },
   "VOVolume": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
     "Key": "VOVolume",
     "Value": {
       "type": "Float",
@@ -104,7 +104,7 @@
     }
   },
   "VOPref_A": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
     "Key": "VOPref_A",
     "Value": {
       "type": "Bool",
@@ -112,7 +112,7 @@
     }
   },
   "VOPref_B": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
     "Key": "VOPref_B",
     "Value": {
       "type": "Bool",
@@ -120,7 +120,7 @@
     }
   },
   "VOPref_C": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
     "Key": "VOPref_C",
     "Value": {
       "type": "Bool",
@@ -128,7 +128,7 @@
     }
   },
   "VOType": {
-    "LastUpdated": "2025-10-11T18:40:46.527714-04:00",
+    "LastUpdated": "2025-10-15T19:04:25.6604279-04:00",
     "Key": "VOType",
     "Value": {
       "type": "Int",
@@ -136,15 +136,15 @@
     }
   },
   "ColorblindSprite": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "ColorblindSprite",
     "Value": {
       "type": "Bool",
-      "value": true
+      "value": false
     }
   },
   "ColorblindChoice": {
-    "LastUpdated": "2025-10-11T20:52:07.7435217-04:00",
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
     "Key": "ColorblindChoice",
     "Value": {
       "type": "Int",
@@ -152,7 +152,7 @@
     }
   },
   "HitboxShow": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "HitboxShow",
     "Value": {
       "type": "Bool",
@@ -160,23 +160,23 @@
     }
   },
   "HurtboxShow": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "HurtboxShow",
     "Value": {
       "type": "Bool",
       "value": true
     }
   },
-  "LanguageType": {
-    "LastUpdated": "2025-10-12T17:32:23.1173924-04:00",
-    "Key": "LanguageType",
+  "LangType": {
+    "LastUpdated": "2025-10-24T13:52:48.8414532-04:00",
+    "Key": "LangType",
     "Value": {
       "type": "Int",
       "value": 0
     }
   },
   "MotionSicknessCage": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "MotionSicknessCage",
     "Value": {
       "type": "Bool",
@@ -184,7 +184,7 @@
     }
   },
   "MotionSicknessFloor": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "MotionSicknessFloor",
     "Value": {
       "type": "Bool",
@@ -192,27 +192,35 @@
     }
   },
   "ParticleShow": {
-    "LastUpdated": "2025-10-11T18:40:46.5282142-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "ParticleShow",
     "Value": {
       "type": "Bool",
       "value": true
     }
   },
-  "AudioLinkPref": {
-    "LastUpdated": "2025-10-12T19:19:58.2471464-04:00",
-    "Key": "AudioLinkPref",
+  "UIAngle": {
+    "LastUpdated": "2025-10-16T12:49:48.7045591-04:00",
+    "Key": "UIAngle",
     "Value": {
-      "type": "Bool",
-      "value": true
+      "type": "Float",
+      "value": 0.0
     }
   },
-  "LangType": {
-    "LastUpdated": "2025-10-12T23:41:59.6029677-04:00",
-    "Key": "LangType",
+  "UITextScale": {
+    "LastUpdated": "2025-10-23T11:19:59.9331021-04:00",
+    "Key": "UITextScale",
     "Value": {
-      "type": "Int",
-      "value": 0
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UITextOffset": {
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
+    "Key": "UITextOffset",
+    "Value": {
+      "type": "Float",
+      "value": -6.0
     }
   }
 }

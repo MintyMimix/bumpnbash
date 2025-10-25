@@ -1490,6 +1490,20 @@ public class GameController : GlobalHelperFunctions
                     itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable;
                     itemSpawner.SyncSpawns();
                 }
+                if (mapscript_list != null && mapscript_list.Length > 0)
+                {
+                    for (int m = 0; m < mapscript_list.Length; m++)
+                    {
+                        foreach (ItemSpawner itemSpawner in mapscript_list[m].map_item_spawns)
+                        {
+                            if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                            itemSpawner.SetSpawnChances();
+                            itemSpawner.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+                            itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable;
+                            itemSpawner.SyncSpawns();
+                        }
+                    }
+                }
             }
             RequestSerialization();
             RefreshSetupUI();
@@ -3358,13 +3372,14 @@ public class GameController : GlobalHelperFunctions
         }
 
         float scaleFactor = 1.0f; float scaleMaxBias = 4.0f;
-        if (local_plyAttr != null) { scaleFactor = local_plyAttr.ply_scale; local_plyAttr.ResetPowerups(); }
-        scaleFactor *= 2.0f;
+        if (local_plyAttr != null) { local_plyAttr.ResetPowerups(); }
         Bounds spawnZoneBounds = spawnzone.GetComponent<Collider>().bounds;
-        float min_x = Mathf.Lerp(spawnZoneBounds.min.x, spawnZoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
-        float max_x = Mathf.Lerp(spawnZoneBounds.max.x, spawnZoneBounds.center.x, (scaleFactor - 1.0f) / scaleMaxBias);
-        float min_z = Mathf.Lerp(spawnZoneBounds.min.z, spawnZoneBounds.center.z, (scaleFactor - 1.0f) / scaleMaxBias);
-        float max_z = Mathf.Lerp(spawnZoneBounds.max.z, spawnZoneBounds.center.z, (scaleFactor - 1.0f) / scaleMaxBias);
+        scaleFactor = (spawnZoneBounds.center.x - spawnZoneBounds.min.x) / Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+        float min_x = Mathf.Lerp(spawnZoneBounds.min.x, spawnZoneBounds.center.x, scaleFactor);
+        float max_x = Mathf.Lerp(spawnZoneBounds.max.x, spawnZoneBounds.center.x, scaleFactor);
+        scaleFactor = (spawnZoneBounds.center.z - spawnZoneBounds.min.z) / Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
+        float min_z = Mathf.Lerp(spawnZoneBounds.min.z, spawnZoneBounds.center.z, scaleFactor);
+        float max_z = Mathf.Lerp(spawnZoneBounds.max.z, spawnZoneBounds.center.z, scaleFactor);
         var rx = UnityEngine.Random.Range(min_x, max_x);
         var rz = UnityEngine.Random.Range(min_z, max_z);
 
@@ -3918,7 +3933,7 @@ public class GameController : GlobalHelperFunctions
                 if (plyDistanceMinInZone > testDistance || plyDistanceMinInZone < 0) { plyDistanceMinInZone = testDistance; }
                 debug_test_list[j] = Mathf.RoundToInt(testDistance);
             }
-            UnityEngine.Debug.Log("[RESPAWN_TEST]: " + spawnzone.name + " distance from players: " + ConvertIntArrayToString(debug_test_list));
+            //UnityEngine.Debug.Log("[RESPAWN_TEST]: " + spawnzone.name + " distance from players: " + ConvertIntArrayToString(debug_test_list));
             if (maxDistanceFromZones < plyDistanceMinInZone) { maxDistanceFromZones = plyDistanceMinInZone; spawnzoneIndex = i; }
         }
 

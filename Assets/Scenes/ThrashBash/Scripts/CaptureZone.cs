@@ -151,12 +151,18 @@ public class CaptureZone : UdonSharpBehaviour
                         else { } // Overtime condition
                         hold_points = dict_points_values_arr[hold_index];
                         gameController.CheckForRoundGoal();
+                        UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
+
                     }
 
                     //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
                     // (SFX handling used to be here as networked events, but has since been moved outside this block as local events)
                 }
-
+                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
+                {
+                    UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
+                }
+       
                 // Handle SFX locally
                 if (contest_id >= 0 && contest_ongoing && hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2) //&& overtime_enabled
                 {
@@ -174,10 +180,10 @@ public class CaptureZone : UdonSharpBehaviour
                     //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: A team is about to win! Play KOTH_Victory_Near for " + hold_id);
                     PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
                 }
-                else if (contest_id >= 0 && contest_ongoing) 
+                else if (contest_id >= 0 && contest_ongoing)
                 {
                     //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Point is being contested by " + contest_id + "; play KOTH_Contest_Progress");
-                    PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); 
+                    PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
                 } 
 
                 // Play a voiceline when we reach the 1 second mark exactly, and playing only once
@@ -247,7 +253,7 @@ public class CaptureZone : UdonSharpBehaviour
         // If the contest_progress exceeds duration, then contestor becomes the new holder; reset contestor and contest_progress.
         if (contest_progress >= gameController.option_gm_config_a)
         {
-            //UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
+            UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
 
             // Assign a penalty if a holder lost the point within the last 5 seconds
             int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
