@@ -69,10 +69,10 @@ Material:
     - _DstBlend: 0
     - _EnableGeometricSpecularAA: 1
     - _GlossMapScale: 1
-    - _Glossiness: 0.79
+    - _Glossiness: 0.74
     - _GlossyReflections: 1
     - _LightmapType: 0
-    - _Metallic: 0
+    - _Metallic: 0.777
     - _Mode: 0
     - _OcclusionStrength: 1
     - _Parallax: 0.02
@@ -84,6 +84,6 @@ Material:
     - _UVSec: 0
     - _ZWrite: 1
     m_Colors:
-    - _Color: {r: 0.106000006, g: 0.106000006, b: 0.106000006, a: 1}
+    - _Color: {r: 0.16981131, g: 0.16981131, b: 0.16981131, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
   m_BuildTextureStacks: []

@@ -7,6 +7,26 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: Aluminum
+    second: {fileID: 2100000, guid: 9d485eddc5cd3dc4bb23e0547855a5f1, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: BookBinding
+    second: {fileID: 2100000, guid: 523ca9fd74d62f643a351c9bcfb386d3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: BookCover
+    second: {fileID: 2100000, guid: 2818f827582dd34408444bf07f4b4890, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Cap
+    second: {fileID: 2100000, guid: 04d3fc1b976056140a76e7f5cd8edb43, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: Couch
     second: {fileID: 2100000, guid: b6c8bfab10724c04d854753ac62fee47, type: 2}
   - first:
@@ -87,6 +107,21 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
+      name: SodaLabel.001
+    second: {fileID: 2100000, guid: 3e625f85a22644744bb67c483fb50891, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: SodaLabel.002
+    second: {fileID: 2100000, guid: f7e937b865562604f93a1ace4cb6ccd5, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Tile
+    second: {fileID: 2100000, guid: 5fe9bd5fb1d3d8c4b897213388b06856, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
       name: WallPlaster
     second: {fileID: 2100000, guid: 53219fe96fefa5948b7fe4540940d256, type: 2}
   - first:
@@ -108,77 +143,107 @@ ModelImporter:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: 5d23414b112c6226473b71178a2adbc1
-    second: {fileID: 2800000, guid: 0a82d8748610d984684dd3c04595bb6e, type: 3}
+    second: {fileID: 2800000, guid: 646aaf7694cca2e4dab37521d41c7592, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: 700086
-    second: {fileID: 2800000, guid: 11396c6405da9b348b5531bc7247a453, type: 3}
+    second: {fileID: 2800000, guid: 663d6d93d08935541bf9194bff9267d7, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: Beigewall_Texture
+    second: {fileID: 2800000, guid: 28893c9f79e52d04ab36427c87f4f5e3, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: Floor Texture
+    second: {fileID: 2800000, guid: a40fd6fea9c3e6a4fa06157ccf5fb8eb, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: Hang-in-There-Cat-Poster
-    second: {fileID: 2800000, guid: 3d9ef2fa9551d324ead550f4ce4bca28, type: 3}
+    second: {fileID: 2800000, guid: 26ad9c809f178bf40909245bb3599b43, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: Metal (Frying Pan)
-    second: {fileID: 2800000, guid: ba57e08952d03984080133cd14a16f2c, type: 3}
+    second: {fileID: 2800000, guid: b7d38dcb605461f4c9c587bf5b36c107, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: Transparent
-    second: {fileID: 2800000, guid: f8907fa0415cf8e4e898a22be6304025, type: 3}
+    second: {fileID: 2800000, guid: 9e545dfd1e1a5e04da95f9d94b0cc434, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: WhiteMarble_COLOR
-    second: {fileID: 2800000, guid: 8191c8f2d7b98184f861b51d26436ad6, type: 3}
+    second: {fileID: 2800000, guid: d03ecf8937f7071429bfed0c6c5177bb, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: WhiteMarble_NRM
-    second: {fileID: 2800000, guid: dfc6d6b7ec4b26f468b669b6562d3551, type: 3}
+    second: {fileID: 2800000, guid: cbe05b28264fa104786dd7c2fe23c93e, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: Woodwall3_Texture
+    second: {fileID: 2800000, guid: 1e0d6cb35fa946e40b8ec36d063db4ba, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: dc0963ec-895f-4586-9ae4-db9be0123591
-    second: {fileID: 2800000, guid: 6de9263e0c4374941a8d0af2f198a37f, type: 3}
+    second: {fileID: 2800000, guid: 2f4d028a31a0c5944933597f1e8d8b81, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: dirty_upholstery
-    second: {fileID: 2800000, guid: 85febd388b97a6542a5be974b24fa2a5, type: 3}
-  - first:
-      type: UnityEngine:Texture2D
-      assembly: UnityEngine.CoreModule
-      name: seamless_wall_plaster_texture_by_hhh316_d2pjzf9
-    second: {fileID: 2800000, guid: 8a872fdc84a5ef74abd965f0f0e3ee16, type: 3}
+    second: {fileID: 2800000, guid: 7ff3a01f3a7feba47be8164e96e4f0c1, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: seamless_wood_planks_texture_by_10ravens_d3991v1
-    second: {fileID: 2800000, guid: abaf8cefe0e44b34a904fcbf2c5ac67b, type: 3}
+    second: {fileID: 2800000, guid: cf37fbcd225adc64caf68ddf2df99007, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: sneaker_diffuse
-    second: {fileID: 2800000, guid: b11a1f03d8967ef4f90ce2f829931a6b, type: 3}
+    second: {fileID: 2800000, guid: 0db9d4e02d5ee7745ac015f620ea3fca, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: soda_generic
+    second: {fileID: 2800000, guid: 00a0ae12cd121b44f85b7626a77faad1, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: soda_hot_sauce
+    second: {fileID: 2800000, guid: 342f7d712efc4fc4f96869ba1ca3e9bd, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: textbook_binding
+    second: {fileID: 2800000, guid: 38e26201b155a3d4da3e9558f1408505, type: 3}
+  - first:
+      type: UnityEngine:Texture2D
+      assembly: UnityEngine.CoreModule
+      name: textbook_cover
+    second: {fileID: 2800000, guid: 3685622162f2b3a46aaa7eed26556ec6, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: trak2_panel1c
-    second: {fileID: 2800000, guid: c7fa4169de978d54080a18828e63ffb9, type: 3}
+    second: {fileID: 2800000, guid: 3bbe43def984cb8419014ac0605e30fe, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: wood1
-    second: {fileID: 2800000, guid: bf24745f48a29b948b34cb992b89b574, type: 3}
+    second: {fileID: 2800000, guid: 996875244e93cfc4b8677b4d223b257a, type: 3}
   - first:
       type: UnityEngine:Texture2D
       assembly: UnityEngine.CoreModule
       name: wood5
-    second: {fileID: 2800000, guid: a0b71e6123b6c2a468f728382a74196a, type: 3}
+    second: {fileID: 2800000, guid: e8f61528994ab384e994f32bae8024d9, type: 3}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -223,7 +288,7 @@ ModelImporter:
     nodeNameCollisionStrategy: 1
     fileIdsGeneration: 2
     swapUVChannels: 0
-    generateSecondaryUV: 0
+    generateSecondaryUV: 1
     useFileUnits: 1
     keepQuads: 0
     weldVertices: 1
@@ -249,7 +314,7 @@ ModelImporter:
     normalImportMode: 0
     tangentImportMode: 3
     normalCalculationMode: 4
-    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 0
+    legacyComputeAllNormalsFromSmoothingGroupsWhenMeshHasBlendShapes: 1
     blendShapeNormalImportMode: 1
     normalSmoothingSource: 0
   referencedClips: []
