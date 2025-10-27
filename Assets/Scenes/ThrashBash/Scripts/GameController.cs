@@ -1578,6 +1578,11 @@ public class GameController : GlobalHelperFunctions
         {
             goal_input_a = 400;
             goal_input_b = 100;
+            if (mapscript_list != null && map_selected >= 0 && map_selected < mapscript_list.Length && mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_RATS", "Borrowed Space"))
+            {
+                goal_input_a = 800;
+                goal_input_b = 200;
+            }
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "5";
@@ -2046,10 +2051,10 @@ public class GameController : GlobalHelperFunctions
     {
         if (map_selected < 0) { RefreshSetupUI(); return; }
 
-        if ((round_state == (int)round_state_name.Queued && !Networking.IsOwner(gameObject)) || round_state == (int)round_state_name.Loading) 
+        if ((round_state == (int)round_state_name.Queued && !Networking.IsOwner(gameObject)) || round_state == (int)round_state_name.Loading)
         {
             Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
-            AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDSTART_MAP", "You're Going To:"), Color.white, load_length); 
+            AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDSTART_MAP", "You're Going To:"), Color.white, load_length);
             AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length);
             PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LoadStart);
             vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.MapAnnounce);
@@ -2087,7 +2092,7 @@ public class GameController : GlobalHelperFunctions
         //platformHook.custom_force_unhook = true;
         //Networking.LocalPlayer.TeleportTo(mapscript_list[map_selected].map_readyroom_center.position + plyPosRelativeToReadyRoom, Networking.LocalPlayer.GetRotation());
         //platformHook.custom_force_unhook = false;
-        
+
         snd_game_music_source.transform.position = mapscript_list[map_selected].transform.position;
         snd_game_music_source.maxDistance = mapscript_list[map_selected].map_snd_radius;
         snd_game_music_source.minDistance = snd_game_music_source.maxDistance;
@@ -2099,21 +2104,27 @@ public class GameController : GlobalHelperFunctions
         }
 
         // Refresh item spawn chances
-        foreach (ItemSpawner itemSpawner in mapscript_list[map_selected].map_item_spawns)
+        if (mapscript_list != null && map_selected >= 0 && map_selected < mapscript_list.Length && mapscript_list[map_selected].map_item_spawns != null && mapscript_list[map_selected].map_item_spawns.Length > 0)
         {
-            if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
-            itemSpawner.item_spawn_powerups_enabled = plysettings_powerups;
-            itemSpawner.item_spawn_weapons_enabled = plysettings_iweapons;
-            itemSpawner.item_spawn_frequency_mul = plysettings_item_frequency;
-            itemSpawner.item_spawn_duration_mul = plysettings_item_duration;
-            itemSpawner.SetSpawnChances();
+            foreach (ItemSpawner itemSpawner in mapscript_list[map_selected].map_item_spawns)
+            {
+                if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                itemSpawner.item_spawn_powerups_enabled = plysettings_powerups;
+                itemSpawner.item_spawn_weapons_enabled = plysettings_iweapons;
+                itemSpawner.item_spawn_frequency_mul = plysettings_item_frequency;
+                itemSpawner.item_spawn_duration_mul = plysettings_item_duration;
+                itemSpawner.SetSpawnChances();
+            }
         }
 
-        // KOTH Capture Zone handling
-        foreach (CaptureZone capturezone in mapscript_list[map_selected].map_capturezones)
+        if (mapscript_list != null && map_selected >= 0 && map_selected < mapscript_list.Length && mapscript_list[map_selected].map_capturezones != null && mapscript_list[map_selected].map_capturezones.Length > 0)
         {
-            if (capturezone == null || capturezone.gameObject == null) { continue; }
-            capturezone.gameObject.SetActive(option_gamemode == (int)gamemode_name.KingOfTheHill);
+            // KOTH Capture Zone handling
+            foreach (CaptureZone capturezone in mapscript_list[map_selected].map_capturezones)
+            {
+                if (capturezone == null || capturezone.gameObject == null) { continue; }
+                capturezone.gameObject.SetActive(option_gamemode == (int)gamemode_name.KingOfTheHill);
+            }
         }
 
         map_selected_local = map_selected;
@@ -2128,7 +2139,7 @@ public class GameController : GlobalHelperFunctions
         AdjustVoiceRange();
         //}
 
-        mapscript_list[map_selected].room_spectator_area.SetActive(false);
+        if (mapscript_list != null && map_selected >= 0 && map_selected < mapscript_list.Length && mapscript_list[map_selected].room_spectator_area != null) { mapscript_list[map_selected].room_spectator_area.SetActive(false); }
 
         RefreshSetupUI();
     }

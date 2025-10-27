@@ -111,7 +111,7 @@ public class Room_Ready : UdonSharpBehaviour
             {
                 zone_marker_renderer.material.SetColor("_Color", new Color32(0, 255, 197, 255));
                 zone_marker_renderer.material.EnableKeyword("_EMISSION");
-                zone_marker_renderer.material.SetColor("_EmissionColor", new Color32(0, 0, 0, 0));
+                zone_marker_renderer.material.SetColor("_EmissionColor", new Color32(0, 255, 197, 255));
             }
         }
         else

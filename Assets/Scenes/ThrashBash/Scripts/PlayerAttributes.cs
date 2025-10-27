@@ -143,8 +143,6 @@ public class PlayerAttributes : UdonSharpBehaviour
         }
     }
 
-   
-
     private void Update()
     {
 
@@ -271,7 +269,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         // Handle player stats
         // To-do: this more efficiently
-        if (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training) {
+        if (!in_spectator_area && (gameController.round_state == (int)round_state_name.Ready || gameController.round_state == (int)round_state_name.Ongoing || ply_training)) {
             float koth_mod = 1.0f;
             //if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill && ply_state == (int)player_state_name.Respawning && !ply_training) { koth_mod = 0.01f; }
             Networking.LocalPlayer.SetWalkSpeed(2.0f * ply_speed * koth_mod);
@@ -286,7 +284,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         else
         {
             float spec_mod = 1.0f;
-            if (in_spectator_area) { spec_mod = 4.5f; }
+            if (in_spectator_area) { spec_mod = Mathf.Max(ply_speed, 4.5f); }
             Networking.LocalPlayer.SetWalkSpeed(2.0f * spec_mod);
             Networking.LocalPlayer.SetRunSpeed(4.0f * spec_mod);
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * spec_mod);
@@ -331,7 +329,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 plyEyeHeight_change = false; 
             }
         }
-        else if (Networking.IsOwner(gameObject) && in_ready_room && !ply_training && plyEyeHeight_desired != plyEyeHeight_default && !plyEyeHeight_change) 
+        else if (Networking.IsOwner(gameObject) && (in_ready_room || !gameController.room_ready_script.warning_acknowledged) && !ply_training && plyEyeHeight_desired != plyEyeHeight_default && !plyEyeHeight_change) 
         { 
             LocalResetScale(); 
         }

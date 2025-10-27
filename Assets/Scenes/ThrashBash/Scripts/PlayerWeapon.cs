@@ -944,11 +944,12 @@ public class PlayerWeapon : UdonSharpBehaviour
     private void ScaleWeapon()
     {
         // Scale the object with the owner's size
-        if (owner_attributes != null && owner_attributes.plyEyeHeight_default > 0.0f && scale_inital > 0.0f)
+        if (owner_attributes != null && scale_inital > 0.0f) //&& owner_attributes.plyEyeHeight_default > 0.0f &&
         {
             //float playerVisualScale = owner_attributes.plyEyeHeight_desired / owner_attributes.plyEyeHeight_default;
             //transform.localScale = new Vector3(scale_inital * playerVisualScale, scale_inital * playerVisualScale, scale_inital * playerVisualScale);
             transform.localScale = new Vector3(scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale);
+            //UnityEngine.Debug.Log("Scaling player weapon belonging to " + Networking.GetOwner(gameObject).displayName + " from " + cached_scale + " to " + (scale_inital * owner_attributes.ply_scale).ToString());
         }
     }
 

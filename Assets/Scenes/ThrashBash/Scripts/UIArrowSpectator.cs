@@ -105,6 +105,7 @@ public class UIArrowSpectator : UIArrow
         int[][] players_in_game = gameController.cached_ply_in_game_dict;
         int[] include_indices = new int[0]; int players_alive = 0;
         if (players_in_game != null) { include_indices = new int[players_in_game[0].Length]; }
+        else { return null; }
 
         for (int i = 0; i < players_in_game[0].Length; i++)
         {
