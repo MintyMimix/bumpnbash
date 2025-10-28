@@ -5,13 +5,18 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class map_element_nodraw_gamemode_specific : UdonSharpBehaviour
+public class map_element_nodraw_gamemode_specific : GlobalTickReceiver
 {
     [SerializeField] public GameController gameController;
     [SerializeField] public int[] gamemodes_to_nodraw;
     [NonSerialized] public int local_stored_gamemode;
 
-    void Update()
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void OnSlowTick(float tickDeltaTime)
     {
         if (gameController == null) { return; }
         if (gameController.option_gamemode != local_stored_gamemode)

@@ -1,4 +1,6 @@
 ﻿
+using System;
+using System.Globalization;
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -6,6 +8,8 @@ using VRC.Udon;
 
 public class GlobalHelperFunctions : UdonSharpBehaviour
 {
+    public const string BUILD_VERSION = "0.30.0";
+
     // Enum replacement helper
     public static int KeyToPowerupType(string enum_str_name)
     {
@@ -39,42 +43,6 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
         else if (cleanStr == "megaglove") { output = (int)weapon_type_name.MegaGlove; }
         else if (cleanStr == "superlaser") { output = (int)weapon_type_name.SuperLaser; }
         else if (cleanStr == "throwableitem") { output = (int)weapon_type_name.ThrowableItem; }
-        return output;
-    }
-
-
-    public static string PowerupTypeToStr(int in_powerup_type)
-    {
-        string output = "";
-        if (in_powerup_type == (int)powerup_type_name.SizeUp) { output = "Size Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.SizeDown) { output = "Size Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.SpeedUp) { output = "Speed Boost"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkUp) { output = "Attack Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.AtkDown) { output = "Attack Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefUp) { output = "Defense Up"; }
-        else if (in_powerup_type == (int)powerup_type_name.DefDown) { output = "Defense Down"; }
-        else if (in_powerup_type == (int)powerup_type_name.LowGrav) { output = "Low Gravity"; }
-        else if (in_powerup_type == (int)powerup_type_name.PartialHeal) { output = "Heal (50%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.FullHeal) { output = "Heal (100%)"; }
-        else if (in_powerup_type == (int)powerup_type_name.Multijump) { output = "Multi-Jump"; }
-        else if (in_powerup_type == (int)powerup_type_name.HighGrav) { output = "High Gravity"; }
-        else { output = "(PLACEHOLDER)"; }
-        return output;
-    }
-
-    public static string WeaponTypeToStr(int in_weapon_type)
-    {
-        string output = "";
-        if (in_weapon_type == (int)weapon_type_name.PunchingGlove) { output = "Punching Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.Bomb) { output = "Bomb"; }
-        else if (in_weapon_type == (int)weapon_type_name.Rocket) { output = "Rocket Launcher"; }
-        else if (in_weapon_type == (int)weapon_type_name.BossGlove) { output = "Big Boss Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.HyperGlove) { output = "Hyper Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.MegaGlove) { output = "Mega Glove"; }
-        else if (in_weapon_type == (int)weapon_type_name.SuperLaser) { output = "Superlaser"; }
-        else if (in_weapon_type == (int)weapon_type_name.ThrowableItem) { output = "Throwable Item"; }
-
-        else { output = "(PLACEHOLDER)"; }
         return output;
     }
 
@@ -161,6 +129,35 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
         }
         return result;
     }
+
+    /*public static float[] ConvertStrToFloatArray(string str)
+    {
+        if (str == "" || str == null) { return null; }
+        string[] splitStr = str.Split(',');
+        if (splitStr == null) { return null; }
+        float[] arrOut = new float[splitStr.Length];
+
+        for (int i = 0; i < splitStr.Length; i++)
+        {
+            var intAttempt = StringToInt(splitStr[i]);
+            if (intAttempt != 404) { arrOut[i] = intAttempt; }
+        }
+        return arrOut;
+    }
+
+    // To-do: replace all references of this with a String.Join() [or alternatively, just make that what internally happens here]
+    public static string ConvertFloatArrayToString(float[] arrIn)
+    {
+        if (arrIn == null || arrIn.Length == 0) return "";
+
+        string result = arrIn[0].ToString("F3", CultureInfo.InvariantCulture);
+        for (int i = 1; i < arrIn.Length; i++)
+        {
+            result += ',';
+            result += arrIn[i].ToString();
+        }
+        return result;
+    }*/
 
     public static int[] AddToIntArray(int inValue, int[] inArr)
     {
@@ -276,31 +273,50 @@ public class GlobalHelperFunctions : UdonSharpBehaviour
 
     public static void DictSort(ref int[] keys, ref int[] values, bool ascending_sort = true, bool keys_only = false)
     {
-        if (keys == null || values == null || keys.Length != values.Length) { return; }
+        if (keys == null || values == null || keys.Length != values.Length) return;
 
-        for (int i = 0; i < keys.Length; i++)
+        int len = keys.Length;
+
+        for (int i = 1; i < len; i++)
         {
-            int selectedIndex = i;
-            for (int j = i + 1; j < keys.Length; j++)
+            int key = keys[i];
+            int val = values[i];
+            int j = i - 1;
+
+            if (ascending_sort)
             {
-                // ASCENDING: use `<`, DESCENDING: use `>`
-                bool shouldSwap = ascending_sort ? values[j] < values[selectedIndex] : values[j] > values[selectedIndex];
-                if (shouldSwap)
+                while (j >= 0 && values[j] > val)
                 {
-                    selectedIndex = j;
+                    keys[j + 1] = keys[j];
+                    if (!keys_only) values[j + 1] = values[j];
+                    j--;
+                }
+            }
+            else
+            {
+                while (j >= 0 && values[j] < val)
+                {
+                    keys[j + 1] = keys[j];
+                    if (!keys_only) values[j + 1] = values[j];
+                    j--;
                 }
             }
 
-            int temp = keys[i];
-            keys[i] = keys[selectedIndex];
-            keys[selectedIndex] = temp;
-            if (!keys_only)
-            {
-                temp = values[i];
-                values[i] = values[selectedIndex];
-                values[selectedIndex] = temp;
-            }
+            keys[j + 1] = key;
+            if (!keys_only) values[j + 1] = val;
         }
+    }
+
+    public static bool ArraysEqual(int[] a, int[] b)
+    {
+        if (a == null || b == null) { return false; }
+        if (a.Length != b.Length) { return false; }
+
+        for (int i = 0; i < a.Length; i++)
+        {
+            if (a[i] != b[i]) { return false; }
+        }
+        return true;
     }
 
     public static GameObject[] AddToGameObjectArray(GameObject inValue, GameObject[] inArr)

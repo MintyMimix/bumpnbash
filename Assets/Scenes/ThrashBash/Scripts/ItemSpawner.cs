@@ -14,7 +14,7 @@ public enum item_spawn_state_name
 }
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
-public class ItemSpawner : UdonSharpBehaviour
+public class ItemSpawner : GlobalTickReceiver
 {
     [Header("References")]
     [SerializeField] public GameController gameController;
@@ -70,8 +70,11 @@ public class ItemSpawner : UdonSharpBehaviour
 
     [NonSerialized] public bool training_tutorial_ui_ready = false;
 
-    private void Start()
+    [NonSerialized] public int cached_language_type = -1;
+
+    public override void Start()
     {
+        base.Start();
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
@@ -90,6 +93,17 @@ public class ItemSpawner : UdonSharpBehaviour
     private void OnEnable()
     {
         SyncSpawns();
+        //UnityEngine.Debug.Log("[ITEM_SPAWNER_TEST]: (FROM ONENABLE())" + gameObject.name + ": item_spawn_state = " + item_spawn_state + "; item_spawn_index = " + item_spawn_index + "; child_powerup.item_state = " + child_powerup.item_state + " (" + child_powerup.allow_effects_to_apply + "); child_weapon.item_state = " + child_weapon.item_state + " (" + child_weapon.allow_effects_to_apply + ")");
+    }
+
+    public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
+    {
+        if (gameObject.activeInHierarchy && item_spawn_state == (int)item_spawn_state_name.InWorld && !is_template)
+        {
+            DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
+        }
+        if (newOwner == Networking.LocalPlayer) { SetSpawnChances(); }
+        else { wait_for_join_sync = true; }
     }
 
     public void UpdateTrainingTutorialText()
@@ -103,7 +117,7 @@ public class ItemSpawner : UdonSharpBehaviour
             {
                 training_tutorial_name_txt.text = split_desc[0].Replace(": ", "");
                 training_tutorial_desc_text.text = split_desc[1].Replace(": ", "");
-                training_tutorial_ui_ready = true;
+                training_tutorial_ui_ready = !training_tutorial_name_txt.text.Contains("$NAME");
             }
         }
     }
@@ -124,12 +138,19 @@ public class ItemSpawner : UdonSharpBehaviour
                 if (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown) { parsed_spawn_chances[i] = 0.0f; }
                 else if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
             }
-            // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups
+            // If we're in Boss Bash, half the chances of size-changing powerups and atk/def stat ups and don't allow boss glove spawns
             if (gamemode == (int)gamemode_name.FittingIn || gamemode == (int)gamemode_name.BossBash)
             {
-                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown || i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.5f; }
+                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.SizeUp || i == (int)powerup_type_name.SizeDown)) { parsed_spawn_chances[i] = 0.0f; }
+                else if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkUp || i == (int)powerup_type_name.DefUp)) { parsed_spawn_chances[i] *= 0.2f; }
+                else if (parsed_spawn_chances[i] > 0 && i == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.BossGlove) { parsed_spawn_chances[i] *= 0.0f; }
             }
-        }
+            // If we are NOT in Infection or Boss Bash, disable debuffs (unless it's a training spawner)
+            if (gamemode != (int)gamemode_name.Infection && gamemode != (int)gamemode_name.BossBash && !training_spawner)
+            {
+                if (parsed_spawn_chances[i] > 0 && (i == (int)powerup_type_name.AtkDown || i == (int)powerup_type_name.DefDown || i == (int)powerup_type_name.HighGrav)) { parsed_spawn_chances[i] *= 0.0f; }
+            }
+        } 
         item_spawn_chances = ConvertChancesToInt(NormalizeChances(parsed_spawn_chances));
         item_spawn_chances_str = GlobalHelperFunctions.ConvertIntArrayToString(item_spawn_chances);
         RequestSerialization(); 
@@ -155,6 +176,8 @@ public class ItemSpawner : UdonSharpBehaviour
             wait_for_join_sync = false;
         }
         if (gameController != null) { item_spawn_chances = GlobalHelperFunctions.ConvertStrToIntArray(item_spawn_chances_str); }
+        //UnityEngine.Debug.Log("[ITEM_SPAWNER_TEST]: (FROM ONDESERIALIZATION())" + gameObject.name + ": item_spawn_state = " + item_spawn_state + "; item_spawn_index = " + item_spawn_index + "; child_powerup.item_state = " + child_powerup.item_state + " (" + child_powerup.allow_effects_to_apply + "); child_weapon.item_state = " + child_weapon.item_state + " (" + child_weapon.allow_effects_to_apply + ")");
+
     }
 
     public override void OnPostSerialization(SerializationResult result)
@@ -175,7 +198,7 @@ public class ItemSpawner : UdonSharpBehaviour
         }
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         if (item_spawn_state == (int)item_spawn_state_name.Disabled) {
             if (child_powerup.gameObject != null && child_powerup.gameObject.activeInHierarchy) { child_powerup.gameObject.SetActive(false); }
@@ -210,13 +233,11 @@ public class ItemSpawner : UdonSharpBehaviour
             if (is_template) { DespawnItem((int)item_sfx_index.ItemExpire, -1, false); }
             else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "DespawnItem", (int)item_sfx_index.ItemExpire, -1, true); }
         }
-    }
 
-    private void LateUpdate()
-    {
-        if (training_spawner && !training_tutorial_ui_ready && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
+        if (training_spawner && training_tutorial_name_txt != null && training_tutorial_desc_text != null && gameController != null && gameController.local_plyAttr != null)
         {
-            UpdateTrainingTutorialText();
+            if (!training_tutorial_ui_ready) { UpdateTrainingTutorialText(); }
+            else if (gameController.localizer != null && cached_language_type != gameController.localizer.language_type) { training_tutorial_ui_ready = false; cached_language_type = gameController.localizer.language_type; }
         }
     }
 
@@ -238,9 +259,13 @@ public class ItemSpawner : UdonSharpBehaviour
         if (item_index < (int)powerup_type_name.ENUM_LENGTH)
         {
             child_powerup.item_owner_id = -1;
-            child_powerup.allow_effects_to_apply = apply_after_spawn;
+            child_powerup.allow_effects_to_apply = true; // apply_after_spawn
             if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) { child_powerup.item_team_id = 0; } // On Infected, only Survivors may get powerups
-            else if (gameController.option_teamplay) { child_powerup.item_team_id = item_spawn_team; }
+            else if (gameController.option_teamplay) 
+            { 
+                if (item_spawn_team < gameController.team_count) { child_powerup.item_team_id = item_spawn_team; }
+                else { child_powerup.item_team_id = -1; }
+            }
             else { child_powerup.item_team_id = -1; }
             //child_powerup.item_stored_global_index = item_spawn_global_index;
             child_powerup.item_type = (int)item_type_name.Powerup;
@@ -262,7 +287,7 @@ public class ItemSpawner : UdonSharpBehaviour
         else if (item_index - (int)powerup_type_name.ENUM_LENGTH < (int)weapon_type_name.ENUM_LENGTH)
         {
             child_weapon.item_owner_id = -1;
-            child_weapon.allow_effects_to_apply = apply_after_spawn;
+            child_weapon.allow_effects_to_apply = true;
             child_weapon.item_type = (int)item_type_name.Weapon;
             child_weapon.item_is_template = false;
             child_weapon.iweapon_type = item_index - (int)powerup_type_name.ENUM_LENGTH;
@@ -274,7 +299,11 @@ public class ItemSpawner : UdonSharpBehaviour
                 { child_weapon.item_team_id = 0; }
                 else { child_weapon.item_team_id = item_spawn_team; }
             } 
-            else if (gameController.option_teamplay) { child_weapon.item_team_id = item_spawn_team; }
+            else if (gameController.option_teamplay)
+            {
+                if (item_spawn_team < gameController.team_count) { child_weapon.item_team_id = item_spawn_team; }
+                else { child_weapon.item_team_id = -1; }
+            }
             else { child_weapon.item_team_id = -1; }
             //child_weapon.item_stored_global_index = item_spawn_global_index;
             child_weapon.SetiWeaponStats();
@@ -297,12 +326,12 @@ public class ItemSpawner : UdonSharpBehaviour
             child_weapon.iweapon_ammo = (int)Mathf.RoundToInt(child_weapon.iweapon_ammo * item_spawn_duration_mul);
             child_weapon.iweapon_duration *= item_spawn_duration_mul;
             // All pickups are halved duration during Infection 
-            if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
+            /*if (gameController.option_gamemode == (int)gamemode_name.Infection && !training_spawner && !apply_after_spawn) 
             {
                 if ((child_weapon.iweapon_ammo * 0.5f) > 0.0f && (child_weapon.iweapon_ammo * 0.5f) < 1.0f) { child_weapon.iweapon_ammo = 1; }
                 else if (child_weapon.iweapon_ammo > 0) { child_weapon.iweapon_ammo = Mathf.RoundToInt(child_weapon.iweapon_ammo * 0.5f); }
                 if ((child_weapon.iweapon_duration * 0.5f) > 0.0f) { child_weapon.iweapon_duration *= 0.5f; }
-            } 
+            } */
             //child_weapon.allow_multiple_owners = false;
             child_weapon.apply_after_spawn = apply_after_spawn;
             child_weapon.gameObject.SetActive(true);
@@ -313,6 +342,8 @@ public class ItemSpawner : UdonSharpBehaviour
         if (show_marker_in_game) { child_marker.SetActive(true); }
         else { child_marker.SetActive(false); }
         StartTimer(item_spawn_linger);
+
+        //UnityEngine.Debug.Log("[ITEM_SPAWNER_TEST]: (FROM SPAWNITEM())" + gameObject.name + ": item_spawn_state = " + item_spawn_state + "; item_spawn_index = " + item_spawn_index + "; child_powerup.item_state = " + child_powerup.item_state + " (" + child_powerup.allow_effects_to_apply + "); child_weapon.item_state = " + child_weapon.item_state + " (" + child_weapon.allow_effects_to_apply + ")");
 
         //if (apply_after_spawn) { ForceApplyItem(); }
     }
@@ -330,7 +361,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered && child_powerup != null && child_powerup.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
-                gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
+                //gameController.PlaySFXFromArray(child_powerup.item_snd_source, child_powerup.item_snd_clips, reason_code);
             }
             child_powerup.gameObject.SetActive(false);
         }
@@ -342,7 +373,7 @@ public class ItemSpawner : UdonSharpBehaviour
             if (owner_id == Networking.LocalPlayer.playerId && reason_code == (int)item_snd_clips_name.PickupOther) { playSFXfiltered = false; }
             if (playSFXfiltered && child_weapon != null && child_weapon.item_snd_source != null) {
                 child_powerup.item_snd_source.transform.position = transform.position;
-                gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
+                //gameController.PlaySFXFromArray(child_weapon.item_snd_source, child_weapon.item_snd_clips, reason_code);
             }
             child_weapon.gameObject.SetActive(false);
         }

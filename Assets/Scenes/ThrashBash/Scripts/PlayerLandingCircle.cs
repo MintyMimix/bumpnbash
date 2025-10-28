@@ -8,7 +8,7 @@ using VRC.Udon;
 
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class PlayerLandingCircle : UdonSharpBehaviour
+public class PlayerLandingCircle : GlobalTickReceiver
 {
     [SerializeField] public float default_size = 20.0f; //53.0f in inspector for 1x1x1 cube
     [NonSerialized] public VRCPlayerApi owner;
@@ -18,8 +18,12 @@ public class PlayerLandingCircle : UdonSharpBehaviour
     [NonSerialized] public bool cached_teamplay = true;
 
     //[NonSerialized] private Rigidbody rb;
+    public override void Start()
+    {
+        base.Start();
+    }
 
-    private void Update() 
+    public override void OnHyperTick(float tickDeltaTime)
     {
         local_tick_timer += Time.deltaTime;
         if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))

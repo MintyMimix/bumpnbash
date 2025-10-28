@@ -7,9 +7,14 @@ using VRC.Udon;
 using VRC.Udon.Common;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-public class map_element_magnetize : UdonSharpBehaviour
+public class map_element_magnetize : GlobalTickReceiver
 {
-    public void FixedUpdate()
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void OnHyperTick(float tickDeltaTime)
     {
         GetComponent<Rigidbody>().velocity = Vector3.zero;
         GetComponent<Rigidbody>().freezeRotation = true;

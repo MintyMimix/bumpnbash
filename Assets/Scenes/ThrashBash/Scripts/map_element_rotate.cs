@@ -4,12 +4,17 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class map_element_rotate : UdonSharpBehaviour
+public class map_element_rotate : GlobalTickReceiver
 {
     [SerializeField] public float rotation_speed = 1.0f;
     [SerializeField] public byte rotation_axis = 0;
 
-    private void Update()
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void OnHyperTick(float tickDeltaTime)
     {
         Quaternion rotAdd = Quaternion.Euler(0, 0, 0);
         if (rotation_axis > 2) { rotation_axis = 0; }

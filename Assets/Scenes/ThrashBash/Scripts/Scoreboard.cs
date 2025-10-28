@@ -34,9 +34,9 @@ public class Scoreboard : UdonSharpBehaviour
 
     }
 
-    private void Update()
+    /*private void Update()
     {
-        /*if (refresh_timer < refresh_impulse)
+        if (refresh_timer < refresh_impulse)
         {
             refresh_timer += Time.deltaTime;
         }
@@ -45,8 +45,8 @@ public class Scoreboard : UdonSharpBehaviour
             RefreshScores();
             refresh_timer = 0.0f;
             if (gameController.local_uiplytoself != null) { refresh_impulse = gameController.local_uiplytoself.ui_check_gamevars_impulse; }
-        }*/
-    }
+        }
+    }*/
 
     public void RefreshScores()
     {

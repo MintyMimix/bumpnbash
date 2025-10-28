@@ -6,7 +6,7 @@ using VRC.Udon;
 using System;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-public class BouncePad : UdonSharpBehaviour
+public class BouncePad : GlobalTickReceiver
 {
     
     [SerializeField] public GameController gameController;
@@ -20,8 +20,9 @@ public class BouncePad : UdonSharpBehaviour
     [NonSerialized] public float cooldown_timer = 0.0f;
     [NonSerialized] public int bouncepad_global_index = -1;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         if (!should_draw)
             {
                 transform.GetComponent<Renderer>().enabled = false;
@@ -34,16 +35,16 @@ public class BouncePad : UdonSharpBehaviour
         //gameObject.SetActive(false);
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
-        CooldownTick();
+        CooldownTick(tickDeltaTime);
     }
 
-    internal void CooldownTick()
+    internal void CooldownTick(float deltaTime)
     {
         if (cooldown_timer < cooldown_duration)
         {
-            cooldown_timer += Time.deltaTime;
+            cooldown_timer += deltaTime;
         }
     }
 
@@ -58,6 +59,7 @@ public class BouncePad : UdonSharpBehaviour
                 Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() / 1.6f, layers_to_hit, QueryTriggerInteraction.Collide);
                 if (hitColliders.Length > 0)
                 {
+                    UnityEngine.Debug.Log("[BOUNCE_TEST]: Teleporting using bouncepad " + gameObject.name);
                     player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
                 }
                 
@@ -83,16 +85,53 @@ public class BouncePad : UdonSharpBehaviour
         }
     }
 
-    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    public override void OnPlayerTriggerStay(VRCPlayerApi player)
     {
-        if (player != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || cooldown_timer < cooldown_duration) { return; }
         Bounce(player);
     }
 
-    public override void OnPlayerCollisionEnter(VRCPlayerApi player)
+    public override void OnPlayerCollisionStay(VRCPlayerApi player)
     {
-        if (player != Networking.LocalPlayer) { return; }
+        if (player != Networking.LocalPlayer || cooldown_timer < cooldown_duration) { return; }
         Bounce(player);
+    }
+
+    public void BounceProp(VRCPlayerApi player)
+    {
+        Vector3 player_velocity = player.GetVelocity();
+        if (cooldown_timer >= cooldown_duration)
+        {
+            if (player.isLocal)
+            {
+                LayerMask layers_to_hit = LayerMask.GetMask("BouncePad");
+                Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() / 1.6f, layers_to_hit, QueryTriggerInteraction.Collide);
+                if (hitColliders.Length > 0)
+                {
+                    UnityEngine.Debug.Log("[BOUNCE_TEST]: Teleporting using bounceprop " + gameObject.name);
+                    player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
+                }
+
+                Vector3 calc_velocity = transform.up * Mathf.Max(minimum_magnitude, player_velocity.magnitude);
+                if (boost_player_momentum)
+                {
+                    float calc_x = Mathf.Max(minimum_magnitude, Math.Abs(player_velocity.x)); float calc_z = Mathf.Max(minimum_magnitude, Math.Abs(player_velocity.z));
+                    if (player_velocity.x < 0) { calc_x = -calc_x; }
+                    if (player_velocity.z < 0) { calc_z = -calc_z; }
+                    calc_velocity = new Vector3(calc_x, Mathf.Max(minimum_magnitude * 1.5f, Math.Abs(player_velocity.y)), calc_z);
+                }
+                player.SetVelocity(calc_velocity);
+                cooldown_timer = 0.0f;
+            }
+
+            if (bounce_sfx_should_play && bounce_sfx_clip != null && gameController != null)
+            {
+                AudioClip[] ac = new AudioClip[1];
+                ac[0] = bounce_sfx_clip;
+                float pitch = Mathf.Clamp(player_velocity.magnitude / (minimum_magnitude / 2.0f), 0.5f, 2.0f);
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], ac, 0, pitch);
+            }
+        }
     }
 
 }

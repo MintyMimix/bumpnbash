@@ -5,7 +5,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 using TMPro;
 
-public class UIArrow : UdonSharpBehaviour
+public class UIArrow : GlobalTickReceiver
 {
     [Header("References")]
     [SerializeField] public UnityEngine.UI.Image image_front;
@@ -19,6 +19,10 @@ public class UIArrow : UdonSharpBehaviour
     [Tooltip("Should the value reset to its min if going past its max, and vice versa?")]
     [SerializeField] public bool wrap_value;
     [SerializeField] public int min_value, max_value, current_value, increment_size;
+    public override void Start()
+    {
+        base.Start();
+    }
 
     public void ConfigurablesSanityCheck()
     {

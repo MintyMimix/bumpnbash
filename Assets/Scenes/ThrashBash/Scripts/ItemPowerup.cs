@@ -94,12 +94,12 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkUp:
-                powerup_stat_value[(int)powerup_stat_name.Atk] = 2.5f;
-                powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_stat_value[(int)powerup_stat_name.Atk] = 1.5f;
+                powerup_stat_behavior[(int)powerup_stat_name.Atk] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.DefUp:
-                powerup_stat_value[(int)powerup_stat_name.Def] = 2.5f;
-                powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
+                powerup_stat_value[(int)powerup_stat_name.Def] = 1.5f;
+                powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.AtkDown:
                 powerup_stat_value[(int)powerup_stat_name.Atk] = 0.5f;
@@ -110,9 +110,9 @@ public class ItemPowerup : ItemGeneric
                 powerup_stat_behavior[(int)powerup_stat_name.Def] = (int)powerup_stat_behavior_name.Multiply;
                 break;
             case (int)powerup_type_name.LowGrav:
-                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.5f;
+                powerup_stat_value[(int)powerup_stat_name.Grav] = 0.66f;
                 powerup_stat_behavior[(int)powerup_stat_name.Grav] = (int)powerup_stat_behavior_name.Multiply;
-                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.25f;
+                powerup_stat_value[(int)powerup_stat_name.Speed] = 0.33f;
                 powerup_stat_behavior[(int)powerup_stat_name.Speed] = (int)powerup_stat_behavior_name.Add;
                 break;
             case (int)powerup_type_name.PartialHeal:
@@ -141,8 +141,9 @@ public class ItemPowerup : ItemGeneric
         return;
     }
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
@@ -162,7 +163,7 @@ public class ItemPowerup : ItemGeneric
         Start();
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         var m_Renderer = GetComponentInChildren<Renderer>();
         
@@ -198,6 +199,21 @@ public class ItemPowerup : ItemGeneric
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
+        if (item_state == (int)item_state_name.InWorld && apply_after_spawn && spawner_parent != null)
+        {
+            if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
+        }
+        else if (item_state == (int)item_state_name.InWorld && !apply_after_spawn)
+        {
+            allow_effects_to_apply = true;
+        }
+
+        transform.rotation = Networking.LocalPlayer.GetRotation();
+        if (item_owner_id > -1)
+        {
+            transform.position = VRCPlayerApi.GetPlayerById(item_owner_id).GetPosition();
+            item_snd_source.transform.position = VRCPlayerApi.GetPlayerById(item_owner_id).GetPosition();
+        }
     }
 
     public void DisablePowerup()
@@ -210,27 +226,6 @@ public class ItemPowerup : ItemGeneric
         gameObject.SetActive(false);
     }
 
-    private void LateUpdate()
-    {
-        if (item_state == (int)item_state_name.InWorld && apply_after_spawn && spawner_parent != null) 
-        {
-            if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
-        }
-        else if (item_state == (int)item_state_name.InWorld && !apply_after_spawn)
-        {
-            allow_effects_to_apply = true;
-        }
-    }
-
-    private void FixedUpdate()
-    {
-        transform.rotation = Networking.LocalPlayer.GetRotation();
-        if (item_owner_id > -1)
-        {
-            transform.position = VRCPlayerApi.GetPlayerById(item_owner_id).GetPosition();
-            item_snd_source.transform.position = VRCPlayerApi.GetPlayerById(item_owner_id).GetPosition();
-        }
-    }
 
     internal bool ProcessTimer()
     {
@@ -254,6 +249,8 @@ public class ItemPowerup : ItemGeneric
     public void OnTriggerEnter(Collider other)
     {
         // Check if the player colliding with this is valid
+        //UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " + gameObject.name + ": CheckValidCollisionEvent(" + other.gameObject.name + ") = " + CheckValidCollisionEvent(other));
+
         if (!CheckValidCollisionEvent(other)) { return; }
         allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed

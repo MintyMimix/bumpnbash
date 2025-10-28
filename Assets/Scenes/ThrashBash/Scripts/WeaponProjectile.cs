@@ -14,7 +14,7 @@ public enum projectile_type_name
     Bullet, ArcDown, ArcUp, Bomb, Laser, ItemProjectile, ENUM_LENGTH
 }
 
-public class WeaponProjectile : UdonSharpBehaviour
+public class WeaponProjectile : GlobalTickReceiver
 {
 
     [NonSerialized] public int projectile_type, weapon_type;
@@ -42,8 +42,10 @@ public class WeaponProjectile : UdonSharpBehaviour
     [NonSerialized] private Transform cached_particle;
     [NonSerialized] public PlayerWeapon weapon_script;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
+
         rb = gameObject.GetComponent<Rigidbody>();
         previousPosition = rb.position;
         layers_to_hit = LayerMask.GetMask("Player", "PlayerLocal", "PlayerHitbox", "Environment");
@@ -166,13 +168,13 @@ public class WeaponProjectile : UdonSharpBehaviour
         return outPos;
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         if (projectile_duration <= 0) { return; }
 
         projectile_timer_network = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), projectile_start_ms);
 
-        tick_timer += Time.deltaTime;
+        tick_timer += tickDeltaTime;
 
         if (tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
         {
@@ -270,7 +272,7 @@ public class WeaponProjectile : UdonSharpBehaviour
 
             weapon_script.PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH); // ENUM_LENGTH is used for weapon fire
 
-            UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating hurtbox at " + position + " (pos_start = " + pos_start + ")");
+            //UnityEngine.Debug.Log("[PROJECTILE_TEST]: creating hurtbox at " + position + " (pos_start = " + pos_start + ")");
             weapon_script.SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
@@ -312,7 +314,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             projectile_hit_on_this_frame = true;
             pos_end = rb.position;
-            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + other.name + " while at " + rb.position.ToString());
+            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + other.name + " while at " + rb.position.ToString());
             //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at TriggerEnter!");
         }
@@ -324,7 +326,7 @@ public class WeaponProjectile : UdonSharpBehaviour
         {
             projectile_hit_on_this_frame = true;
             pos_end = rb.position;
-            UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + collision.collider.name + " while at " + rb.position.ToString());
+            //UnityEngine.Debug.Log("[" + gameObject.name + "] [PROJECTILE_TEST]: Projectile of duration " + projectile_duration + " collided with " + collision.collider.name + " while at " + rb.position.ToString());
             //OnProjectileHit(rb.position, true);
             //Debug.Log("[PROJECTILE] Create projectile at CollisionEter!");
         }

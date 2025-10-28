@@ -9,7 +9,7 @@ using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class UIRoundTeamPanel : UdonSharpBehaviour
+public class UIRoundTeamPanel : GlobalTickReceiver
 {
 
     [SerializeField] public GameController gameController;
@@ -28,8 +28,9 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
     public int stored_team_count = 0;
     public int new_host_proposed_id = 0;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         //var template_panel = (RectTransform)template_UIAssignTeamPanel.transform;
         //template_panel.parent = null;
         player_obj_list = new GameObject[0];
@@ -61,7 +62,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         GeneratePanels();
     }
 
-    private void Update()
+    public override void OnSlowTick(float tickDeltaTime)
     {
         if (UIScrollPanel == null)
         {
@@ -311,7 +312,7 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         if (player == null) { return; }
 
         new_host_proposed_id = host_requested;
-        string display_text = "The Game Master will be changed to:\n$NAME\n\nAre you sure?";
+        string display_text = gameController.localizer.FetchText("GAMESETTINGS_HOST_CHANGE_CONFIRM", "The Game Master will be changed to:\n$NAME\n\nAre you sure?");
         display_text = display_text.Replace("$NAME", player.displayName);
         GlobalHelperFunctions.GetChildTransformByName(UIHostChangePanel.transform, "UIHostText").GetComponent<TMP_Text>().text = display_text;
         UIHostChangePanel.SetActive(true);

@@ -6,7 +6,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-public class map_element_ramp : UdonSharpBehaviour
+public class map_element_ramp : GlobalTickReceiver
 {
     // To-do: Code is only working for in-air triggers rather than actual ramps
     [SerializeField] public float cooldown_duration = 0.4f;
@@ -14,17 +14,18 @@ public class map_element_ramp : UdonSharpBehaviour
     [NonSerialized] public float cooldown_timer = 0.0f;
     [NonSerialized] public Vector3 stored_velocity;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         //transform.GetComponent<Renderer>().enabled = false;
         stored_velocity = Vector3.zero;
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         if (cooldown_timer < cooldown_duration)
         {
-            cooldown_timer += Time.deltaTime;
+            cooldown_timer += tickDeltaTime;
         }
 
     }

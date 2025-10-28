@@ -26,16 +26,16 @@ public enum item_sfx_index
     OtherPickup, ItemExpire, PowerupFade, ENUM_LENGTH
 }
 
-[UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 
-public class ItemGeneric : UdonSharpBehaviour
+public class ItemGeneric : GlobalTickReceiver
 {
     [SerializeField] public GameController gameController; // Assign this in inspector
     [SerializeField] public Transform spriteItem; // Assign this in inspector
     [SerializeField] public Transform spriteFlag; // Assign this in inspector
     [SerializeField] public Transform spritePole; // Assign this in inspector
 
-    [NonSerialized] [UdonSynced] public int item_state = (int)item_state_name.Spawning;
+    [NonSerialized] public int item_state = (int)item_state_name.Spawning; //[UdonSynced] 
     [NonSerialized] public int item_owner_id = -1;
     [NonSerialized] public sbyte item_team_id = 0; // -1: all, -2: FFA only
     [NonSerialized] public int global_index = -1;
@@ -51,6 +51,11 @@ public class ItemGeneric : UdonSharpBehaviour
 
     [SerializeField] public AudioSource item_snd_source;
     [SerializeField] public AudioClip[] item_snd_clips;
+
+    public override void Start()
+    {
+        base.Start();
+    }
 
     internal ItemSpawner GetSpawnerParent()
     {
@@ -76,15 +81,20 @@ public class ItemGeneric : UdonSharpBehaviour
     internal bool CheckValidCollisionEvent(Collider other)
     {
         // If this item is not in the world, don't bother checking collisions
+        //UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " + spawner_parent.gameObject.name + ": item_state = " + item_state + "; item_is_template = " + item_is_template.ToString() + "; allow_effects_to_apply = " + allow_effects_to_apply.ToString());
         if (item_state != (int)item_state_name.InWorld || item_is_template || !allow_effects_to_apply) { return false; }
 
         // We also only care if a playerHitbox is colliding with this (layers should make this impossible, but just in case)
         // 2025-07-03 Update: We can also consider WeaponHurtbox, but if only if it belongs to a punching glove
         bool isPlayer = other.gameObject.layer == LayerMask.GetMask("Player") || other.gameObject.layer == LayerMask.GetMask("PlayerLocal");
+        bool test = other.GetComponent<PlayerHitbox>() != null || other.GetComponent<WeaponHurtbox>() != null || isPlayer;
+        //UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " +  spawner_parent.gameObject.name + ": isPlayer = " + test.ToString());
+
         if (other.GetComponent<PlayerHitbox>() == null && other.GetComponent<WeaponHurtbox>() == null && !isPlayer) { return false; }
         else if (other.GetComponent<WeaponHurtbox>() != null && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Strike && other.GetComponent<WeaponHurtbox>().damage_type != (int)damage_type_name.Kapow) { return false; }
 
         // We only care if someone else got this if this is a free-floating non-template item (i.e. neither handled by a spawner nor created by a player)
+        //UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " + spawner_parent.gameObject.name + ": Networking.IsOwner(" + other.gameObject.name + ") = " + Networking.IsOwner(other.gameObject).ToString());
         if (!Networking.IsOwner(other.gameObject))
         {
             if (!CheckForSpawnerParent()) { item_state = (int)item_state_name.Destroyed; return false; } //Destroy(gameObject); }

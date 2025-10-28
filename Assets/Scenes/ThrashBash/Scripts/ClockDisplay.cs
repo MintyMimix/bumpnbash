@@ -5,12 +5,12 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class ClockDisplay : UdonSharpBehaviour
+public class ClockDisplay : GlobalTickReceiver
 {
     private TMP_Text textComponent;
-    // To-do: Optimization by having this on a cycle rather than per-frame
-    void Start()
+    public override void Start()
     {
+        base.Start();
         textComponent = GetComponent<TMP_Text>();
     }
     void OnEnable()
@@ -18,7 +18,7 @@ public class ClockDisplay : UdonSharpBehaviour
         textComponent = GetComponent<TMP_Text>();
     }
 
-    void Update()
+    public override void OnSlowTick(float tickDeltaTime)
     {
         if (textComponent == null) { return; }
         System.DateTime dt = System.DateTime.Now;

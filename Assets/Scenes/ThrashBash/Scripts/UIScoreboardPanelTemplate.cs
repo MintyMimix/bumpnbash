@@ -14,16 +14,20 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
     [SerializeField] public TMP_Text name_text;
     [SerializeField] public TMP_Text points_text;
     [SerializeField] public TMP_Text deaths_text;
-    [SerializeField] public TMP_Text lives_text;
+    [SerializeField] public TMP_Text damage_text;
     [SerializeField] public GameObject points_obj;
     [SerializeField] public GameObject deaths_obj;
-    [SerializeField] public GameObject lives_obj;
+    [SerializeField] public GameObject damage_obj;
+    [SerializeField] public UnityEngine.UI.Image damage_image;
     [SerializeField] public UnityEngine.UI.Image points_image;
+    [SerializeField] public UnityEngine.UI.Image deaths_image;
     [SerializeField] public UnityEngine.UI.Image flag_image;
     [SerializeField] public UnityEngine.UI.Image pole_image;
     [SerializeField] public UnityEngine.UI.Image cb_image;
     [SerializeField] public Sprite points_sprite;
     [SerializeField] public Sprite timer_sprite;
+    [SerializeField] public Sprite lives_sprite;
+    [SerializeField] public Sprite damage_sprite;
 
     [NonSerialized] public VRCPlayerApi player;
     [NonSerialized] public PlayerAttributes plyAttr;
@@ -35,7 +39,8 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
 
         points_text.text = plyAttr.ply_points.ToString();
         deaths_text.text = plyAttr.ply_deaths.ToString();
-        lives_text.text = plyAttr.ply_lives.ToString();
+        damage_text.text = Mathf.Round(plyAttr.ply_damage_dealt).ToString() + "%";
+        //lives_text.text = plyAttr.ply_lives.ToString();
 
         if (gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { cb_image.enabled = true; }
         else { cb_image.enabled = false; }
@@ -59,21 +64,68 @@ public class UIScoreboardPanelTemplate : UdonSharpBehaviour
         cb_image.color = flag_image.color;
         points_image.color = flag_image.color;
 
-        if (gameController.option_gamemode == (int)gamemode_name.Survival || (plyAttr.ply_team == 1 && gameController.option_gamemode == (int)gamemode_name.BossBash))
+        if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+        {
+            if (points_image.sprite != timer_sprite) { points_image.sprite = timer_sprite; }
+
+            bool koth_is_valid = true;
+            if (gameController.mapscript_list == null || gameController.map_selected < 0 || gameController.map_selected > gameController.mapscript_list.Length
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones == null || gameController.mapscript_list[gameController.map_selected].map_capturezones.Length <= 0
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones[0].dict_points_keys_arr == null
+                ) { koth_is_valid = false; }
+            if (koth_is_valid)
+            {
+                CaptureZone capturezone = gameController.mapscript_list[gameController.map_selected].map_capturezones[0];
+                float timeLeft = gameController.option_gm_goal; int koth_index = 0;
+                int margin_time = Networking.IsOwner(capturezone.gameObject) ? 0 : 1;
+
+                if (gameController.option_teamplay && plyAttr.ply_team >= 0 && capturezone.dict_points_values_arr != null) 
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(plyAttr.ply_team, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                else if (!gameController.option_teamplay && plyAttr.ply_team >= 0 && capturezone.dict_points_values_arr != null) 
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(Networking.LocalPlayer.playerId, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                timeLeft = Mathf.Max(0, timeLeft);
+                points_text.text = timeLeft.ToString();
+            }
+
+        }
+        else
+        {
+            if (points_image.sprite != points_sprite) { points_image.sprite = points_sprite; }
+        }
+       
+        /*if (gameController.option_gamemode == (int)gamemode_name.Survival || gameController.option_gamemode == (int)gamemode_name.BossBash)
         {
             lives_obj.SetActive(true);
-            points_image.sprite = points_sprite;
+            if (points_image.sprite != points_sprite) { points_image.sprite = points_sprite; }
+            if (gameController.option_gamemode == (int)gamemode_name.BossBash && plyAttr.ply_team == 0) 
+            {
+                if (lives_image.sprite != damage_sprite) { lives_image.sprite = damage_sprite; }
+                lives_text.text = Mathf.Round(plyAttr.ply_damage_dealt).ToString() + "%";
+            }
+            else if (lives_image.sprite != lives_sprite) { lives_image.sprite = lives_sprite; }
         }
         else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) 
         {
-            lives_obj.SetActive(false);
-            points_image.sprite = timer_sprite;
+            lives_obj.SetActive(true);
+            if (lives_image.sprite != damage_sprite) { lives_image.sprite = damage_sprite; }
+            lives_text.text = Mathf.Round(plyAttr.ply_damage_dealt).ToString() + "%";
+            if (points_image.sprite != timer_sprite) { points_image.sprite = timer_sprite; }
             points_text.text = (gameController.option_gm_goal - plyAttr.ply_points).ToString();
         }
         else
         {
-            lives_obj.SetActive(false);
-            points_image.sprite = points_sprite;
-        }
+            lives_obj.SetActive(true);
+            if (lives_image.sprite != damage_sprite) { lives_image.sprite = damage_sprite; }
+            lives_text.text = Mathf.Round(plyAttr.ply_damage_dealt).ToString() + "%";
+            if (points_image.sprite != points_sprite) { points_image.sprite = points_sprite; }
+        }*/
     }
 }

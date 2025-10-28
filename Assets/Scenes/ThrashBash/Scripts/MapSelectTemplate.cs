@@ -6,7 +6,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class MapSelectTemplate : UdonSharpBehaviour
+public class MapSelectTemplate : GlobalTickReceiver
 {
     [SerializeField] public MapSelectPanel parent_mapselectpanel;
     [SerializeField] public TMP_Text map_name;
@@ -15,7 +15,12 @@ public class MapSelectTemplate : UdonSharpBehaviour
     [NonSerialized] public bool is_template = true;
     [NonSerialized] public int array_id = -1;
 
-    private void Update()
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void OnFastTick(float tickDeltaTime)
     {
         UnityEngine.UI.Toggle getToggle = GetComponent<UnityEngine.UI.Toggle>();
         if (getToggle != null)

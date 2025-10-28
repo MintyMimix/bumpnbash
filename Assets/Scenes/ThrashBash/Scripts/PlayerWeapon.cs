@@ -1,9 +1,7 @@
 ﻿
 using System;
-using System.Net.Sockets;
 using UdonSharp;
 using UnityEngine;
-using UnityEngine.Android;
 using UnityEngine.ProBuilder;
 using UnityEngine.UIElements;
 using VRC.SDK3.Components;
@@ -15,7 +13,7 @@ public enum weapon_type_name // NOTE: NEEDS TO ALSO BE CHANGED IN GAMECONTROLLER
 {
     PunchingGlove, Bomb, Rocket, BossGlove, HyperGlove, MegaGlove, SuperLaser, ThrowableItem, ENUM_LENGTH
 }
-public class PlayerWeapon : UdonSharpBehaviour
+public class PlayerWeapon : GlobalTickReceiver
 {
     // References
     [SerializeField] public GameObject[] weapon_mdl;
@@ -32,6 +30,8 @@ public class PlayerWeapon : UdonSharpBehaviour
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponfire; // NOTE: Corresponds to weapon_type
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponcharge; // NOTE: Corresponds to weapon_type
     [SerializeField] public AudioClip[] snd_game_sfx_clips_weaponcontact; // NOTE: Corresponds to weapon_type
+    [SerializeField] public UnityEngine.UI.Image ui_cooldown_fg;
+    [SerializeField] public TMPro.TMP_Text ui_cooldown_txt;
     // Weapon type
     [NonSerialized][UdonSynced] public int weapon_type;
     [NonSerialized] public int local_weapon_type = -1;
@@ -43,9 +43,12 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float use_cooldown;
     [NonSerialized] public float use_timer;
     [NonSerialized] public bool use_ready;
-    [NonSerialized] public bool waiting_for_toss = false;
-    // Temporary ammo (from pickups)
-    [NonSerialized] public int weapon_temp_ammo = -1;
+    //[NonSerialized] public bool waiting_for_toss = false;
+	//[NonSerialized] public bool weapon_was_tossed = false;
+    [SerializeField] public float toss_timeout_duration = 4.0f;
+    [NonSerialized] public float toss_timer = 0.0f;
+	// Temporary ammo (from pickups)
+	[NonSerialized] public int weapon_temp_ammo = -1;
     [NonSerialized] public float weapon_temp_duration = -1.0f;
     [NonSerialized] public float weapon_temp_timer = 0.0f;
     // Charging variables (for laser)
@@ -79,9 +82,18 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NonSerialized] public float[][] all_weapon_stats;
     [NonSerialized] private float cached_scale = -1.0f;
     [NonSerialized] private int cached_team = -1;
+    [NonSerialized] private bool cached_teamplay = false;
+    [NonSerialized] public Vector3 cached_desktop_offset;
+    // Culling Variables (for optimization)
+    [NonSerialized] public float weapon_renderer_cull_distance = 99999.0f; // Distance to no longer render the weapon model. Quest is 16.5f
+    [NonSerialized] public float weapon_animator_cull_distance = 99999.0f; // Distance to no longer animate the weapon. Quest is 9.5f.
+    [NonSerialized] public bool weapon_renderer_enabled = true;
+    [NonSerialized] public bool weapon_animator_enabled = true;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
+        CacheWeaponPos(true);
         scale_inital = transform.localScale.x;
         all_weapon_stats = SetupAllWeaponStats();
 
@@ -90,6 +102,17 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (pickup_component == null) { pickup_component = gameObject.GetComponent<VRCPickup>(); }
         if (pickup_rb == null) { pickup_rb = gameObject.GetComponent<Rigidbody>(); }
+
+        if (gameController.flag_for_mobile_vr.activeInHierarchy)
+        {
+            weapon_renderer_cull_distance = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_QUEST) / 10.0f;
+            weapon_animator_cull_distance = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_QUEST) / 10.0f;
+        }
+        else
+        {
+            weapon_renderer_cull_distance = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_PC) / 10.0f; 
+            weapon_animator_cull_distance = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_PC) / 10.0f;
+        }
 
         if (hurtboxes_pool == null || hurtboxes_pool.Length == 0)
         {
@@ -139,6 +162,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         UpdateStatsFromWeaponType();
         if (!Networking.IsOwner(gameObject)) { return; }
         network_active = true;
+        CacheWeaponPos(true);
     }
 
     private void OnDisable()
@@ -150,14 +174,21 @@ public class PlayerWeapon : UdonSharpBehaviour
     public override void OnDeserialization()
     {
         if (local_weapon_type != weapon_type || local_extra_data != weapon_extra_data) { UpdateStatsFromWeaponType(); }
-        if (owner_attributes != null && cached_team != owner_attributes.ply_team) { SetTeamColor();  }
+        if ((owner_attributes != null && cached_team != owner_attributes.ply_team)
+            || (gameController != null && cached_teamplay != gameController.option_teamplay))
+        { SetTeamColor();  }
         gameObject.SetActive(network_active);
+
+        if (!Networking.IsOwner(gameObject))
+        {
+            if (ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
+        }
     }
 
-    private void Update()
+    public override void OnHyperTick(float tickDeltaTime)
     {
         // Tick Timer
-        tick_timer += Time.deltaTime;
+        tick_timer += tickDeltaTime;
 
         if (tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
         {
@@ -168,25 +199,46 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (owner_attributes == null) { return; }
 
         // Weapon use timer
+        bool koth_respawning = (owner_attributes.ply_state == (int)player_state_name.Respawning && gameController.option_gamemode == (int)gamemode_name.KingOfTheHill);
         if (use_timer < use_cooldown)
         {
-            use_timer += Time.deltaTime;
+            use_timer += tickDeltaTime;
             use_ready = false;
+            if (Networking.IsOwner(gameObject))
+            {
+                if (!ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+                ui_cooldown_fg.fillAmount = 1.0f - (use_timer / use_cooldown);
+                ui_cooldown_txt.text = string.Format("{0:F1}", use_cooldown - use_timer);
+                if (ui_cooldown_fg.color != gameController.COLOR_COOLDOWN) { ui_cooldown_fg.color = gameController.COLOR_COOLDOWN; }
+            }
         }
-        else if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !use_ready)
+        else if ((gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && !koth_respawning && !use_ready)
         {
             animate_active = false;
             use_ready = true;
             ToggleParticle(true);
+            if (ui_cooldown_fg.gameObject.activeInHierarchy && Networking.IsOwner(gameObject)) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
             // For bombs, we use the charge sound as the "ready to be thrown again" SFX, but only if we are the owner
             if (Networking.GetOwner(gameObject) == Networking.LocalPlayer && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
             { gameController.PlaySFXFromArray(snd_source_weaponcharge, snd_game_sfx_clips_weaponcharge, weapon_type, 1.0f); }
         }
-        else if (!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) && use_ready)
+        else if ((!(gameController.round_state == (int)round_state_name.Ongoing || owner_attributes.ply_training) || koth_respawning) && use_ready)
         {
             animate_active = false;
             use_ready = false;
             ToggleParticle(false);
+            if (!ui_cooldown_fg.gameObject.activeInHierarchy && Networking.IsOwner(gameObject)) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+            if (ui_cooldown_fg.color != gameController.COLOR_COOLDOWN) { ui_cooldown_fg.color = gameController.COLOR_COOLDOWN; }
+            ui_cooldown_fg.fillAmount = 1.0f;
+            ui_cooldown_txt.text = "X";
+        }
+        else if (
+            !Networking.IsOwner(gameObject)
+            && (gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over)
+            && !(owner_attributes.ply_training || (owner_attributes.ply_team >= 0 && (owner_attributes.ply_state == (int)player_state_name.Alive || owner_attributes.ply_state == (int)player_state_name.Respawning)))
+            )
+        {
+            ToggleActive(false);
         }
 
         // Animation variables
@@ -196,13 +248,29 @@ public class PlayerWeapon : UdonSharpBehaviour
             weapon_animator.SetInteger("AnimationState", animate_state);
         }
 
+        if (( (pickup_rb != null && Mathf.Abs(pickup_rb.velocity.magnitude) > 0) && (pickup_component != null && !pickup_component.IsHeld) ) && toss_timer < toss_timeout_duration)
+        {
+            toss_timer += tickDeltaTime;
+        }
+        else if ((pickup_rb != null && Mathf.Abs(pickup_rb.velocity.magnitude) > 0) && (pickup_component != null && !pickup_component.IsHeld))
+        {
+            toss_timer = 0.0f;
+            if (pickup_rb != null) { pickup_rb.velocity = Vector3.zero; }
+            //if (pickup_component != null) { pickup_component.Drop(); }
+            CacheWeaponPos(true);
+        }
+        else
+        {
+            toss_timer = 0.0f;
+        }
+
         // -- Owner Only Events --
         if (!Networking.IsOwner(gameObject)) { return; }
 
         // Haptic countdown decrementing timer
         if (haptic_cooldown_type >= 0 && haptic_countdown > 0.0f)
         {
-            haptic_countdown -= Time.deltaTime;
+            haptic_countdown -= tickDeltaTime;
         }
         else if (haptic_cooldown_type >= 0 && haptic_countdown <= 0.0f)
         {
@@ -215,7 +283,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             if (weapon_temp_duration > 0.0f && weapon_temp_timer < weapon_temp_duration)
             {
-                weapon_temp_timer += Time.deltaTime;
+                weapon_temp_timer += tickDeltaTime;
             }
             else if (weapon_temp_duration > 0.0f && weapon_temp_timer >= weapon_temp_duration)
             {
@@ -239,6 +307,18 @@ public class PlayerWeapon : UdonSharpBehaviour
                 weapon_charge_timer = 0.0f;
                 if (weapon_type == (int)weapon_type_name.SuperLaser) { animate_state = 2; }
             }
+
+            if (Networking.IsOwner(gameObject))
+            {
+                if (!ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(true); ui_cooldown_txt.gameObject.SetActive(true); }
+                ui_cooldown_fg.fillAmount = (float)(weapon_charge_timer / weapon_charge_duration);
+                ui_cooldown_txt.text = string.Format("{0:F1}", weapon_charge_duration - weapon_charge_timer);
+                if (ui_cooldown_fg.color != gameController.COLOR_CHARGE) { ui_cooldown_fg.color = gameController.COLOR_CHARGE; }
+            }
+        }
+        else if (Networking.IsOwner(gameObject) && !weapon_is_charging && weapon_charge_duration > 0.0f && weapon_charge_timer > 0.0f)
+        {
+            if (ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
         }
     }
 
@@ -249,10 +329,68 @@ public class PlayerWeapon : UdonSharpBehaviour
         {
             TeleportWeaponToOwner();
         }
-        else if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem)
+        //else if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem)
+        //{
+        pickup_rb.velocity = Vector3.zero;
+        pickup_rb.angularVelocity = Vector3.zero;
+        //}
+
+        // If we are not the owner of the game object, see if we are far enough away to cull the animator or renderer
+        if (!Networking.IsOwner(gameObject))
         {
-            pickup_rb.velocity = Vector3.zero;
-            pickup_rb.angularVelocity = Vector3.zero;
+            float render_dist = weapon_renderer_cull_distance;
+            float animate_dist = weapon_animator_cull_distance;
+            if (owner_attributes != null) 
+            { 
+                render_dist *= (1.0f + owner_attributes.ply_scale) / 2.0f;
+                animate_dist *= (1.0f + owner_attributes.ply_scale) / 2.0f;
+            }
+            if (gameController != null && ((gameController.local_plyAttr != null && gameController.local_plyAttr.in_ready_room) || gameController.highlight_cameras_active_cnt > 0))
+            {
+                // If we are in the ready room (for spectating reasons) or are snapping a highlight photo, do not cull
+                render_dist = 999999.0f;
+                animate_dist = 999999.0f; 
+            }
+
+            if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position) >= render_dist)
+            {
+                if (weapon_renderer_enabled && weapon_renderer != null)
+                {
+                    weapon_renderer_enabled = false;
+                    weapon_renderer.enabled = false;
+                }
+                if (weapon_animator_enabled && weapon_animator != null) 
+                { 
+                    weapon_animator_enabled = false; 
+                    weapon_animator.enabled = false;
+                }
+            }
+            else if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), transform.position) >= animate_dist)
+            {
+                if (!weapon_renderer_enabled && weapon_renderer != null)
+                {
+                    weapon_renderer_enabled = true;
+                    weapon_renderer.enabled = true;
+                }
+                if (weapon_animator_enabled && weapon_animator != null) 
+                { 
+                    weapon_animator_enabled = false;
+                    weapon_animator.enabled = false;
+                }
+            }
+            else
+            {
+                if (!weapon_renderer_enabled && weapon_renderer != null)
+                {
+                    weapon_renderer_enabled = true;
+                    weapon_renderer.enabled = true;
+                }
+                if (!weapon_animator_enabled && weapon_animator != null) 
+                { 
+                    weapon_animator_enabled = true;
+                    weapon_animator.enabled = true;
+                }
+            }
         }
         
         if (owner_attributes != null && cached_scale != owner_attributes.ply_scale)
@@ -261,7 +399,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             cached_scale = owner_attributes.ply_scale;
         }
 
-        ProcessAnimations();
+        if (weapon_animator_enabled) { ProcessAnimations(); }
     }
 
     private void ProcessAnimations()
@@ -334,6 +472,20 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
     }
 
+    public void CacheWeaponPos(bool resetElevation = false)
+    {
+        float ply_scale_offset = 1.0f;
+        if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_scale != 1.0f) { ply_scale_offset = gameController.local_plyAttr.ply_scale; }
+
+        if (resetElevation) { cached_desktop_offset = (Networking.LocalPlayer.GetRotation() * Vector3.forward * 0.8f * 1.66f * ply_scale_offset); } //0.5f * 1.66f
+        else { cached_desktop_offset = (Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * 0.8f * 1.66f * ply_scale_offset); }
+
+        if (!pickup_component.IsHeld)
+        {
+            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + cached_desktop_offset;
+        }
+    }
+
     private void TeleportWeaponToOwner()
     {
         // -- Owner Only Event --
@@ -356,8 +508,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else if (!Networking.LocalPlayer.IsUserInVR())
         {
-            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.0f);
-            if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
+            transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + cached_desktop_offset;
+            if (is_secondary) { transform.position = transform.position + new Vector3(1.0f, 0.0f, 0.0f); }
+            //if (is_secondary) { transform.position = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(1.0f * ply_scale_offset, 0.0f, 0.5f * ply_scale_offset); }
         }
         pickup_rb.velocity = Vector3.zero;
         pickup_rb.angularVelocity = Vector3.zero;
@@ -386,18 +539,20 @@ public class PlayerWeapon : UdonSharpBehaviour
     [NetworkCallable]
     public void ToggleActive(bool toggle)
     {
-        if (pickup_component != null && pickup_component.IsHeld) { pickup_component.Drop(); }
+        if (pickup_component != null && pickup_component.IsHeld && !toggle) { pickup_component.Drop(); }
         network_active = toggle;
         gameObject.SetActive(toggle);
+        //gameController.CheckPlyObjsActive();
     }
 
     public override void OnPickup()
     {
-        waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
+        //waiting_for_toss = (Networking.GetOwner(gameObject).IsUserInVR() && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem));
+        //waiting_for_toss = false;
         if (pickup_component != null && Networking.GetOwner(gameObject) == Networking.LocalPlayer)
         {
             pickup_component.pickupable = false;
-            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
+            //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null) { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = false; }
         }
         pickup_rb.velocity = Vector3.zero;
         pickup_rb.angularVelocity = Vector3.zero;
@@ -405,15 +560,23 @@ public class PlayerWeapon : UdonSharpBehaviour
 
     public override void OnDrop()
     {
-        if (waiting_for_toss && use_ready && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
+        /*if (waiting_for_toss && use_ready && (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem))
         {
-            TossWeapon();
-        }
+			weapon_was_tossed = true;
+			TossWeapon();
+		}*/
         if (pickup_component != null && Networking.IsOwner(gameObject))
         {
             pickup_component.pickupable = true;
-            if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
-            { gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
+            if (!Networking.LocalPlayer.IsUserInVR()) 
+            {
+                float ply_scale_offset = 1.0f;
+                if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_scale != 1.0f) { ply_scale_offset = gameController.local_plyAttr.ply_scale; }
+                CacheWeaponPos();
+                
+            }
+            //if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.ppp_pickup != null)
+            //{ gameController.local_ppp_options.ppp_pickup.GetComponent<VRC_Pickup>().pickupable = true; }
         }
     }
 
@@ -426,6 +589,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             weapon_charge_timer = 0.0f;
             if (use_ready && snd_source_weaponcharge != null) { snd_source_weaponcharge.Stop(); }
             if (weapon_type == (int)weapon_type_name.SuperLaser && animate_state != 2) { animate_state = 0; }
+            if (Networking.IsOwner(gameObject) && use_ready && ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false); }
             animate_active = false;
         }
     }
@@ -438,16 +602,17 @@ public class PlayerWeapon : UdonSharpBehaviour
         animate_active = true;
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
-            if (!waiting_for_toss)
-            {
-                waiting_for_toss = true;
-                if (pickup_rb != null) { pickup_rb.useGravity = true; }
-                if (!Networking.GetOwner(gameObject).IsUserInVR())
-                {
-                    // If we are a desktop user, just have it left click toss after the cooldown
-                    TossWeapon();
-                }
-            }
+            //if (!waiting_for_toss)
+            //{
+            //    waiting_for_toss = true;
+            //    if (pickup_rb != null) { pickup_rb.useGravity = true; }
+                //if (!Networking.GetOwner(gameObject).IsUserInVR())
+                //{
+                // If we are a desktop user or just want an accessible means in VR, just have it left click toss after the cooldown
+                //  TossWeapon();
+                //}
+            //}
+            TossWeapon();
             return;
         }
         else if (weapon_type == (int)weapon_type_name.SuperLaser)
@@ -459,6 +624,7 @@ public class PlayerWeapon : UdonSharpBehaviour
                 weapon_charge_timer = 0.0f;
                 weapon_is_charging = true;
                 animate_state = 1;
+                if (Networking.IsOwner(gameObject) && use_ready && ui_cooldown_fg.gameObject.activeInHierarchy) { ui_cooldown_fg.gameObject.SetActive(false); ui_cooldown_txt.gameObject.SetActive(false);  }
             }
             return;
         }
@@ -472,17 +638,32 @@ public class PlayerWeapon : UdonSharpBehaviour
         // Only manually apply velocity in non-VR
         // If it's a throwable and has just been thrown, however, we want to create a flying projectile in its direction
         //if (pickup_rb != null) { pickup_rb.isKinematic = false; }
-        if (!Networking.GetOwner(gameObject).IsUserInVR())
-        {
-            Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
-            float throwForce = 11.0f;
-            if (pickup_rb != null) { velocity_stored = pickup_rb.velocity + (throwDir * throwForce); }
+        //if (!weapon_was_tossed)
+        //{
+        Vector3 throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward;
+        throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.up * 0.33f;
+        if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null) 
+        { 
+            if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) 
+            { 
+                throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.right;
+                throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * 1.5f; // * 0.66f;
+            }
+            else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) 
+            { 
+                throwDir = Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.right;
+                throwDir += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * 1.5f; //* 0.66f;
+            }
         }
-        else if (pickup_rb != null) { velocity_stored = pickup_rb.velocity * 2.5f; }
+        float throwForce = 11.0f;
+        if (pickup_rb != null) { velocity_stored = pickup_rb.velocity + (throwDir * throwForce); }
+        //}
+        //else if (pickup_rb != null) { velocity_stored = pickup_rb.velocity * 2.5f; }
 
         FireWeapon();
-        waiting_for_toss = false;
-    }
+        //waiting_for_toss = false;
+		//weapon_was_tossed = false;
+	}
 
     private void FireWeapon()
     {
@@ -507,7 +688,27 @@ public class PlayerWeapon : UdonSharpBehaviour
         else if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
             pitch_low = 1.0f; pitch_high = 1.0f; use_melee = false;
-            if (gameController.local_plyAttr != null) { pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 1.0f; }
+            if (gameController.local_plyAttr != null) 
+            {
+                if (Networking.GetOwner(gameObject).IsUserInVR() && pickup_component != null)
+                {
+                    if (pickup_component.currentHand == VRC_Pickup.PickupHand.Left) 
+                    { 
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.right * gameController.local_plyAttr.ply_scale * 0.5f;
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.LeftHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    }
+                    else if (pickup_component.currentHand == VRC_Pickup.PickupHand.Right) 
+                    { 
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.right * gameController.local_plyAttr.ply_scale * 0.5f;
+                        pos_start += Networking.GetOwner(gameObject).GetTrackingData(VRCPlayerApi.TrackingDataType.RightHand).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    }
+                }
+                else
+                {
+                    pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward * gameController.local_plyAttr.ply_scale * 0.5f;
+                    //pos_start += Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.up * gameController.local_plyAttr.ply_scale * 0.5f;
+                }
+            }
         }
         gameController.PlaySFXFromArray(
             snd_source_weaponfire
@@ -519,6 +720,9 @@ public class PlayerWeapon : UdonSharpBehaviour
         float distance = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Distance];
         if (owner_attributes == null) { return; }
         distance *= owner_attributes.ply_scale; // scale distance with player size
+        float base_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Projectile_Duration];
+        float duration = base_duration * 1.0f / Mathf.Max(0.001f, owner_attributes.ply_speed); // scale duration inversely with player speed
+        duration = (base_duration + duration) / 2.0f; // And average it out
 
         PlayHapticEvent((int)game_sfx_name.ENUM_LENGTH);  // ENUM_LENGTH is used for weapon fire
 
@@ -540,34 +744,40 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
         else
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All
-            , "NetworkCreateProjectile"
-            , weapon_type
-            , pos_start
-            , transform.rotation
-            , new Vector3(distance, owner_attributes.ply_scale, weapon_extra_data)
-            , velocity_stored
-            , use_melee
-            , Networking.LocalPlayer.playerId
+            SendCustomNetworkEvent(
+                VRC.Udon.Common.Interfaces.NetworkEventTarget.All
+                , "NetworkCreateProjectile"
+                , weapon_type
+                , pos_start
+                , transform.rotation
+                , new Vector4(distance, owner_attributes.ply_scale, weapon_extra_data, duration)
+                , velocity_stored
+                , use_melee
+                , Networking.LocalPlayer.playerId
+                , 1.0f / (1.0f + (Vector3.Project(Networking.LocalPlayer.GetVelocity(), transform.rotation * Vector3.forward).magnitude / 12.0f))
             );
+            UnityEngine.Debug.Log("Scale projectile duration by " + 1.0f / (1.0f + (Vector3.Project(Networking.LocalPlayer.GetVelocity(), transform.rotation * Vector3.forward).magnitude / 12.0f)));
         }
 
         // After throwing an item, reroll the item on it, if it has more than 1 ammo
         if (weapon_type == (int)weapon_type_name.ThrowableItem)
         {
             weapon_extra_data = RollForPowerupBombExtraData();
-            OnDeserialization();
+            UpdateWeaponModel();
+            local_weapon_type = weapon_type;
+            local_extra_data = weapon_extra_data;
         }
     }
 
     [NetworkCallable]
-    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector3 float_in, Vector3 fire_velocity, bool keep_parent, int player_id)
+    public void NetworkCreateProjectile(int weapon_type, Vector3 fire_start_pos, Quaternion fire_angle, Vector4 float_in, Vector3 fire_velocity, bool keep_parent, int player_id, float duration_mul)
     {
         float[] stats_from_weapon = GetStatsFromWeaponType(weapon_type);
 
         float distance = float_in.x;
         float player_scale = float_in.y;
         byte extra_data = (byte)float_in.z;
+        float duration = float_in.w;
 
         WeaponProjectile projectile = GetInactiveProjectile();
         if (projectile == null) { return; }
@@ -590,7 +800,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         projectile.weapon_type = weapon_type;
 
         projectile.projectile_type = (int)stats_from_weapon[(int)weapon_stats_name.Projectile_Type];
-        projectile.projectile_duration = stats_from_weapon[(int)weapon_stats_name.Projectile_Duration];
+        projectile.projectile_duration = duration;
         projectile.projectile_start_ms = Networking.GetServerTimeInSeconds();
         projectile.pos_start = fire_start_pos;
         projectile.projectile_distance = distance;
@@ -598,8 +808,6 @@ public class PlayerWeapon : UdonSharpBehaviour
         projectile.extra_data = extra_data;
         PlayerWeapon source_weaponScript = gameController.GetPlayerWeaponFromID(player_id);
         projectile.weapon_script = source_weaponScript;
-
-        if (weapon_type != (int)weapon_type_name.Bomb && weapon_type != (int)weapon_type_name.ThrowableItem) { projectile.rb.velocity = Vector3.zero; }
 
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
@@ -614,9 +822,17 @@ public class PlayerWeapon : UdonSharpBehaviour
                 source_weaponScript.pickup_rb.velocity = Vector3.zero;
             }
         }
+        else
+        {
+            projectile.rb.velocity = Vector3.zero;
+            projectile.projectile_duration *= duration_mul;
+        }
 
         projectile.UpdateProjectileModel();
         newProjectileObj.SetActive(true);
+
+        //UnityEngine.Debug.Log("[PROJECTILE_TEST] " + newProjectileObj.name + " created. position = " + newProjectileObj.transform.position + "; duration = " + projectile.projectile_duration + "; start_ms = " + projectile.projectile_start_ms);
+
     }
 
     [NetworkCallable]
@@ -630,13 +846,13 @@ public class PlayerWeapon : UdonSharpBehaviour
         WeaponHurtbox hurtbox = null;
         if (is_melee) 
         { 
-            hurtbox = hurtbox_melee; 
-            hurtbox.weapon_rb = pickup_rb; 
+            hurtbox = hurtbox_melee;
+            if (hurtbox != null) { hurtbox.weapon_rb = pickup_rb; }
         }
         else 
         { 
             hurtbox = GetInactiveRangedHurtbox();
-            hurtbox.transform.parent = null;
+            if (hurtbox != null) { hurtbox.transform.parent = null; }
         }
         if (hurtbox == null) { return; }
 
@@ -667,11 +883,11 @@ public class PlayerWeapon : UdonSharpBehaviour
             //hurtbox.hurtbox_rb.MoveRotation(rotation);
         }
 
-        bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
+        //bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1); 
 
         hurtbox.start_scale = newHurtboxObj.transform.lossyScale;
         hurtbox.hurtbox_damage = damage;
-        if (is_boss && !Networking.LocalPlayer.IsUserInVR()) { hurtbox.hurtbox_damage *= 2.0f; }
+        //if (is_boss && !Networking.LocalPlayer.IsUserInVR()) { hurtbox.hurtbox_damage *= 2.0f; }
         hurtbox.hurtbox_duration = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Duration];
         hurtbox.hurtbox_start_ms = Networking.GetServerTimeInSeconds();
         hurtbox.hurtbox_timer_network = 0.0f;
@@ -687,7 +903,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         hurtbox.SetMesh();
         newHurtboxObj.SetActive(true);
         
-        UnityEngine.Debug.Log("[HURTBOX_TEST] " + newHurtboxObj.name + " created. position = " + newHurtboxObj.transform.position + "; duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
+        //UnityEngine.Debug.Log("[HURTBOX_TEST] " + newHurtboxObj.name + " created. position = " + newHurtboxObj.transform.position + "; duration = " + hurtbox.hurtbox_duration + "; start_ms = " + hurtbox.hurtbox_start_ms);
     }
 
     public byte RollForPowerupBombExtraData()
@@ -729,11 +945,12 @@ public class PlayerWeapon : UdonSharpBehaviour
     private void ScaleWeapon()
     {
         // Scale the object with the owner's size
-        if (owner_attributes != null && owner_attributes.plyEyeHeight_default > 0.0f && scale_inital > 0.0f)
+        if (owner_attributes != null && scale_inital > 0.0f) //&& owner_attributes.plyEyeHeight_default > 0.0f &&
         {
             //float playerVisualScale = owner_attributes.plyEyeHeight_desired / owner_attributes.plyEyeHeight_default;
             //transform.localScale = new Vector3(scale_inital * playerVisualScale, scale_inital * playerVisualScale, scale_inital * playerVisualScale);
             transform.localScale = new Vector3(scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale, scale_inital * owner_attributes.ply_scale);
+            //UnityEngine.Debug.Log("Scaling player weapon belonging to " + Networking.GetOwner(gameObject).displayName + " from " + cached_scale + " to " + (scale_inital * owner_attributes.ply_scale).ToString());
         }
     }
 
@@ -807,7 +1024,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (is_secondary && gameObject.activeInHierarchy && gameController != null && owner_attributes != null)
         {
-            bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1);
+            bool is_boss = weapon_type == (int)weapon_type_name.BossGlove || owner_attributes.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && owner_attributes.ply_team == 1);
             is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
             if (!is_boss) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
         }
@@ -838,7 +1055,7 @@ public class PlayerWeapon : UdonSharpBehaviour
 
         if (weapon_type == (int)weapon_type_name.Bomb || weapon_type == (int)weapon_type_name.ThrowableItem)
         {
-            if (Networking.GetOwner(gameObject).IsUserInVR())
+            /*if (Networking.GetOwner(gameObject).IsUserInVR())
             {
                 waiting_for_toss = true;
                 use_timer = use_cooldown;
@@ -846,20 +1063,24 @@ public class PlayerWeapon : UdonSharpBehaviour
                 ToggleParticle(true);
             }
             else
-            {
-                waiting_for_toss = false;
+            {*/
+                //waiting_for_toss = false;
                 ToggleParticle(false);
-            }
+            //}
         }
         else if (weapon_type == (int)weapon_type_name.BossGlove)
         {
-            if (gameController.ply_in_game_auto_dict != null && gameController.ply_in_game_auto_dict.Length > 0 && gameController.ply_in_game_auto_dict[0] != null)
+            if (gameController.cached_ply_in_game_dict != null && gameController.cached_ply_in_game_dict.Length > 0 && gameController.cached_ply_in_game_dict[0] != null)
             {
                 // Fire rate increases with number of players
-                use_cooldown = Mathf.Lerp(2.0f, 0.5f, Mathf.Min(1.0f, gameController.ply_in_game_auto_dict[0].Length / 18.0f))
+                //Mathf.Lerp(2.0f, 0.5f, Mathf.Min(1.0f, gameController.cached_ply_in_game_dict[0].Length / 18.0f))
+                use_cooldown = Mathf.Lerp(0.33f, 2.5f, Mathf.Max(0.0f, 1.0f - (gameController.cached_ply_in_game_dict[0].Length / 16.0f)))
                     * GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Cooldown];
+
             }
         }
+
+        if (owner_attributes != null) { owner_attributes.air_thrust_cooldown = GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Cooldown] * 2.0f; }
 
         ScaleWeapon();
 
@@ -995,6 +1216,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         }
 
         if (owner_attributes != null) { cached_team = owner_attributes.ply_team; }
+        if (gameController != null) { cached_teamplay = gameController.option_teamplay; }
     }
 
     private float[] SetupWeaponStat(int weapon_in_type)

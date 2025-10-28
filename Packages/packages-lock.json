@@ -1,7 +1,13 @@
 {
   "dependencies": {
-    "com.prismic247.scaledcolliders": {
-      "version": "file:com.prismic247.scaledcolliders",
+    "blueamulet.udonsharpoptimizer": {
+      "version": "file:blueamulet.udonsharpoptimizer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
+    "com.llealloo.audiolink": {
+      "version": "file:com.llealloo.audiolink",
       "depth": 0,
       "source": "embedded",
       "dependencies": {}
@@ -140,6 +146,17 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.splines": {
+      "version": "2.5.2",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.unity.ugui": "1.0.0",
+        "com.unity.mathematics": "1.2.1",
+        "com.unity.settings-manager": "1.0.3"
+      },
+      "url": "https://packages.unity.com"
+    },
     "com.unity.test-framework": {
       "version": "1.1.33",
       "depth": 1,
@@ -236,12 +253,6 @@
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       }
     },
-    "com.vrchat.users.scarlet-crystal.asu": {
-      "version": "file:com.vrchat.users.scarlet-crystal.asu",
-      "depth": 0,
-      "source": "embedded",
-      "dependencies": {}
-    },
     "com.vrchat.users.scarlet-crystal.thumbnailcreator": {
       "version": "file:com.vrchat.users.scarlet-crystal.thumbnailcreator",
       "depth": 0,
@@ -257,6 +268,14 @@
         "com.unity.textmeshpro": "3.0.6",
         "com.unity.inputsystem": "1.2.0",
         "com.unity.ai.navigation": "1.1.5"
+      }
+    },
+    "dev.onevr.vrworldtoolkit": {
+      "version": "file:dev.onevr.vrworldtoolkit",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.postprocessing": "3.1.1"
       }
     },
     "vrchat.jordo.easyquestswitch": {

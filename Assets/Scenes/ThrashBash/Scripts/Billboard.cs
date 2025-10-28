@@ -4,9 +4,14 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class Billboard : UdonSharpBehaviour
+public class Billboard : GlobalTickReceiver
 {
-    void Update()
+    public override void Start()
+    {
+        base.Start();
+    }
+
+    public override void OnFastTick(float tickDeltaTime)
     {
         transform.rotation = Networking.LocalPlayer.GetRotation();
     }

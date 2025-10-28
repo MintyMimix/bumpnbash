@@ -1,62 +1,70 @@
 {
-  "LocalOptions_UIScale": {
-    "LastUpdated": "2025-07-19T10:20:59.962788-04:00",
-    "Key": "LocalOptions_UIScale",
+  "UIScale": {
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
+    "Key": "UIScale",
     "Value": {
       "type": "Float",
       "value": 10.0
     }
   },
-  "LocalOptions_Colorblind": {
-    "LastUpdated": "2025-07-17T16:28:22.050012-04:00",
-    "Key": "LocalOptions_Colorblind",
+  "UIVertical": {
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
+    "Key": "UIVertical",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIStretch": {
+    "LastUpdated": "2025-10-15T15:09:25.2045025-04:00",
+    "Key": "UIStretch",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIDistance": {
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
+    "Key": "UIDistance",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIYOffset": {
+    "LastUpdated": "2025-10-15T15:00:16.7185415-04:00",
+    "Key": "UIYOffset",
+    "Value": {
+      "type": "Float",
+      "value": 0.0
+    }
+  },
+  "UIOtherScale": {
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
+    "Key": "UIOtherScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIHarmScale": {
+    "LastUpdated": "2025-10-15T00:11:26.13861-04:00",
+    "Key": "UIHarmScale",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "UIInverted": {
+    "LastUpdated": "2025-10-16T14:27:32.0418141-04:00",
+    "Key": "UIInverted",
     "Value": {
       "type": "Bool",
       "value": false
     }
   },
-  "LocalOptions_UISeparation": {
-    "LastUpdated": "2025-07-19T21:58:34.1526242-04:00",
-    "Key": "LocalOptions_UISeparation",
-    "Value": {
-      "type": "Float",
-      "value": 30.0
-    }
-  },
-  "LocalOptions_MusicVolume": {
-    "LastUpdated": "2025-07-17T20:41:21.9231316-04:00",
-    "Key": "LocalOptions_MusicVolume",
-    "Value": {
-      "type": "Float",
-      "value": 10.0
-    }
-  },
-  "LocalOptions_SoundVolume": {
-    "LastUpdated": "2025-07-17T20:41:25.3605859-04:00",
-    "Key": "LocalOptions_SoundVolume",
-    "Value": {
-      "type": "Float",
-      "value": 10.0
-    }
-  },
-  "UIScale": {
-    "LastUpdated": "2025-08-31T21:44:16.8077409-04:00",
-    "Key": "UIScale",
-    "Value": {
-      "type": "Float",
-      "value": 8.0
-    }
-  },
-  "UISeparation": {
-    "LastUpdated": "2025-08-05T00:02:08.2738616-04:00",
-    "Key": "UISeparation",
-    "Value": {
-      "type": "Float",
-      "value": 30.0
-    }
-  },
   "MusicVolume": {
-    "LastUpdated": "2025-08-31T21:43:58.2843219-04:00",
+    "LastUpdated": "2025-10-15T11:05:11.730262-04:00",
     "Key": "MusicVolume",
     "Value": {
       "type": "Float",
@@ -64,87 +72,79 @@
     }
   },
   "SoundVolume": {
-    "LastUpdated": "2025-08-31T17:43:58.248972-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
     "Key": "SoundVolume",
     "Value": {
       "type": "Float",
       "value": 10.0
     }
   },
-  "Colorblind": {
-    "LastUpdated": "2025-08-28T09:03:43.9911611-04:00",
-    "Key": "Colorblind",
+  "MusicOverride": {
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
+    "Key": "MusicOverride",
+    "Value": {
+      "type": "Float",
+      "value": 0.0
+    }
+  },
+  "AudioLinkPref": {
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
+    "Key": "AudioLinkPref",
     "Value": {
       "type": "Bool",
       "value": false
     }
   },
-  "HurtboxShow": {
-    "LastUpdated": "2025-09-03T16:36:20.8954664-04:00",
-    "Key": "HurtboxShow",
+  "VOVolume": {
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
+    "Key": "VOVolume",
+    "Value": {
+      "type": "Float",
+      "value": 10.0
+    }
+  },
+  "VOPref_A": {
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
+    "Key": "VOPref_A",
     "Value": {
       "type": "Bool",
       "value": true
     }
   },
-  "UIStretch": {
-    "LastUpdated": "2025-08-13T13:04:50.9249017-04:00",
-    "Key": "UIStretch",
-    "Value": {
-      "type": "Float",
-      "value": 10.0
-    }
-  },
-  "UIVertical": {
-    "LastUpdated": "2025-09-06T00:27:29.897241-04:00",
-    "Key": "UIVertical",
-    "Value": {
-      "type": "Float",
-      "value": 10.0
-    }
-  },
-  "ParticleShow": {
-    "LastUpdated": "2025-08-31T15:15:28.5702504-04:00",
-    "Key": "ParticleShow",
+  "VOPref_B": {
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
+    "Key": "VOPref_B",
     "Value": {
       "type": "Bool",
       "value": true
     }
   },
-  "UIHarmScale": {
-    "LastUpdated": "2025-09-06T00:47:09.4238865-04:00",
-    "Key": "UIHarmScale",
+  "VOPref_C": {
+    "LastUpdated": "2025-10-15T00:11:26.1391109-04:00",
+    "Key": "VOPref_C",
     "Value": {
-      "type": "Float",
-      "value": 10.0
+      "type": "Bool",
+      "value": true
     }
   },
-  "UIOtherScale": {
-    "LastUpdated": "2025-09-03T16:36:36.4893727-04:00",
-    "Key": "UIOtherScale",
-    "Value": {
-      "type": "Float",
-      "value": 12.0
-    }
-  },
-  "UIWrist": {
-    "LastUpdated": "2025-08-13T16:20:38.0810114-04:00",
-    "Key": "UIWrist",
+  "VOType": {
+    "LastUpdated": "2025-10-15T19:04:25.6604279-04:00",
+    "Key": "VOType",
     "Value": {
       "type": "Int",
       "value": 0
     }
   },
-  "UIDistance": {
-    "LastUpdated": "2025-09-02T22:05:52.7800193-04:00",
-    "Key": "UIDistance",
+  "ColorblindSprite": {
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
+    "Key": "ColorblindSprite",
     "Value": {
-      "type": "Float",
-      "value": 10.0
+      "type": "Bool",
+      "value": false
     }
   },
   "ColorblindChoice": {
-    "LastUpdated": "2025-09-06T09:53:56.9990692-04:00",
+    "LastUpdated": "2025-10-23T11:26:43.1032731-04:00",
     "Key": "ColorblindChoice",
     "Value": {
       "type": "Int",
@@ -152,51 +152,75 @@
     }
   },
   "HitboxShow": {
-    "LastUpdated": "2025-09-05T12:11:53.5108489-04:00",
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
     "Key": "HitboxShow",
     "Value": {
       "type": "Bool",
       "value": true
     }
   },
-  "ColorblindSprite": {
-    "LastUpdated": "2025-09-05T13:17:20.856289-04:00",
-    "Key": "ColorblindSprite",
+  "HurtboxShow": {
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
+    "Key": "HurtboxShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "LangType": {
+    "LastUpdated": "2025-10-24T13:52:48.8414532-04:00",
+    "Key": "LangType",
+    "Value": {
+      "type": "Int",
+      "value": 0
+    }
+  },
+  "MotionSicknessCage": {
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
+    "Key": "MotionSicknessCage",
     "Value": {
       "type": "Bool",
       "value": false
     }
   },
-  "VOVolume": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
-    "Key": "VOVolume",
+  "MotionSicknessFloor": {
+    "LastUpdated": "2025-10-15T00:11:26.1396109-04:00",
+    "Key": "MotionSicknessFloor",
+    "Value": {
+      "type": "Bool",
+      "value": false
+    }
+  },
+  "ParticleShow": {
+    "LastUpdated": "2025-10-27T14:04:45.9666654-04:00",
+    "Key": "ParticleShow",
+    "Value": {
+      "type": "Bool",
+      "value": true
+    }
+  },
+  "UIAngle": {
+    "LastUpdated": "2025-10-16T12:49:48.7045591-04:00",
+    "Key": "UIAngle",
+    "Value": {
+      "type": "Float",
+      "value": 0.0
+    }
+  },
+  "UITextScale": {
+    "LastUpdated": "2025-10-23T11:19:59.9331021-04:00",
+    "Key": "UITextScale",
     "Value": {
       "type": "Float",
       "value": 10.0
     }
   },
-  "VOPrefA": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
-    "Key": "VOPrefA",
+  "UITextOffset": {
+    "LastUpdated": "2025-10-16T15:01:41.5018854-04:00",
+    "Key": "UITextOffset",
     "Value": {
-      "type": "Bool",
-      "value": false
-    }
-  },
-  "VOPrefB": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
-    "Key": "VOPrefB",
-    "Value": {
-      "type": "Bool",
-      "value": false
-    }
-  },
-  "VOPrefC": {
-    "LastUpdated": "2025-09-07T10:23:08.2933033-04:00",
-    "Key": "VOPrefC",
-    "Value": {
-      "type": "Bool",
-      "value": false
+      "type": "Float",
+      "value": -6.0
     }
   }
 }

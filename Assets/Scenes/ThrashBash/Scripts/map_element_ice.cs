@@ -6,23 +6,24 @@ using VRC.SDKBase;
 using VRC.Udon;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.NoVariableSync)]
-public class map_element_ice : UdonSharpBehaviour
+public class map_element_ice : GlobalTickReceiver
 {
     [SerializeField] public float cooldown_duration = 0.4f;
     [SerializeField] public float minimum_magnitude = 8.0f;
     [NonSerialized] public float cooldown_timer = 0.0f;
     [NonSerialized] public Vector3 stored_velocity;
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         if (transform.GetComponent<Renderer>() != null) { transform.GetComponent<Renderer>().enabled = false; }
         stored_velocity = Vector3.zero;
     }
 
-    private void Update()
-    {
+    public override void OnFastTick(float tickDeltaTime)
+    {     
         if (cooldown_timer < cooldown_duration)
         {
-            cooldown_timer += Time.deltaTime;
+            cooldown_timer += tickDeltaTime;
         }
 
     }
@@ -60,13 +61,14 @@ public class map_element_ice : UdonSharpBehaviour
             }
 
             // Then, we adjust our velocity so that it always goes up or down the plane's surface
-            LayerMask layers_to_hit = LayerMask.GetMask("Ice");
+            LayerMask layers_to_hit = LayerMask.GetMask("MapElement");
 
             cooldown_timer = 0.0f;
                        
             Collider[] hitColliders = Physics.OverlapSphere(player.GetPosition(), player.GetAvatarEyeHeightAsMeters() * (1.0f / 1.6f), layers_to_hit, QueryTriggerInteraction.Collide);
             if (hitColliders.Length > 0)
             {
+                UnityEngine.Debug.Log("[ICE_TEST]: Teleporting using ice " + gameObject.name);
                 player.TeleportTo(hitColliders[0].ClosestPoint(player.GetPosition()), player.GetRotation());
             }
 

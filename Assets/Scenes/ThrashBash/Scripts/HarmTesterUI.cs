@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class HarmTesterUI : UdonSharpBehaviour
+public class HarmTesterUI : GlobalTickReceiver
 {
     [SerializeField] public GameController gameController;
     [SerializeField] public UnityEngine.UI.Image FlagImage;
@@ -15,8 +15,12 @@ public class HarmTesterUI : UdonSharpBehaviour
     public float timer = 0.0f;
     public float duration = 0.0f;
     public Transform child_canvas = null;
+    public override void Start()
+    {
+        base.Start();
+    }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
 
         float fade_at_time = 0.4f * 2.0f; float fadeProgress = 1.0f;
@@ -43,7 +47,7 @@ public class HarmTesterUI : UdonSharpBehaviour
         }
 
         if (timer >= duration) { timer = 0.0f; gameObject.SetActive(false); }
-        else { timer += Time.deltaTime; }
+        else { timer += tickDeltaTime; }
 
         if (gameController != null && gameController.local_ppp_options != null && gameController.local_ppp_options.colorblind) { CBSpriteImage.enabled = true; }
         else { CBSpriteImage.enabled = false; }

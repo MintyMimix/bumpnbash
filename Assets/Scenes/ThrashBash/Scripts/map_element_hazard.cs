@@ -20,9 +20,9 @@ public class map_element_hazard : BouncePad
     [NonSerialized] public uint damage_ticks = 0;
 
 
-    private void FixedUpdate()
+    public override void OnFastTick(float tickDeltaTime)
     {
-        CooldownTick();
+        CooldownTick(tickDeltaTime);
         if (damage_cooldown_timer < damage_cooldown_duration)
         {
             damage_cooldown_timer += Time.deltaTime;

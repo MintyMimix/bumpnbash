@@ -15,11 +15,14 @@ public class Mapscript : UdonSharpBehaviour
 {
     [SerializeField] public string map_name;
     [SerializeField] public string map_description;
+    [SerializeField] public string map_localization_name_key;
+    [SerializeField] public string map_localization_description_key;
+
     [SerializeField] public Sprite map_image;
     [SerializeField] public float map_snd_radius;
     [SerializeField] public float map_gravity_scale = 1.0f;
     [SerializeField] public byte min_players_to_extend_room = 12;
-    [SerializeField] public int voice_distance = 500;
+    //[SerializeField] public int voice_distance = 500;
     [SerializeField] public Texture skybox_tex;
     [SerializeField] public Transform map_readyroom_center;
     [SerializeField] public AudioClip[] snd_game_music_clips;
@@ -30,6 +33,9 @@ public class Mapscript : UdonSharpBehaviour
     [NonSerialized] public BouncePad[] map_bouncepads;
     [NonSerialized] public CaptureZone[] map_capturezones;
     [NonSerialized] public Transform[] map_campoints;
+    [NonSerialized] public map_element_kothtainer[] map_kothtainers;
+
+    [NonSerialized] public map_element_gamemode_specific[] map_gm_specific_list;
     [SerializeField] public GameObject room_game_extended;
     [SerializeField] public GameObject room_spectator_area;
     [SerializeField] public Transform room_spectator_spawn;
@@ -49,6 +55,8 @@ public class Mapscript : UdonSharpBehaviour
         map_bouncepads = GetBouncePadFromParent(transform); // If we have more than 1000 of these, there's a problem
         map_capturezones = GetCapturezonesFromParent(transform);
         map_campoints = GetCamPointsFromParent(transform);
+        map_kothtainers = GetKOTHtainersFromParent(transform);
+        map_gm_specific_list = GetGMObjectsFromParent(transform);
         //Debug.Log("[" +map_name + "] BOUNCEPADS: " + map_bouncepads.Length);
     }
 
@@ -196,6 +204,57 @@ public class Mapscript : UdonSharpBehaviour
             }
         }
         Transform[] array_condensed = new Transform[it_cnt];
+        for (int i = 0; i < it_cnt; i++)
+        {
+            array_condensed[i] = array_working[i];
+        }
+        array_working = array_condensed;
+
+        return array_condensed;
+    }
+    public map_element_kothtainer[] GetKOTHtainersFromParent(Transform parent_transform)
+    {
+        map_element_kothtainer[] array_working = new map_element_kothtainer[1000];
+        ushort it_cnt = 0;
+        Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
+        foreach (Transform t in AllChildren)
+        {
+            map_element_kothtainer component = t.GetComponent<map_element_kothtainer>();
+            if (t.GetComponent<map_element_kothtainer>() != null)
+            {
+                array_working[it_cnt] = component;
+                //array_working[it_cnt].spawnzone_global_index = it_cnt;
+                it_cnt++;
+            }
+        }
+        map_element_kothtainer[] array_condensed = new map_element_kothtainer[it_cnt];
+        for (int i = 0; i < it_cnt; i++)
+        {
+            array_condensed[i] = array_working[i];
+            array_condensed[i].gameObject.SetActive(false);
+        }
+        array_working = array_condensed;
+
+        return array_condensed;
+    }
+
+
+    public map_element_gamemode_specific[] GetGMObjectsFromParent(Transform parent_transform)
+    {
+        map_element_gamemode_specific[] array_working = new map_element_gamemode_specific[1000];
+        ushort it_cnt = 0;
+        Transform[] AllChildren = parent_transform.GetComponentsInChildren<Transform>();
+        foreach (Transform t in AllChildren)
+        {
+            map_element_gamemode_specific component = t.GetComponent<map_element_gamemode_specific>();
+            if (t.GetComponent<map_element_gamemode_specific>() != null)
+            {
+                array_working[it_cnt] = component;
+                //component.gameObject.SetActive(false);
+                it_cnt++;
+            }
+        }
+        map_element_gamemode_specific[] array_condensed = new map_element_gamemode_specific[it_cnt];
         for (int i = 0; i < it_cnt; i++)
         {
             array_condensed[i] = array_working[i];

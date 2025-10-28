@@ -9,18 +9,19 @@ using VRC.SDK3.Persistence;
 using VRC.SDK3.UdonNetworkCalling;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 using static UnityEngine.UI.Image;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.Continuous)]
-public class CaptureZone : UdonSharpBehaviour
+public class CaptureZone : GlobalTickReceiver
 {
 
     [Tooltip("How long should this point be locked before it can be captured?")]
-    [SerializeField] public float initial_lock_duration = 30.0f;
+    [SerializeField] public float initial_lock_duration = 5.0f;
     //[Tooltip("How often should this capture point perform a Physics check for player hitboxes?")]
     //[SerializeField] public float check_players_impulse = 0.5f;
     [Tooltip("How long should the contestor be allowed to remain outside of the capture zone before their progress fades? (MUST be > check_players_impulse)")]
-    [SerializeField] [UdonSynced] public float contest_pause_duration = 4.0f;
+    [SerializeField] public float contest_pause_duration = 1.5f; //[UdonSynced] 
     [Tooltip("How often should a capture point grant points? (While there shouldn't be much reason for this to not be 1, it's good to be prepared.)")]
     [SerializeField] public float point_grant_impulse = 1.0f;
     [Tooltip("What's the minimum number of players required for this point to be active? (-1 = no requirement)")]
@@ -28,6 +29,7 @@ public class CaptureZone : UdonSharpBehaviour
 
     [SerializeField] public GameController gameController;
     [SerializeField] public GameObject captureDisplayArea;
+    [SerializeField] public ChangeColorWithSetting tubeArea;
     [SerializeField] public GameObject UITeamFlagCanvas;
     [SerializeField] public UnityEngine.UI.Image UITeamLockImage;
     [SerializeField] public UnityEngine.UI.Image UITeamFlagImage;
@@ -38,17 +40,19 @@ public class CaptureZone : UdonSharpBehaviour
     [SerializeField] public UnityEngine.UI.Image UIContestMeterBG;
     [SerializeField] public TMP_Text UITimerText;
 
-
-    [NonSerialized] [UdonSynced] public double last_network_time = 0.0f;
+    [NonSerialized] public double last_network_time = 0.0f;
     [NonSerialized] [UdonSynced] public float contest_pause_timer = 0.0f;
     [NonSerialized] [UdonSynced] public float initial_lock_timer = 0.0f;
     [NonSerialized] [UdonSynced] public int hold_points = 0;
-    [NonSerialized] [UdonSynced] public float point_grant_timer = 0.0f;
+    [NonSerialized] public float point_grant_timer = 0.0f;
     [NonSerialized] [UdonSynced] public bool is_locked = true;
     [NonSerialized] [UdonSynced] public int hold_id = -1;
     [NonSerialized] [UdonSynced] public int contest_id = -1;
     [NonSerialized] [UdonSynced] public float contest_progress = 0.0f;
     [NonSerialized] [UdonSynced] public bool overtime_enabled = false; // This will only be true if there is both a holder and a contestor.
+    [NonSerialized] public bool overtime_vo_played = false; // Play the Overtime voiceline ONLY if we haven't already
+    [NonSerialized] public bool contest_ongoing = false;
+    [NonSerialized] public bool local_is_on_point = false;
     [NonSerialized] public int[] players_on_point;
     [NonSerialized] public int global_index;
 
@@ -57,12 +61,15 @@ public class CaptureZone : UdonSharpBehaviour
     [NonSerialized] public int[] dict_points_values_arr;
     [NonSerialized][UdonSynced] public string dict_points_values_str = "";
 
+    [NonSerialized] public float avg_network_delay = 0.0f;
+
     // To redo this, we'll have a global tracking array of POINTS, that will then be evaluated by a unique function in GameController for each team/player, evaluated against ALL PLAYERS / TEAMS, regardless of in-game or not (to prevent array fuckery with sorting from joining/leaving players).
     // Then, every interval, grant points to the array. Reset this interval timer every grant or capture.
     // Finally, don't grant the last point if it is contested (display "OVERTIME" instead).
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         SetRenderOrder();
         if (gameController == null)
         {
@@ -97,7 +104,14 @@ public class CaptureZone : UdonSharpBehaviour
         }
     }
 
-    private void Update()
+    public override void OnDeserialization(DeserializationResult result)
+    {
+        base.OnDeserialization(result);
+        float network_diff = result.receiveTime - result.sendTime;
+        avg_network_delay = network_diff > 0 ? (avg_network_delay + network_diff) / 2.0f : avg_network_delay;
+    }
+
+    public override void OnFastTick(float tickDeltaTime)
     {
         HandleUI();
         
@@ -109,72 +123,101 @@ public class CaptureZone : UdonSharpBehaviour
         }
 
         double currentNetworkTime = Networking.GetServerTimeInSeconds();
+        double cache_last_network_time = last_network_time;
         float networkTimeDelta = (float)Networking.CalculateServerDeltaTime(currentNetworkTime, last_network_time);
+        // Prevent negative delta times
+        if (networkTimeDelta <= 0.0f)
+        {
+            networkTimeDelta = tickDeltaTime;
+        }
         last_network_time = currentNetworkTime;
 
         // Impulse point granting (also used for any events which will occur every second)
         if (point_grant_timer >= point_grant_impulse)
         {
+            int points_to_grant = Mathf.FloorToInt(1 + point_grant_timer - point_grant_impulse + avg_network_delay);
+            //UnityEngine.Debug.Log("[KOTH_POINT_TEST] point_grant_timer = " + point_grant_timer + "; currentNetworkTime = " + currentNetworkTime + " vs last_network_time = " + cache_last_network_time + "(networkTimeDelta = " + networkTimeDelta + ")");
             point_grant_timer = 0.0f;
             if (!is_locked && dict_points_keys_arr != null && dict_points_values_arr != null)
             {
                 int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
-                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
-                {
-                    hold_points = dict_points_values_arr[hold_index];
-                    if (hold_points < gameController.option_gm_goal - 1) { dict_points_values_arr[hold_index]++; } // Normal condition
-                    else if (!overtime_enabled) { dict_points_values_arr[hold_index]++; } // Victory condition
-                    else { } // Overtime condition
-                }
 
                 if (Networking.IsOwner(gameObject))
                 {
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
-                    if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2 && overtime_enabled)
+                    if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
                     {
-                        // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
-                        // However, the pause timer for contesting is instant if they aren't on point!
-                        if (contest_id >= 0 && contest_pause_timer > 0.0f) 
-                        { 
-                            contest_pause_timer = contest_pause_duration;
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
-                        }
-                    }
-                    else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
-                    {
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
-                    }
-                    else if (contest_id >= 0 && contest_progress > 0.0f) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Progress, contest_id); }
+                        hold_points = dict_points_values_arr[hold_index];
+                        if (hold_points < gameController.option_gm_goal - 1) { dict_points_values_arr[hold_index] += points_to_grant; } // Normal condition
+                        else if (!overtime_enabled) { dict_points_values_arr[hold_index] += points_to_grant; } // Victory condition
+                        else { } // Overtime condition
+                        hold_points = dict_points_values_arr[hold_index];
+                        gameController.CheckForRoundGoal();
+                        UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
 
+                    }
+
+                    //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
+                    // (SFX handling used to be here as networked events, but has since been moved outside this block as local events)
                 }
-
-                // Respawn duration should scale with progress
-                int local_id = 0;
-                if (gameController.option_teamplay) { local_id = gameController.local_plyAttr.ply_team; }
-                else { local_id = Networking.LocalPlayer.playerId; }
-                int local_index = GlobalHelperFunctions.DictIndexFromKey(local_id, dict_points_keys_arr);
-                if (local_index >= 0 && local_index < dict_points_keys_arr.Length && gameController != null && gameController.local_plyAttr != null)
+                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
                 {
-                    gameController.local_plyAttr.ply_respawn_duration = gameController.plysettings_respawn_duration * Mathf.Lerp(1.0f, 3.0f, dict_points_values_arr[local_index] / (gameController.option_gm_goal - 1));
+                    UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
+                }
+       
+                // Handle SFX locally
+                if (contest_id >= 0 && contest_ongoing && hold_index >= 0 && hold_points >= gameController.option_gm_goal - 2) //&& overtime_enabled
+                {
+                    // Don't play anything if we are at goal and overtime is enabled; it will be annoying otherwise
+                    // However, the pause timer for contesting is instant if they aren't on point!
+                    if (contest_id >= 0 && contest_pause_timer > 0.0f)
+                    {
+                        //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Point is being contested by " + contest_id + " WHILE IN OVERTIME; play KOTH_Contest_Progress");
+                        contest_pause_timer = contest_pause_duration;
+                        PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
+                    }
+                }
+                else if (hold_index >= 0 && hold_points >= gameController.option_gm_goal - 10)
+                {
+                    //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: A team is about to win! Play KOTH_Victory_Near for " + hold_id);
+                    PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
+                }
+                else if (contest_id >= 0 && contest_ongoing)
+                {
+                    //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Point is being contested by " + contest_id + "; play KOTH_Contest_Progress");
+                    PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Contest_Progress, contest_id);
+                } 
 
-                    // Respawn duration is always longer for the holder
-                    if ((
-                        (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
-                        || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
-                        ))
-                    { gameController.local_plyAttr.ply_respawn_duration *= 2.5f; }
-                    // Respawn duration is slightly longer for the contestor
-                    if ((
-                        (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
-                        || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
-                        ))
-                    { gameController.local_plyAttr.ply_respawn_duration *= 1.5f; }
+                // Play a voiceline when we reach the 1 second mark exactly, and playing only once
+                if (!overtime_vo_played && hold_index >= 0 && Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 1 && overtime_enabled)
+                {
+                    gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_Overtime);
+                    overtime_vo_played = true;
+                }
+                else if (overtime_vo_played && Mathf.FloorToInt(hold_points) > gameController.option_gm_goal - 1 && !overtime_enabled)
+                {
+                    overtime_vo_played = false;
                 }
             }
         }
         else
         {
             point_grant_timer += networkTimeDelta;
+        }
+
+        // Respawn duration should scale with progress
+        if (gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state != (int)player_state_name.Respawning)
+        {
+            if (
+                (gameController.option_teamplay && gameController.local_plyAttr != null && hold_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && hold_id == Networking.LocalPlayer.playerId)
+                )
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.3f; } // *1.6f
+            else if (
+                (gameController.option_teamplay && gameController.local_plyAttr != null && contest_id == gameController.local_plyAttr.ply_team)
+                || (!gameController.option_teamplay && contest_id == Networking.LocalPlayer.playerId)
+                )
+            { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration * 1.15f; } // *1.3f
+            else { gameController.koth_respawn_wave_duration = gameController.plysettings_respawn_duration; }
         }
 
         // Handle point locking
@@ -211,14 +254,14 @@ public class CaptureZone : UdonSharpBehaviour
         // If the contest_progress exceeds duration, then contestor becomes the new holder; reset contestor and contest_progress.
         if (contest_progress >= gameController.option_gm_config_a)
         {
-            //UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
+            UnityEngine.Debug.Log("[CAPTURE_TEST]: contest_progress: " + contest_progress + " >= " + gameController.option_gm_config_a + " for ID " + contest_id + " vs hold ID " + hold_id);
 
             // Assign a penalty if a holder lost the point within the last 5 seconds
             int hold_index = GlobalHelperFunctions.DictIndexFromKey(hold_id, dict_points_keys_arr);
             if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && (gameController.option_gm_goal - dict_points_values_arr[hold_index]) <= 5) {
                 dict_points_values_arr[hold_index] = gameController.option_gm_goal - 6;
-                if (!Networking.IsOwner(gameObject)) { LocalGrantPoints(); }
-                else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
+                //if (!Networking.IsOwner(gameObject)) { LocalGrantPoints(); }
+                //else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints"); }
             }
 
             contest_progress = 0.0f;
@@ -268,19 +311,21 @@ public class CaptureZone : UdonSharpBehaviour
 
         // Enable overtime if there are others trying to contest the point. Overtime prevents a win, but allows holder point progress.
         overtime_enabled = (contestor_on_point || others_unique_count > 0 || contest_progress > 0.0f);
+        //bool team_near_win = hold_points >= gameController.option_gm_goal - 1;
+        bool team_near_win = false;
         // If the holder is on the point, pause contest progress.
         if (holder_on_point && contestor_on_point) { contest_pause_timer = 0.0f; }   
         // If no one other than the contestors are on point, give them progress.
         // We make this an if rather than an else-if because we do want to assign new contestors regardless of whether the holder is on point; all that matters is whether or not a contestor is or is not
         else if (!holder_on_point && contestor_on_point && others_unique_count == 0) { contest_progress += deltaTime; contest_pause_timer = 0.0f; }
-        // If there is no contestor AND there is only one team/player on the point AND they are not the holder, assign the contestor to them.
-        else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        // If there is no contestor AND there is only one team/player on the point AND they are not the holder AND the game isn't about to end, assign the contestor to them.
+        else if (others_unique_count == 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)) && !team_near_win)
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = other_id;
             if (Networking.IsOwner(gameObject)) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "PlayGlobalSoundEvent", (int)announcement_sfx_name.KOTH_Contest_Start_Team, contest_id); }
         }
         // Even if there are too many people on the point, we can still display a generic "Contested by multiple people" message
-        else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)))
+        else if (others_unique_count > 1 && (contest_id < 0 || (contest_id >= 0 && !contestor_on_point && contest_progress < 0.0f)) && !team_near_win)
         {
             contest_progress = 0.01f; contest_pause_timer = 0.0f; contest_id = -2;
         }
@@ -289,6 +334,8 @@ public class CaptureZone : UdonSharpBehaviour
             // Even if no special condition is ongoing, if the contestor is on the point, make sure not to drain their progress
             contest_pause_timer = 0.0f;
         }
+
+        contest_ongoing = contestor_on_point || others_unique_count > 0;
     }
 
     [NetworkCallable]
@@ -303,6 +350,7 @@ public class CaptureZone : UdonSharpBehaviour
                 ))
             {
                 gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Team);
+                gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_CaptureSelf);
             }
             else if ((
                 (gameController.option_teamplay && gameController.local_plyAttr != null && override_id != gameController.local_plyAttr.ply_team)
@@ -310,6 +358,7 @@ public class CaptureZone : UdonSharpBehaviour
                 ))
             {
                 gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Capture_Other);
+                gameController.vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.KOTH_CaptureOther);
             }
         }
         // Point contesting start SFX
@@ -333,18 +382,40 @@ public class CaptureZone : UdonSharpBehaviour
         // Point contesting progress SFX
         else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Contest_Progress)
         {
+            //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: Attempting to play KOTH_Contest_Progress with override ID " + override_id);
+            if (contest_ongoing && local_is_on_point)
+            {
+                //UnityEngine.Debug.Log("[KOTH_SFX_TEST]: contest_ongoing && local_is_on_point; play KOTH_Contest_Progress");
+                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+            }
+            /*
             if ((
                 (gameController.option_teamplay && gameController.local_plyAttr != null && override_id == gameController.local_plyAttr.ply_team)
                 || (!gameController.option_teamplay && override_id == Networking.LocalPlayer.playerId)
                 ))
             {
-                gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                if (gameController.option_teamplay)
+                {
+                    // If in teamplay, make sure the local player is on the point and not just a teammate
+                    for (int i = 0; i < players_on_point.Length; i++)
+                    {
+                        if (players_on_point[i] == Networking.LocalPlayer.playerId)
+                        {
+                            gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.Announcement], gameController.snd_game_sfx_clips[(int)game_sfx_name.Announcement], (int)announcement_sfx_name.KOTH_Contest_Progress, Mathf.Lerp(0.75f, 2.5f, contest_progress / gameController.option_gm_config_a));
+                }
             }
-            // If we are not the one contesting the point and we are near end goal, locally play the victory near sound instead
-            else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10 && !(hold_points >= gameController.option_gm_goal - 2 && overtime_enabled))
+            // If we are not the one holding or contesting the point and we are near end goal, locally play the victory near sound instead
+            else if (hold_id >= 0 && hold_points >= gameController.option_gm_goal - 10 && !(Mathf.FloorToInt(hold_points) == gameController.option_gm_goal - 1 && overtime_enabled))
             {
                 PlayGlobalSoundEvent((int)announcement_sfx_name.KOTH_Victory_Near, hold_id);
-            }
+            }*/
         }
         else if (override_id >= 0 && event_id == (int)announcement_sfx_name.KOTH_Victory_Near)
         {
@@ -404,8 +475,8 @@ public class CaptureZone : UdonSharpBehaviour
             activeImage = UITeamLockImage;
             activeImage.enabled = true;
             RecolorDisplayArea(Color.gray);
-            displayText = "(LOCKED)\n";
-            timerText = (Mathf.Floor((initial_lock_duration - initial_lock_timer) * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0');
+            displayText = gameController.localizer.FetchText("CAPTUREZONE_HOLDER_LOCK", "(LOCKED)") + '\n';
+            timerText = string.Format("{0:F1}", initial_lock_duration - initial_lock_timer);
             activeImage.color = Color.gray;
             UITeamCBImage.sprite = gameController.team_sprites[0];
             UITeamText.color = Color.gray;
@@ -471,14 +542,20 @@ public class CaptureZone : UdonSharpBehaviour
                     UITeamText.color = Color.white;
                     UITimerText.color = Color.white;
                     RecolorDisplayArea(Color.white);
-                    displayText += "(DISCONNECTED)"; 
+                    displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_MISSING","(DISCONNECTED)"); 
                 }
             }
 
             float timeLeft = gameController.option_gm_goal;
-            if (hold_index >= 0) { timeLeft -= dict_points_values_arr[hold_index]; }
+            //if (hold_index >= 0) 
+            //{
+            //    dict_points_values_arr = GlobalHelperFunctions.ConvertStrToIntArray(dict_points_values_str);
+            int margin_time = Networking.IsOwner(gameObject) ? 1 : 2;
+            timeLeft -= (hold_points + margin_time);
+            timeLeft = Mathf.Max(0, timeLeft);
+            //}
             //displayText += "\n ";
-            if (timeLeft < 0.0f) { timerText = (Mathf.Floor(timeLeft * 10.0f) / 10.0f).ToString().PadRight(2, '.').PadRight(3, '0'); }
+            if (timeLeft < 0.0f) { timerText = string.Format("{0:F1}", timeLeft); } 
             else { timerText = timeLeft.ToString(); }
 
         }
@@ -486,7 +563,7 @@ public class CaptureZone : UdonSharpBehaviour
         {
             activeImage.color = Color.white;
             UITeamCBImage.sprite = gameController.team_sprites[0];
-            displayText += "(OPEN)\n";
+            displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_NONE", "(OPEN)") + '\n';
             UITeamText.color = Color.white;
             UITimerText.color = Color.white;
             RecolorDisplayArea(Color.white);
@@ -494,7 +571,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (contest_id >= 0)
         {
-            displayText += "\n[Contestor: ";
+            displayText += '\n' + gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_HEADER_SINGLE", "[Contestor: ");
             float contest_pct = (contest_progress / gameController.option_gm_config_a);
             Color32 iColor = new Color32(255, 255, 0, 255);
             Color32 iColorB = new Color32(255, 255, 0, 255);
@@ -521,7 +598,7 @@ public class CaptureZone : UdonSharpBehaviour
                     }
                     displayText += contest_ply.displayName; 
                 }
-                else { displayText += "(DISCONNECTED)"; }
+                else { displayText += gameController.localizer.FetchText("CAPTUREZONE_HOLDER_MISSING", "(DISCONNECTED)"); }
             }
             Color colorLerp = new Color(
                 Mathf.Lerp(activeImage.color.r, ((Color)iColor).r, contest_pct)
@@ -545,14 +622,14 @@ public class CaptureZone : UdonSharpBehaviour
         }
         else if (contest_id == -2)
         {
-            displayText += "\n[Contested by multiple ";
-            if (gameController.option_teamplay) { displayText += "teams!]"; }
-            else { displayText += "players!]"; }
+            displayText += '\n' + gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_HEADER_MULTI", "[Contested by multiple ");
+            if (gameController.option_teamplay) { displayText += gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_TEAM", "teams!]"); }
+            else { displayText += gameController.localizer.FetchText("CAPTUREZONE_CONTESTOR_FFA", "players!]"); }
         }
 
         if (overtime_enabled && hold_points >= gameController.option_gm_goal - 1)
         {
-            displayText = displayText + "\n -- OVERTIME! --";
+            displayText = displayText + '\n' + gameController.localizer.FetchText("CAPTUREZONE_OVERTIME", "-- OVERTIME! --");
         }
 
         UITeamText.text = displayText;
@@ -599,6 +676,8 @@ public class CaptureZone : UdonSharpBehaviour
                 t.GetComponent<Renderer>().material.color = color;
             }
         }
+
+        if (tubeArea != null) { tubeArea.set_color = color; }  
     }
 
     public void RecolorDisplayArea(Color32 color)
@@ -619,7 +698,7 @@ public class CaptureZone : UdonSharpBehaviour
 
     }
 
-    [NetworkCallable]
+    /*[NetworkCallable]
     public void LocalGrantPoints()
     {
         if (dict_points_keys_arr == null || dict_points_values_arr == null) { return; }
@@ -637,6 +716,7 @@ public class CaptureZone : UdonSharpBehaviour
 
         if (Networking.IsOwner(gameController.gameObject)) { gameController.CheckForRoundGoal(); }
     }
+    */
 
     public void AddPlayerOnPoint(int player_id)
     {
@@ -650,6 +730,8 @@ public class CaptureZone : UdonSharpBehaviour
         }
         add_players[players_on_point.Length] = player_id;
         players_on_point = add_players;
+
+        if (!local_is_on_point && player_id == Networking.LocalPlayer.playerId) { local_is_on_point = true; }
     }
 
     public void RemovePlayerOnPoint(int player_id)
@@ -676,6 +758,8 @@ public class CaptureZone : UdonSharpBehaviour
             }
         }
         players_on_point = remove_players;
+
+        if (local_is_on_point && player_id == Networking.LocalPlayer.playerId) { local_is_on_point = false; }
     }
 
     private void OnTriggerEnter(Collider other)
@@ -685,7 +769,7 @@ public class CaptureZone : UdonSharpBehaviour
         if (player == null || other.GetComponent<PlayerHitbox>() == null) { return; }
         if (gameController != null && gameController.local_plyAttr != null && gameController.local_plyAttr.ply_state == (int)player_state_name.Respawning && player.playerId == Networking.LocalPlayer.playerId)
         {
-            gameController.AddToLocalTextQueue("Cannot interact with point while invulnerable!", Color.gray);
+            gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_KOTH_RESPAWN_WARNING", "Cannot interact with point while invulnerable!"), Color.gray);
         }
         
         // If we are not the master, signal to them that we entered the trigger

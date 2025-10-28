@@ -173,8 +173,8 @@ MonoBehaviour:
   material: {fileID: -218846245796374241}
   materialHashCode: -503174265
   m_Version: 1.1.0
-  m_SourceFontFileGUID: f066028f497d9f0419652d5d9a4c96ff
-  m_SourceFontFile_EditorRef: {fileID: 12800000, guid: f066028f497d9f0419652d5d9a4c96ff,
+  m_SourceFontFileGUID: 7b360516961ce9340abf2f2b58c51e9b
+  m_SourceFontFile_EditorRef: {fileID: 12800000, guid: 7b360516961ce9340abf2f2b58c51e9b,
     type: 3}
   m_SourceFontFile: {fileID: 0}
   m_AtlasPopulationMode: 0
@@ -2180,7 +2180,8 @@ MonoBehaviour:
   m_FontFeatureTable:
     m_GlyphPairAdjustmentRecords: []
   fallbackFontAssets: []
-  m_FallbackFontAssetTable: []
+  m_FallbackFontAssetTable:
+  - {fileID: 11400000, guid: d078bd382b86de646bcce680c12ebea9, type: 2}
   m_CreationSettings:
     sourceFontFileName: 
     sourceFontFileGUID: f066028f497d9f0419652d5d9a4c96ff

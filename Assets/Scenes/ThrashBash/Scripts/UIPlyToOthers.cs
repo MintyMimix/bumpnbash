@@ -6,7 +6,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class UIPlyToOthers : UdonSharpBehaviour
+public class UIPlyToOthers : GlobalTickReceiver
 {
     [NonSerialized] public VRCPlayerApi owner;
     [SerializeField] public GameController gameController;
@@ -36,13 +36,31 @@ public class UIPlyToOthers : UdonSharpBehaviour
     [NonSerialized] public float cached_scale = -1.0f; 
     [NonSerialized] public float cached_atk = -1.0f;
     [NonSerialized] public float cached_def = -1.0f;
+    [NonSerialized] public float local_tick_timer = 0.0f;
+    [NonSerialized] public byte local_tick_cnt = 0;
+    [NonSerialized] public float render_distance_far = 999999.0f;
+    [NonSerialized] public float render_distance_near = 999999.0f;
+    [NonSerialized] public bool render_active_far = true;
+    [NonSerialized] public bool render_active_near = true;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
+        }
+
+        if (gameController.flag_for_mobile_vr.activeInHierarchy)
+        {
+            render_distance_far = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_QUEST) / 10.0f;
+            render_distance_near = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_QUEST) / 10.0f;
+        }
+        else
+        {
+            render_distance_far = ((int)GLOBAL_CONST.RENDER_DISTANCE_FAR_PC) / 10.0f;
+            render_distance_near = ((int)GLOBAL_CONST.RENDER_DISTANCE_NEAR_PC) / 10.0f;
         }
     }
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
@@ -51,38 +69,79 @@ public class UIPlyToOthers : UdonSharpBehaviour
         playerAttributes = gameController.FindPlayerAttributes(newOwner);
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
-        if (gameController == null)
-        {
-            GameObject gcObj = GameObject.Find("GameController");
-            if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
-        }
-
-        if (owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
+        if (gameController == null || owner == Networking.LocalPlayer || owner == null || gameController.local_uiplytoself == null) { return; }
 
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         // Sort out better without all the debug
         bool round_ready = gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Over;
-        round_ready = round_ready && !playerAttributes.ply_training;
-        if (round_ready && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
-        else if (!round_ready && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
-        
-        if (gameController.local_tick_timer == 0.0f) // We use 0.0f since it will never reach a point where the GameController will output at the end time for another object, so this is a shorthand for "the frame after its LocalPerTickUpdate()"
+        round_ready = round_ready && !(playerAttributes.ply_training || (playerAttributes.ply_team >= 0 && (playerAttributes.ply_state == (int)player_state_name.Alive || playerAttributes.ply_state == (int)player_state_name.Respawning)));
+        if ((round_ready || !render_active_near) && PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(false); }
+        else if (!round_ready && render_active_near && !PTOTopPanel.activeInHierarchy) { PTOTopPanel.SetActive(true); }
+
+        local_tick_timer += tickDeltaTime;
+        if (local_tick_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
         {
             LocalPerTickUpdate();
+            local_tick_timer = 0.0f;
+            local_tick_cnt++;
         }
-        if (gameController.local_uiplytoself != null && gameController.local_uiplytoself.ui_check_gamevars_timer == 0.0f) // Ditto for UIPlyToSelf's game variables refresh rate
+
+        if (local_tick_cnt >= 10) 
         {
             UI_Lives();
+            UI_Victory();
+            local_tick_cnt = 0;
         }
     }
     
     private void LocalPerTickUpdate() 
     {
+        // If we are not the owner of the game object, see if we are far enough away to cull the animator or renderer
+        if (!Networking.IsOwner(gameObject))
+        {
+            float render_dist_far = render_distance_far;
+            float render_dist_near = render_distance_near;
+
+            if (playerAttributes != null)
+            {
+                render_dist_far *= (1.0f + playerAttributes.ply_scale) / 2.0f;
+                render_dist_near *= (1.0f + playerAttributes.ply_scale) / 2.0f;
+            }
+            if (gameController != null && ((gameController.local_plyAttr != null && gameController.local_plyAttr.in_ready_room) || gameController.highlight_cameras_active_cnt > 0))
+            {
+                // If we are in the ready room (for spectating reasons) or are snapping a highlight photo, do not cull, UNLESS the other player is ALSO in the ready room / spectator room
+                render_dist_far = 999999.0f;
+                render_dist_near = 999999.0f;
+            }
+            if (playerAttributes.in_ready_room || playerAttributes.in_spectator_area)
+            {
+                render_dist_far = 0.0f;
+                render_dist_near = 0.0f;
+            }
+
+            if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), owner.GetPosition()) >= render_dist_far)
+            {
+                render_active_far = false;
+                render_active_near = false;
+                PTOVictoryStar.SetActive(false);
+            }
+            else if (Vector3.Distance(Networking.LocalPlayer.GetPosition(), owner.GetPosition()) >= render_dist_near)
+            {
+                render_active_far = true;
+                render_active_near = false;
+            }
+            else
+            {
+                render_active_far = true;
+                render_active_near = true;
+            }
+        }
+
         // Checked cached variables; if there is a mismatch, update the UI element accordingly
-        if (playerAttributes == null) { return; }
+        if (playerAttributes == null || !render_active_near) { return; }
         if (cached_team != playerAttributes.ply_team) { UI_Flag(); cached_team = playerAttributes.ply_team; }
         if (cached_scale != playerAttributes.ply_scale) {UI_Attack(); UI_Defense(); cached_scale = playerAttributes.ply_scale; }
         if (cached_atk != playerAttributes.ply_atk) { UI_Attack(); cached_atk = playerAttributes.ply_atk; }
@@ -103,6 +162,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Damage() 
     {
+        if (!render_active_near) { return; }
+
         var DamageText = Mathf.RoundToInt(playerAttributes.ply_dp) + "%";
         if (gameController.round_state == (int)round_state_name.Start) { DamageText = ""; }
         PTODamage.text = DamageText;
@@ -125,6 +186,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Attack() 
     {
+        if (!render_active_near) { return; }
+
         var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var AttackText = AttackVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { AttackText = ""; }
@@ -136,6 +199,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Defense()
     {
+        if (!render_active_near) { return; }
+
         var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
         var DefenseText = DefenseVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { DefenseText = ""; }
@@ -147,6 +212,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Flag()
     {
+        if (!render_active_near) { return; }
+
         if (playerAttributes.ply_team < gameController.team_colors.Length) 
         {
             int team = Mathf.Max(0, playerAttributes.ply_team);
@@ -175,6 +242,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Lives()
     {
+        if (!render_active_near) { return; }
+
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         var LivesText = "";
@@ -209,16 +278,40 @@ public class UIPlyToOthers : UdonSharpBehaviour
          }
         else if (gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
         {
-            float timeLeft = gameController.option_gm_goal - playerAttributes.ply_points;
-            LivesText = timeLeft.ToString();
-            PTOLives.color = new Color(
-                Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
-                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
-                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
-                , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
-                );
-            PTOLivesImage.color = PTOTeamFlagImage.color;
-            if (ref_uiplytoself != null) { PTOLivesImage.sprite = ref_uiplytoself.PTSTimerImage; }
+            bool koth_is_valid = true;
+            if (gameController.mapscript_list == null || gameController.map_selected < 0 || gameController.map_selected > gameController.mapscript_list.Length
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones == null || gameController.mapscript_list[gameController.map_selected].map_capturezones.Length <= 0
+                || gameController.mapscript_list[gameController.map_selected].map_capturezones[0].dict_points_keys_arr == null
+                ) { koth_is_valid = false; }
+            if (koth_is_valid)
+            {
+                CaptureZone capturezone = gameController.mapscript_list[gameController.map_selected].map_capturezones[0];
+                float timeLeft = gameController.option_gm_goal; int koth_index = 0;
+                int margin_time = Networking.IsOwner(capturezone.gameObject) ? 0 : 1;
+
+                if (gameController.option_teamplay && playerAttributes.ply_team >= 0 && capturezone.dict_points_values_arr != null)
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(playerAttributes.ply_team, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                else if (!gameController.option_teamplay && playerAttributes.ply_team >= 0 && capturezone.dict_points_values_arr != null)
+                {
+                    koth_index = GlobalHelperFunctions.DictIndexFromKey(Networking.LocalPlayer.playerId, capturezone.dict_points_keys_arr);
+                    if (koth_index < capturezone.dict_points_values_arr.Length && koth_index >= 0) { timeLeft -= capturezone.dict_points_values_arr[koth_index] + margin_time; }
+
+                }
+                timeLeft = Mathf.Max(0, timeLeft);
+                LivesText = timeLeft.ToString();
+                PTOLives.color = new Color(
+                    Mathf.Lerp(((Color)gameController.team_colors_bright[0]).r, ((Color)gameController.team_colors_bright[1]).r, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).g, ((Color)gameController.team_colors_bright[1]).g, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).b, ((Color)gameController.team_colors_bright[1]).b, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    , Mathf.Lerp(((Color)gameController.team_colors_bright[0]).a, ((Color)gameController.team_colors_bright[1]).a, 1.0f - (timeLeft / gameController.option_gm_goal))
+                    );
+                PTOLivesImage.color = PTOTeamFlagImage.color;
+                if (ref_uiplytoself != null) { PTOLivesImage.sprite = ref_uiplytoself.PTSTimerImage; }
+            }
         }
         else
         {
@@ -234,6 +327,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     
     public void UI_Victory()
     {
+        if (!render_active_far) { return; }
+
         UIPlyToSelf ref_uiplytoself = gameController.local_uiplytoself;
 
         // Display victory star if in first place
@@ -257,7 +352,7 @@ public class UIPlyToOthers : UdonSharpBehaviour
 
     public override void PostLateUpdate()
     {
-        if (owner == Networking.LocalPlayer || owner == null) { return; }
+        if (owner == Networking.LocalPlayer || owner == null || !render_active_far) { return; }
         float scaleUI = (owner.GetAvatarEyeHeightAsMeters() / 1.6f);
         float posUI = scaleUI;
         if (gameController != null && gameController.local_ppp_options != null)
@@ -266,8 +361,18 @@ public class UIPlyToOthers : UdonSharpBehaviour
             scaleUI *= ((0.0f + ppp_options.ui_other_scale) / 1.0f);
             posUI *= ((1.5f + ppp_options.ui_other_scale) / 2.5f);
         }
-        transform.SetPositionAndRotation(owner.GetPosition() + new Vector3(0.0f, 2.6f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
+        //2.6f * posUI
+        //transform.SetPositionAndRotation(owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position + new Vector3(0.0f, 1.2f * posUI, 0.0f), Networking.LocalPlayer.GetRotation());
         transform.localScale = new Vector3(0.003f, 0.003f, 0.003f) * scaleUI;
+
+        // Get the head tracking data of the owner and the local player
+        VRCPlayerApi.TrackingData headReference = owner.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+        VRCPlayerApi.TrackingData localHeadReference = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+
+        // Place the healthbar above the head of the owner
+        transform.position = headReference.position + new Vector3(0.0f, 1.6f * posUI, 0.0f);
+        transform.rotation = Quaternion.LookRotation(localHeadReference.position - headReference.position, Vector3.up) * Quaternion.Euler(0.0f, 180.0f, 0.0f);
+
     }
 
 }

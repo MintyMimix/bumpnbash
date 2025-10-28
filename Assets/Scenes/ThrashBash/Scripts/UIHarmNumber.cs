@@ -8,7 +8,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class UIHarmNumber : UdonSharpBehaviour
+public class UIHarmNumber : GlobalTickReceiver
 {
     [SerializeField] public GameController gameController;
     [SerializeField] public TMP_Text ui_text;
@@ -32,6 +32,10 @@ public class UIHarmNumber : UdonSharpBehaviour
     [NonSerialized] public GameObject ui_parent;
     [NonSerialized] public int target_id = -1;
     [NonSerialized] public bool waiting_for_destruction = false;
+    public override void Start()
+    {
+        base.Start();
+    }
 
     public void StartTimer()
     {
@@ -49,7 +53,7 @@ public class UIHarmNumber : UdonSharpBehaviour
         gameObject.SetActive(false);
     }
 
-    public void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         // Below only occurs if active
         if (!isOn || !gameObject.activeInHierarchy) { return; }

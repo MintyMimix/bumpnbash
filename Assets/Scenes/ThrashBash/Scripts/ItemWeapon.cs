@@ -2,6 +2,7 @@
 using System;
 using UdonSharp;
 using UnityEngine;
+using VRC.SDK3.Persistence;
 using VRC.SDKBase;
 using VRC.Udon;
 
@@ -20,8 +21,9 @@ public class ItemWeapon : ItemGeneric
     [SerializeField] public float[] iweapon_duration_list;
 
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         if (gameController == null)
         {
             GameObject gcObj = GameObject.Find("GameController");
@@ -71,11 +73,11 @@ public class ItemWeapon : ItemGeneric
             }
         }
 
-        if (iweapon_type >= 0 && iweapon_type < iweapon_ammo_list.Length && iweapon_ammo_list[iweapon_type] != 2) { iweapon_ammo = iweapon_ammo_list[iweapon_type]; }
-        if (iweapon_type >= 0 && iweapon_type < iweapon_duration_list.Length && iweapon_duration_list[iweapon_type] != 2) { iweapon_duration = iweapon_duration_list[iweapon_type]; }
+        if (iweapon_type >= 0 && iweapon_type < iweapon_ammo_list.Length && iweapon_ammo_list[iweapon_type] != -2) { iweapon_ammo = iweapon_ammo_list[iweapon_type]; }
+        if (iweapon_type >= 0 && iweapon_type < iweapon_duration_list.Length && iweapon_duration_list[iweapon_type] != -2) { iweapon_duration = iweapon_duration_list[iweapon_type]; }
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         // Events which only run when the timer ticks to zero below
         if (item_state == (int)item_state_name.Disabled) { return; }
@@ -90,9 +92,6 @@ public class ItemWeapon : ItemGeneric
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
 
-    }
-    private void LateUpdate()
-    {
         if (item_state == (int)item_state_name.InWorld && apply_after_spawn && spawner_parent != null)
         {
             if (gameController != null & gameController.local_plyhitbox != null) { OnTriggerEnter(gameController.local_plyhitbox.GetComponent<Collider>()); }
@@ -101,10 +100,7 @@ public class ItemWeapon : ItemGeneric
         {
             allow_effects_to_apply = true;
         }
-    }
 
-    private void FixedUpdate()
-    {
         transform.rotation = Networking.LocalPlayer.GetRotation();
         if (item_owner_id > -1)
         {
@@ -116,22 +112,32 @@ public class ItemWeapon : ItemGeneric
     public void OnTriggerEnter(Collider other)
     {
         // Check if the player colliding with this is valid
+        //UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " + gameObject.name + ": CheckValidCollisionEvent(" + other.gameObject.name + ") = " + CheckValidCollisionEvent(other));
+
         if (!CheckValidCollisionEvent(other)) { return; }
         allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed
         PlayerWeapon plyWeapon = gameController.local_plyweapon;
         //bool player_is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
-        if (plyWeapon != null)
+        if (plyWeapon != null && gameController.local_plyAttr != null)
         {
             LocalApplyWeapon(plyWeapon);
-            bool is_boss = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
-            is_boss = is_boss && Networking.LocalPlayer.IsUserInVR();
-            if (is_boss && gameController.local_secondaryweapon != null) 
+            bool is_boss_any = iweapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type == (int)weapon_type_name.BossGlove || plyWeapon.weapon_type_default == (int)weapon_type_name.BossGlove || gameController.local_plyAttr.ply_dual_wield || (gameController.option_gamemode == (int)gamemode_name.BossBash && gameController.local_plyAttr.ply_team == 1);
+            bool is_boss_vr = is_boss_any && Networking.LocalPlayer.IsUserInVR();
+            if (is_boss_any && !is_boss_vr && gameController.local_plyAttr != null && !gameController.local_plyAttr.ply_desktop_applied_dual_compensation_buff)
+            {
+                // If the user is a boss on desktop, picking up a weapon, and their attack value isn't doubled already, double it
+                gameController.local_plyAttr.ply_atk *= 2.0f;
+                gameController.local_plyAttr.ply_desktop_applied_dual_compensation_buff = true;
+                UnityEngine.Debug.Log("[DESKTOP_DUAL_TEST]: Applying compensation from OnTriggerEnter() of " + transform.parent.name);
+            }
+            if (is_boss_vr && gameController.local_secondaryweapon != null) 
             {
                 if (!gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", true); }
                 LocalApplyWeapon(gameController.local_secondaryweapon); 
+                gameController.local_plyAttr.ply_dual_wield = true;
             }
-            if (!is_boss && gameController.local_secondaryweapon != null)
+            if (!is_boss_vr && gameController.local_secondaryweapon != null)
             {
                 if (gameController.local_secondaryweapon.gameObject.activeInHierarchy) { gameController.local_secondaryweapon.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ToggleActive", false); }
             }

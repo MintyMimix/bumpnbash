@@ -21,7 +21,7 @@ public enum damage_mesh_type_name
     Cube, Sphere, ENUM_LENGTH
 }
 
-public class WeaponHurtbox : UdonSharpBehaviour
+public class WeaponHurtbox : GlobalTickReceiver
 {
     // Options
     [SerializeField] public bool is_melee = false; // If the weapon is melee, we need to use different behaviors 
@@ -52,19 +52,20 @@ public class WeaponHurtbox : UdonSharpBehaviour
     [NonSerialized] public PlayerWeapon weapon_script;
     [NonSerialized] public bool in_reset_state = true;
 
-    private void Start()
+    public override void Start()
     {
+        base.Start();
         // Because of Weird Networked Shit, we need to ensure the hurtboxes are active at the start, reset, and then are set to be inactive.
         // Otherwise, the first time a ranged hurtbox is created, it will immediately expire, resulting in no strikes.
         in_reset_state = true;
         OnReset(true);
     }
 
-    private void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         if (in_reset_state) { return; }
 
-        tick_timer += Time.deltaTime;
+        tick_timer += tickDeltaTime;
 
         if (hurtbox_duration > 0.0f && hurtbox_start_ms != 0.0f && gameObject.activeInHierarchy)
         {
@@ -74,7 +75,7 @@ public class WeaponHurtbox : UdonSharpBehaviour
             if (hurtbox_timer_network > hurtbox_duration)
             {
                 // Fire off events for hurtbox expiration here
-                UnityEngine.Debug.Log("[HURTBOX_TEST] " + gameObject.name + " expired. server_ms = " + server_ms + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network + "; duration = " + hurtbox_duration);
+                //UnityEngine.Debug.Log("[HURTBOX_TEST] " + gameObject.name + " expired. server_ms = " + server_ms + "; start_ms = " + hurtbox_start_ms + "; timer = " + hurtbox_timer_network + "; duration = " + hurtbox_duration);
                 OnStop();
             }
         }
@@ -243,6 +244,10 @@ public class WeaponHurtbox : UdonSharpBehaviour
         if (source_weapon_type == (int)weapon_type_name.Bomb || source_weapon_type == (int)weapon_type_name.Rocket)
         {
             force_dir = (colliderOwner.GetPosition() - transform.position).normalized;
+        }
+        else if (source_weapon_type == (int)weapon_type_name.SuperLaser)
+        {
+            force_dir = (active_collider.ClosestPointOnBounds(transform.position)  - colliderOwner.GetPosition()).normalized;
         }
         else
         {

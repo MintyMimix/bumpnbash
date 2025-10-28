@@ -6,7 +6,7 @@ using VRC.SDKBase;
 using VRC.Udon;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
-public class UIPainIndicator : UdonSharpBehaviour
+public class UIPainIndicator : GlobalTickReceiver
 {
     [SerializeField] public RectTransform axis;
     [SerializeField] public UnityEngine.UI.Image sprite;
@@ -19,6 +19,10 @@ public class UIPainIndicator : UdonSharpBehaviour
     [NonSerialized] public float timer = 0.0f;
     [NonSerialized] public bool isOn = false;
     [NonSerialized] public Vector3 pointTowards;
+    public override void Start()
+    {
+        base.Start();
+    }
 
     public void StartTimer()
     {
@@ -26,13 +30,13 @@ public class UIPainIndicator : UdonSharpBehaviour
         else { Destroy(gameObject); }
     }
 
-    public void Update()
+    public override void OnFastTick(float tickDeltaTime)
     {
         // Below only occurs if active
         if (!isOn || !gameObject.activeInHierarchy) { return; }
 
         // Handle timer
-        if (timer < duration) { timer += Time.deltaTime; }
+        if (timer < duration) { timer += tickDeltaTime; }
         else { Destroy(gameObject); }
 
         // Handle alpha
