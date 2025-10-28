@@ -254,6 +254,8 @@ public class ItemPowerup : ItemGeneric
     public void OnTriggerEnter(Collider other)
     {
         // Check if the player colliding with this is valid
+        UnityEngine.Debug.Log("[ITEM_GENERIC_TEST] " + gameObject.name + ": CheckValidCollisionEvent(" + other.gameObject.name + ") = " + CheckValidCollisionEvent(other));
+
         if (!CheckValidCollisionEvent(other)) { return; }
         allow_effects_to_apply = false;
         // Apply powerups to self. Player gets a local copy that can't be touched but acts as a template to be read off of for plyAttr, which will store of a list of these objects and destroy as needed

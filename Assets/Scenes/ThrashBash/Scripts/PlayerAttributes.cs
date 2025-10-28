@@ -1204,7 +1204,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         if (gameController.local_plyweapon != null)
         {
-            gameController.local_plyweapon.weapon_type_default = gameController.plysettings_weapon;
+            if (!(gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)) { gameController.local_plyweapon.weapon_type_default = gameController.plysettings_weapon; }
             gameController.local_plyweapon.weapon_type = gameController.local_plyweapon.weapon_type_default;
             if (gameController.local_plyweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
             {
@@ -1217,7 +1217,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         if (gameController.local_secondaryweapon != null && gameController.local_secondaryweapon.gameObject.activeInHierarchy)
         {
-            gameController.local_secondaryweapon.weapon_type_default = gameController.plysettings_weapon;
+            if (!(gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)) { gameController.local_secondaryweapon.weapon_type_default = gameController.plysettings_weapon; }
             gameController.local_secondaryweapon.weapon_type = gameController.local_secondaryweapon.weapon_type_default;
             if (gameController.local_secondaryweapon.weapon_type_default != (int)weapon_type_name.PunchingGlove)
             {

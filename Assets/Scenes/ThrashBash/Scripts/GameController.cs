@@ -1454,6 +1454,9 @@ public class GameController : GlobalHelperFunctions
             {
                 if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
                 Networking.SetOwner(new_owner, itemSpawner.gameObject);
+                if (itemSpawner.child_powerup != null) { Networking.SetOwner(new_owner, itemSpawner.child_powerup.gameObject); }
+                if (itemSpawner.child_weapon != null) { Networking.SetOwner(new_owner, itemSpawner.child_weapon.gameObject); }
+
             }
             foreach (CaptureZone capturezone in mapscript_list[m].map_capturezones)
             {
@@ -1469,6 +1472,8 @@ public class GameController : GlobalHelperFunctions
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
         ply_master_id = Networking.GetOwner(gameObject).playerId;
+
+        // If we are the new owner setup accordingly
         if (newOwner == Networking.LocalPlayer)
         {
             ply_tracking_dict_keys_str = ConvertIntArrayToString(ply_tracking_dict_keys_arr);
@@ -1476,6 +1481,17 @@ public class GameController : GlobalHelperFunctions
             ply_master_id = Networking.LocalPlayer.playerId;
             ToggleReadyRoomCollisions(true);
             ToggleTrainingRoom(true);
+
+            RequestSerialization();
+            RefreshSetupUI();
+            /*if (round_state == (int)round_state_name.Ready || round_state == (int)round_state_name.Ongoing)
+            {
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RoundEnd", "", -1);
+            }*/
+        }
+        else
+        {
+            // Reset all item spawners
             if (mapscript_list != null && mapscript_list.Length > 0)
             {
                 foreach (ItemSpawner itemSpawner in mapscript_list[0].GetItemSpawnerFromParent(room_training.transform))
@@ -1485,29 +1501,19 @@ public class GameController : GlobalHelperFunctions
                     itemSpawner.item_spawn_weapons_enabled = true;
                     itemSpawner.item_spawn_frequency_mul = 1.0f;
                     itemSpawner.item_spawn_duration_mul = 1.0f;
-                    itemSpawner.SetSpawnChances();
                     itemSpawner.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
-                    itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable;
-                    itemSpawner.SyncSpawns();
                 }
-                if (mapscript_list != null && mapscript_list.Length > 0)
+                /*for (int m = 0; m < mapscript_list.Length; m++)
                 {
-                    for (int m = 0; m < mapscript_list.Length; m++)
+                    foreach (ItemSpawner itemSpawner in mapscript_list[m].map_item_spawns)
                     {
-                        foreach (ItemSpawner itemSpawner in mapscript_list[m].map_item_spawns)
-                        {
-                            if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
-                            itemSpawner.SetSpawnChances();
-                            itemSpawner.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
-                            itemSpawner.item_spawn_state = (int)item_spawn_state_name.Spawnable;
-                            itemSpawner.SyncSpawns();
-                        }
+                        if (itemSpawner == null || itemSpawner.gameObject == null) { continue; }
+                        itemSpawner.DespawnItem((int)item_sfx_index.ItemExpire, -1, false);
                     }
-                }
+                }*/
             }
-            RequestSerialization();
-            RefreshSetupUI();
         }
+
         // Enable the debugger menu if the dev
         if (local_ppp_options != null)
         {
