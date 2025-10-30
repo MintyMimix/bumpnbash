@@ -50,7 +50,7 @@ public class MapSelectPanel : UdonSharpBehaviour
             if (Networking.IsOwner(gameController.gameObject))  
             {
                 if (i > 0) { gameController.maps_active_str += ","; }
-                gameController.maps_active_str += "0";
+                gameController.maps_active_str += "1";
             }
         }
         ArrangeMaps();

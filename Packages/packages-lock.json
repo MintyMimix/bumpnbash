@@ -1,5 +1,11 @@
 {
   "dependencies": {
+    "blueamulet.udonsharpoptimizer": {
+      "version": "file:blueamulet.udonsharpoptimizer",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.llealloo.audiolink": {
       "version": "file:com.llealloo.audiolink",
       "depth": 0,

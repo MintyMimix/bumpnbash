@@ -109,9 +109,12 @@ public class Localizer : UdonSharpBehaviour
     [SerializeField] private TMP_Text CreditsTestersHeader;
     [SerializeField] private TMP_Text CreditsMusicText;
     [SerializeField] private TMP_Text CreditsMintyMimixText;
-    [SerializeField] private TMP_Text CreditsMappersText;
-    [SerializeField] private TMP_Text CreditsMappersText_1;
-    [SerializeField] private TMP_Text CreditsVAText;
+    [SerializeField] private TMP_Text CreditsSpectremintText;
+    [SerializeField] private TMP_Text CreditsTheMitzezText;
+    [SerializeField] private TMP_Text CreditsLixianPrimeText;
+    [SerializeField] private TMP_Text CreditsDiegoimhlText;
+    [SerializeField] private TMP_Text CreditsLeviaCoText;
+    [SerializeField] private TMP_Text CreditsMidoriSetoText;
     [SerializeField] private TMP_Text WeaponDemoHeader;
     [SerializeField] private TMP_Text PowerupDemoHeader;
     [SerializeField] private TMP_Text WarningLanguageHeader;
@@ -235,9 +238,33 @@ public class Localizer : UdonSharpBehaviour
 
         for (int i = 0; i < gameController.team_names.Length; i++)
         {
-            gameController.team_names[i] = FetchText("TEAM_NAME_" + i.ToString(), gameController.team_names[i]);
+            gameController.team_names[i] = "TEAM_NAME_" + i.ToString();
         }
 
+    }
+
+    public string FetchTeamNameKey(int i)
+    {
+        return "TEAM_NAME_" + i.ToString();
+    }
+
+    public string LocalizeTeamName(int i)
+    {
+        if (gameController.team_names == null || i >= gameController.team_names.Length) { return ""; }
+        return FetchText("TEAM_NAME_" + i.ToString(), gameController.team_names[i]);
+    }
+
+    public string LocalizeTeamName(string str)
+    {
+        string[] splitStr = str.Split(",");
+        if (splitStr == null || splitStr.Length == 0) { return str; }
+        if (splitStr.Length == 1) { return FetchText(str, str); }
+        string[] newStr = new string[splitStr.Length];
+        for (int i = 0; i < splitStr.Length; i++)
+        {
+            newStr[i] = FetchText(splitStr[i].Trim(), splitStr[i].Trim());
+        }
+        return String.Join(", ", newStr);
     }
 
     public void RefreshMapscriptText()
@@ -328,9 +355,13 @@ public class Localizer : UdonSharpBehaviour
         CreditsTestersHeader.text = FetchText("CREDITS_HEADER_TESTERS", CreditsTestersHeader.text);
         CreditsMusicText.text = FetchText("CREDITS_DESCRIPTION_MUSIC", CreditsMusicText.text);
         CreditsMintyMimixText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_0", CreditsMintyMimixText.text);
-        CreditsMappersText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_1", CreditsMappersText.text);
-        CreditsMappersText_1.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_2", CreditsMappersText_1.text);
-        CreditsVAText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_3", CreditsVAText.text);
+        CreditsSpectremintText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_1", CreditsSpectremintText.text);
+        CreditsTheMitzezText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_2", CreditsTheMitzezText.text);
+        CreditsLixianPrimeText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_3", CreditsLixianPrimeText.text);
+        CreditsDiegoimhlText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_4", CreditsDiegoimhlText.text);
+        CreditsLeviaCoText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_5", CreditsLeviaCoText.text);
+        CreditsMidoriSetoText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_7", CreditsMidoriSetoText.text); // yes, it is 7. European Spanish will be 6.
+
         WeaponDemoHeader.text = FetchText("TRAINING_HEADER_WEAPON", WeaponDemoHeader.text);
         PowerupDemoHeader.text = FetchText("TRAINING_HEADER_POWERUP", PowerupDemoHeader.text);
         WarningLanguageHeader.text = FetchText("LOCALOPTIONS_TAB_LANGUAGE", WarningLanguageHeader.text);

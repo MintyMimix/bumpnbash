@@ -440,6 +440,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         Vector3 calcForce = modForceDirection;
         calcForce *= calcMagnitude;
+        if (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1 && !ply_training) { calcForce *= 0.66f; }
         //calcForce += Networking.LocalPlayer.GetVelocity().normalized;
         //Mathf.Pow((calcDmg + ply_dp) / 2.2f, 1.08f);
 
@@ -508,7 +509,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             {
                 if ((!gameController.option_teamplay || (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)) && ply_points == gameController.option_gm_goal - 1) 
                 { 
-                    gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_POINTSMODE_NEARWIN_FFA", "$ARG0 is close to winning!", Networking.LocalPlayer.displayName), Color.red, 7.5f);
+                    gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_POINTSMODE_NEARWIN_FFA", Networking.LocalPlayer.displayName, Color.red, 7.5f);
                 }
                 else if (gameController.option_teamplay && ply_team >= 0 && ply_team < gameController.team_names.Length)
                 {
@@ -516,7 +517,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                     gameController.CheckSingleTeamPoints(ply_team, gameController.cached_ply_in_game_dict, ref team_points);
                     if (team_points == gameController.option_gm_goal - 1)
                     {
-                        gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_POINTSMODE_NEARWIN_TEAM", "$ARG0 are close to winning!", gameController.team_names[ply_team]), (Color)gameController.team_colors_bright[ply_team], 7.5f);
+                        gameController.SendCustomNetworkEvent(NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_POINTSMODE_NEARWIN_TEAM", "TEAM_NAME_" + ply_team.ToString(), (Color)gameController.team_colors_bright[ply_team], 7.5f);
                     }
                 }
             }
@@ -674,11 +675,11 @@ public class PlayerAttributes : UdonSharpBehaviour
             team_color_id = Mathf.Clamp(ply_team, 0, gameController.team_colors.Length);
             if (gameController.option_teamplay) 
             { 
-                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", Networking.LocalPlayer.displayName), (Color)gameController.team_colors_bright[team_color_id], 5.0f); 
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_ELIMINATION", Networking.LocalPlayer.displayName, (Color)gameController.team_colors_bright[team_color_id], 5.0f); 
             }
             else
             {
-                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", Networking.LocalPlayer.displayName), Color.red, 5.0f);
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_ELIMINATION", Networking.LocalPlayer.displayName, Color.red, 5.0f);
             }
         }
         else
@@ -1074,6 +1075,8 @@ public class PlayerAttributes : UdonSharpBehaviour
                 if (item_type == (int)powerup_type_name.ENUM_LENGTH + (int)weapon_type_name.ThrowableItem)
                 {
                     display_str = display_str.Replace("(Contains: $NAME)", gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_GENERIC", "Contains a random powerup or weapon!"));
+                    display_str = display_str.Replace("（内容物：$NAME）", gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_GENERIC", "Contains a random powerup or weapon!"));
+                    display_str = display_str.Replace("(Trae: NAME)", gameController.localizer.FetchText("NOTIFICATION_TUTORIAL_WEAPON_THROWABLEITEM_GENERIC", "Contains a random powerup or weapon!"));
                 }
             }
 
@@ -1138,7 +1141,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 ply_respawn_duration = gameController.plysettings_respawn_duration;
                 infection_special = 1; // We set this to 1 because GameController will automatically resolve it down to 0 if the player count condition is met
                 gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "CheckForZombigs", Networking.LocalPlayer.playerId);
-                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_DEATH", "The ZomBig has been defeated!"), Color.red, 5.0f);
+                gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_INFECTION_ZOMBIG_DEATH", "", Color.red, 5.0f);
             }
         }
         else if (infection_special == 1)

@@ -16,7 +16,7 @@ public enum projectile_type_name
 
 public class WeaponProjectile : UdonSharpBehaviour
 {
-
+   
     [NonSerialized] public int projectile_type, weapon_type;
     [NonSerialized] public float owner_scale;
     [NonSerialized] public Vector3 pos_start;

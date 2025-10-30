@@ -508,7 +508,7 @@ public class CaptureZone : UdonSharpBehaviour
                 UITeamText.color = gameController.team_colors_bright[hold_id];
                 UITimerText.color = gameController.team_colors_bright[hold_id];
                 RecolorDisplayArea(gameController.team_colors[hold_id]);
-                displayText += gameController.team_names[hold_id];
+                displayText += gameController.localizer.LocalizeTeamName(hold_id);
             }
             else
             {
@@ -576,7 +576,7 @@ public class CaptureZone : UdonSharpBehaviour
             Color32 iColorB = new Color32(255, 255, 0, 255);
             if (gameController.option_teamplay)
             {
-                displayText += gameController.team_names[contest_id];
+                displayText += gameController.localizer.LocalizeTeamName(contest_id);
                 iColor = (Color)gameController.team_colors[contest_id];
                 iColorB = (Color)gameController.team_colors_bright[contest_id];
             }

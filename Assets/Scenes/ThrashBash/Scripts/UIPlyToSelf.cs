@@ -1209,7 +1209,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 {
                     if (gameController.option_teamplay) 
                     { 
-                        hold_text = gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.hold_id, gameController.team_names[capturezone.hold_id].Substring(0, Mathf.Min(hold_text.Length, 3)));
+                        hold_text = gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.hold_id, gameController.localizer.LocalizeTeamName(gameController.team_names[capturezone.hold_id])); //.Substring(0, Mathf.Min(hold_text.Length, 3))
                         hold_color = gameController.team_colors[capturezone.hold_id];
                         //PTSCaptureTexts[i].color = gameController.team_colors_bright[capturezone.hold_id];
                     }
@@ -1271,7 +1271,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     if (gameController.option_teamplay)
                     {
                         contest_color = gameController.team_colors[capturezone.contest_id];
-                        contest_text += gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.contest_id, gameController.team_names[capturezone.contest_id].Substring(0, Mathf.Min(contest_text.Length, 3)));
+                        contest_text += gameController.localizer.FetchText("TEAM_COLOR_" + capturezone.contest_id, gameController.localizer.LocalizeTeamName(gameController.team_names[capturezone.contest_id])); //.Substring(0, Mathf.Min(contest_text.Length, 3))
                     }
                     else
                     {
@@ -1337,7 +1337,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
                 if (gameController.option_teamplay)
                 {
                     team_id = gamevars_leaderboard_arr[i];
-                    name_str = gameController.localizer.FetchText("TEAM_COLOR_" + team_id, gameController.team_names[team_id]);
+                    name_str = gameController.localizer.FetchText("TEAM_COLOR_" + team_id, gameController.localizer.LocalizeTeamName(gameController.team_names[team_id]));
                     name_color = gameController.team_colors[team_id];
                     PTSScoreNameTexts[i].color = gameController.team_colors_bright[team_id];
                     PTSScorePlacementTexts[i].text = RankToString(i, PTSScorePlacementTexts[i]);
@@ -1348,13 +1348,13 @@ public class UIPlyToSelf : UdonSharpBehaviour
                     if (hold_ply != null)
                     {
                         name_str = hold_ply.displayName;
+                        name_str = name_str.Substring(0, Mathf.Min(name_str.Length, 3));
                         team_id = hold_ply == Networking.LocalPlayer ? 0 : 1;
                         name_color = gameController.team_colors[team_id];
                         PTSScoreNameTexts[i].color = gameController.team_colors_bright[team_id];
                         PTSScorePlacementTexts[i].text = RankToString(GetGameRank(gamevars_leaderboard_arr[i]), PTSScorePlacementTexts[i]);
                     }
                 }
-                name_str = name_str.Substring(0, Mathf.Min(name_str.Length, 3));
                 PTSScoreNameTexts[i].text = name_str;
 
                 if (use_cb)

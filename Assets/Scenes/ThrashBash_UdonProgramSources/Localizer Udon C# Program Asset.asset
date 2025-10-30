@@ -44,7 +44,7 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 12
-      Data: 103
+      Data: 106
     - Name: 
       Entry: 7
       Data: 
@@ -4774,13 +4774,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: CreditsMappersText
+      Data: CreditsSpectremintText
     - Name: $v
       Entry: 7
       Data: 268|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: CreditsMappersText
+      Data: CreditsSpectremintText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -4829,13 +4829,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: CreditsMappersText_1
+      Data: CreditsTheMitzezText
     - Name: $v
       Entry: 7
       Data: 271|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: CreditsMappersText_1
+      Data: CreditsTheMitzezText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -4884,13 +4884,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: CreditsVAText
+      Data: CreditsLixianPrimeText
     - Name: $v
       Entry: 7
       Data: 274|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: CreditsVAText
+      Data: CreditsLixianPrimeText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -4939,13 +4939,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WeaponDemoHeader
+      Data: CreditsDiegoimhlText
     - Name: $v
       Entry: 7
       Data: 277|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WeaponDemoHeader
+      Data: CreditsDiegoimhlText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -4994,13 +4994,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: PowerupDemoHeader
+      Data: CreditsLeviaCoText
     - Name: $v
       Entry: 7
       Data: 280|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: PowerupDemoHeader
+      Data: CreditsLeviaCoText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5049,13 +5049,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningLanguageHeader
+      Data: CreditsMidoriSetoText
     - Name: $v
       Entry: 7
       Data: 283|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningLanguageHeader
+      Data: CreditsMidoriSetoText
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5104,13 +5104,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningLanguageConfirm
+      Data: WeaponDemoHeader
     - Name: $v
       Entry: 7
       Data: 286|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningLanguageConfirm
+      Data: WeaponDemoHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5159,13 +5159,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningColorblindnessHeader
+      Data: PowerupDemoHeader
     - Name: $v
       Entry: 7
       Data: 289|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningColorblindnessHeader
+      Data: PowerupDemoHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5214,13 +5214,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningColorblindnessToggle
+      Data: WarningLanguageHeader
     - Name: $v
       Entry: 7
       Data: 292|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningColorblindnessToggle
+      Data: WarningLanguageHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5269,13 +5269,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningColorblindnessConfirm
+      Data: WarningLanguageConfirm
     - Name: $v
       Entry: 7
       Data: 295|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningColorblindnessConfirm
+      Data: WarningLanguageConfirm
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5324,13 +5324,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningStreamerHeader
+      Data: WarningColorblindnessHeader
     - Name: $v
       Entry: 7
       Data: 298|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningStreamerHeader
+      Data: WarningColorblindnessHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5379,13 +5379,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningStreamerDescription
+      Data: WarningColorblindnessToggle
     - Name: $v
       Entry: 7
       Data: 301|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningStreamerDescription
+      Data: WarningColorblindnessToggle
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5434,13 +5434,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningStreamerYes
+      Data: WarningColorblindnessConfirm
     - Name: $v
       Entry: 7
       Data: 304|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningStreamerYes
+      Data: WarningColorblindnessConfirm
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5489,13 +5489,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: WarningStreamerNo
+      Data: WarningStreamerHeader
     - Name: $v
       Entry: 7
       Data: 307|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: WarningStreamerNo
+      Data: WarningStreamerHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5544,13 +5544,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: FloorJoinInstructHeader
+      Data: WarningStreamerDescription
     - Name: $v
       Entry: 7
       Data: 310|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: FloorJoinInstructHeader
+      Data: WarningStreamerDescription
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5599,13 +5599,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: FloorJoinInstructInvertHeader
+      Data: WarningStreamerYes
     - Name: $v
       Entry: 7
       Data: 313|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: FloorJoinInstructInvertHeader
+      Data: WarningStreamerYes
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5654,13 +5654,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: FloorSpectateInstructHeader
+      Data: WarningStreamerNo
     - Name: $v
       Entry: 7
       Data: 316|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: FloorSpectateInstructHeader
+      Data: WarningStreamerNo
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5709,13 +5709,13 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: FloorSpectateInstructInvertHeader
+      Data: FloorJoinInstructHeader
     - Name: $v
       Entry: 7
       Data: 319|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
     - Name: <Name>k__BackingField
       Entry: 1
-      Data: FloorSpectateInstructInvertHeader
+      Data: FloorJoinInstructHeader
     - Name: <UserType>k__BackingField
       Entry: 9
       Data: 3
@@ -5744,6 +5744,171 @@ MonoBehaviour:
     - Name: 
       Entry: 7
       Data: 321|UnityEngine.SerializeField, UnityEngine.CoreModule
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: FloorJoinInstructInvertHeader
+    - Name: $v
+      Entry: 7
+      Data: 322|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
+    - Name: <Name>k__BackingField
+      Entry: 1
+      Data: FloorJoinInstructInvertHeader
+    - Name: <UserType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SystemType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SyncMode>k__BackingField
+      Entry: 7
+      Data: System.Nullable`1[[UdonSharp.UdonSyncMode, UdonSharp.Runtime]], mscorlib
+    - Name: 
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: <IsSerialized>k__BackingField
+      Entry: 5
+      Data: true
+    - Name: _fieldAttributes
+      Entry: 7
+      Data: 323|System.Collections.Generic.List`1[[System.Attribute, mscorlib]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: 324|UnityEngine.SerializeField, UnityEngine.CoreModule
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: FloorSpectateInstructHeader
+    - Name: $v
+      Entry: 7
+      Data: 325|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
+    - Name: <Name>k__BackingField
+      Entry: 1
+      Data: FloorSpectateInstructHeader
+    - Name: <UserType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SystemType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SyncMode>k__BackingField
+      Entry: 7
+      Data: System.Nullable`1[[UdonSharp.UdonSyncMode, UdonSharp.Runtime]], mscorlib
+    - Name: 
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: <IsSerialized>k__BackingField
+      Entry: 5
+      Data: true
+    - Name: _fieldAttributes
+      Entry: 7
+      Data: 326|System.Collections.Generic.List`1[[System.Attribute, mscorlib]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: 327|UnityEngine.SerializeField, UnityEngine.CoreModule
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 13
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: 
+      Entry: 7
+      Data: 
+    - Name: $k
+      Entry: 1
+      Data: FloorSpectateInstructInvertHeader
+    - Name: $v
+      Entry: 7
+      Data: 328|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
+    - Name: <Name>k__BackingField
+      Entry: 1
+      Data: FloorSpectateInstructInvertHeader
+    - Name: <UserType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SystemType>k__BackingField
+      Entry: 9
+      Data: 3
+    - Name: <SyncMode>k__BackingField
+      Entry: 7
+      Data: System.Nullable`1[[UdonSharp.UdonSyncMode, UdonSharp.Runtime]], mscorlib
+    - Name: 
+      Entry: 6
+      Data: 
+    - Name: 
+      Entry: 8
+      Data: 
+    - Name: <IsSerialized>k__BackingField
+      Entry: 5
+      Data: true
+    - Name: _fieldAttributes
+      Entry: 7
+      Data: 329|System.Collections.Generic.List`1[[System.Attribute, mscorlib]],
+        mscorlib
+    - Name: 
+      Entry: 12
+      Data: 1
+    - Name: 
+      Entry: 7
+      Data: 330|UnityEngine.SerializeField, UnityEngine.CoreModule
     - Name: 
       Entry: 8
       Data: 

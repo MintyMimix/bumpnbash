@@ -200,6 +200,10 @@ public class PPP_Options : UdonSharpBehaviour
         UpdateUISeparation();
         UpdateUIStretch();
         UpdateUIDistance();
+        UpdateUIYOffset();
+        UpdateUIAngle();
+        UpdateUITextOffset();
+        UpdateUITextScale();
         UpdateUIWrist();
         UpdateUIInverted();
         UpdateUIOtherScale();
@@ -1456,7 +1460,7 @@ public class PPP_Options : UdonSharpBehaviour
         for (int j = 0; j < gameController.team_colors_base.Length; j++)
         {
             flags[j] = Instantiate(template, grid.transform);
-            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]); 
+            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.localizer.LocalizeTeamName(j).Split(' ')[0]); 
         }
         SetColorblindFlagColors(ref caption, ref flags);
         // After making the copies, set the template to be inactive
@@ -1471,7 +1475,7 @@ public class PPP_Options : UdonSharpBehaviour
         for (int j = 0; j < flags.Length; j++)
         {
             flags[j].GetComponent<UnityEngine.UI.Image>().color = gameController.team_colors[j];
-            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.team_names[j].Split(' ')[0]);
+            flags[j].transform.GetChild(1).GetComponent<TMP_Text>().text = gameController.localizer.FetchText("TEAM_COLOR_" + j, gameController.localizer.LocalizeTeamName(j).Split(' ')[0]);
             flags[j].transform.GetChild(1).GetComponent<TMP_Text>().color = gameController.team_colors_bright[j];
             if (colorblind)
             {

@@ -83,6 +83,7 @@ public class GameController : GlobalHelperFunctions
     [SerializeField] public Megaphone megaphone;
     [SerializeField] public LocalMotionSicknessHelper localMotionSicknessHelper;
     [SerializeField] public GameObject audiolink_obj;
+    [SerializeField] public ClockDisplay[] clock_displays;
 
     [SerializeField] public Camera[] highlightCameras;
     [SerializeField] public GameObject ui_spectatorcanvas;
@@ -994,11 +995,21 @@ public class GameController : GlobalHelperFunctions
                             zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig", true);
                             infection_zombig_active = true;
                             infection_zombigs_spawned++;
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_GLOBAL", "Incoming ZomBig: $ARG0!", pick_player.displayName), Color.red, 5.0f);
+                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_INFECTION_ZOMBIG_GLOBAL", pick_player.displayName, Color.red, 5.0f);
                             RequestSerialization();
                         }
                     }
                 }
+            }
+        }
+
+        // Clock displays
+        if (clock_displays != null && clock_displays.Length > 0)
+        {
+            for (int i = 0; i < clock_displays.Length; i++)
+            {
+                if (localizer != null && localizer.language_type == (int)language_type_name.English) { clock_displays[i].UpdateTime(true); }
+                else { clock_displays[i].UpdateTime(false); }
             }
         }
 
@@ -2061,7 +2072,7 @@ public class GameController : GlobalHelperFunctions
         {
             Color mapColor = new Color(0.09803922f, 0.8862745f, 0.5254902f, 1.0f);
             AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDSTART_MAP", "You're Going To:"), Color.white, load_length);
-            AddToLocalTextQueue(mapscript_list[map_selected].map_name, mapColor, load_length);
+            AddToLocalTextQueue(mapscript_list[map_selected].map_name.Replace("\n", ""), mapColor, load_length);
             PlaySFXFromArray(snd_ready_sfx_source, snd_ready_sfx_clips, (int)ready_sfx_name.LoadStart);
             vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.MapAnnounce);
 
@@ -2549,6 +2560,14 @@ public class GameController : GlobalHelperFunctions
                     plysettings_atk = 2.0f;
                 }
             }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_CASTLE", "Stone's Throw"))
+            {
+                if (plysettings_speed < 1.61f || plysettings_atk < 1.5f)
+                {
+                    plysettings_speed = 1.61f;
+                    plysettings_atk = 1.5f;
+                }
+            }
             // And reset if the game master forgot to
             else
                     { 
@@ -2924,7 +2943,8 @@ public class GameController : GlobalHelperFunctions
         }
         else if (leaderboard_arr[0] < team_names.Length)
         {
-            leader_name = team_names[leaderboard_arr[0]];
+            //leader_name = team_names[leaderboard_arr[0]];
+            leader_name = localizer.FetchTeamNameKey(leaderboard_arr[0]);
         }
 
         int point_compare = 0;
@@ -2935,7 +2955,7 @@ public class GameController : GlobalHelperFunctions
             {
                 if (option_teamplay && leaderboard_arr[0] < team_names.Length)
                 {
-                    leader_name += ", " + team_names[leaderboard_arr[i]];
+                    leader_name += ", " + localizer.FetchTeamNameKey(leaderboard_arr[i]);
                 }
                 else if (!option_teamplay)
                 {
@@ -3062,12 +3082,12 @@ public class GameController : GlobalHelperFunctions
 
             if (boss_alive == 0 || bossLivesArr.Length == 0 || bossPointsArr.Length == 0)
             {
-                leader_name = localizer.FetchText("TEAM_NAME_BOSSBASH_0", "The Tiny Troopers");
+                leader_name = "TEAM_NAME_BOSSBASH_0";
                 declare_victor = true;
             }
             else if (boss_lives > 0 && bossPointsArr.Length > 0 && boss_points >= option_gm_goal)
             {
-                leader_name = localizer.FetchText("TEAM_NAME_BOSSBASH_1", "The Big Boss");
+                leader_name = "TEAM_NAME_BOSSBASH_1";
                 declare_victor = true;
             }
         }
@@ -3084,12 +3104,12 @@ public class GameController : GlobalHelperFunctions
 
             if (survivors_alive == 0 || livesPerSurvivor.Length == 0)
             {
-                leader_name = localizer.FetchText("TEAM_NAME_INFECTION_1", "Infected");
+                leader_name = "TEAM_NAME_INFECTION_1";
                 declare_victor = true;
             }
             else if (round_timer >= round_length)
             {
-                leader_name = localizer.FetchText("TEAM_NAME_INFECTION_0", "Survivors");
+                leader_name = "TEAM_NAME_INFECTION_0";
                 declare_victor = true;
             }
         }
@@ -3196,7 +3216,7 @@ public class GameController : GlobalHelperFunctions
     }
 
     [NetworkCallable]
-    public void RoundEnd(string winner_name, int winning_team)
+    public void RoundEnd(string winner_name_input, int winning_team)
     {
         //UnityEngine.Debug.Log("[DICT_TEST]: ROUND END - " + ConvertIntArrayToString(players_in_game_dict[0]) + " | " + ConvertIntArrayToString(players_in_game_dict[1]));
         if (local_uiplytoself != null && round_state != (int)round_state_name.Start) { local_uiplytoself.gamevars_force_refresh_on_next_tick = true; }
@@ -3239,22 +3259,25 @@ public class GameController : GlobalHelperFunctions
             mapscript_list[map_selected].map_item_spawns[j].item_spawn_state = (int)item_spawn_state_name.Disabled;
         }
 
-        if (winner_name == localizer.FetchText("TEAM_NAME_INFECTION_1", "Infected")) { winning_team = 1; }
-        else if (winner_name == localizer.FetchText("TEAM_NAME_BOSSBASH_1", "The Big Boss")) { winning_team = 1; }
+        string winner_name_localized = winner_name_input;
+        if (option_teamplay) { winner_name_localized = localizer.LocalizeTeamName(winner_name_input); }
+
+        if (winner_name_localized == localizer.FetchText("TEAM_NAME_INFECTION_1", "Infected")) { winning_team = 1; }
+        else if (winner_name_localized == localizer.FetchText("TEAM_NAME_BOSSBASH_1", "The Big Boss")) { winning_team = 1; }
 
         Color winning_color = Color.white;
-        if (winning_team >= 0 && team_colors_bright != null && winning_team < team_colors_bright.Length && !winner_name.Contains(',')) 
+        if (winning_team >= 0 && team_colors_bright != null && winning_team < team_colors_bright.Length && !winner_name_localized.Contains(',')) 
         { 
             winning_color = (Color)team_colors_bright[winning_team]; 
         }
 
-        if (winner_name != null && winner_name.Length > 0)
+        if (winner_name_localized != null && winner_name_localized.Length > 0)
         {
-            AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDEND_WINNER", "WINNER:", "").Replace("!",""), Color.white, over_length + 2.0f);
-            AddToLocalTextQueue(winner_name + "!", winning_color, over_length + 2.0f);
+            AddToLocalTextQueue(localizer.FetchText("NOTIFICATION_ROUNDEND_WINNER", "WINNER:", "").Replace("!","").Replace("！",""), Color.white, over_length + 2.0f);
+            AddToLocalTextQueue(winner_name_localized + "!", winning_color, over_length + 2.0f);
             if (ui_round_scoreboard_canvas != null)
             {
-                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = localizer.FetchText("NOTIFICATION_ROUNDEND_WINNER", "WINNER: $ARG0!", winner_name);
+                ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.text = localizer.FetchText("NOTIFICATION_ROUNDEND_WINNER", "WINNER: $ARG0!", winner_name_localized);
                 ui_round_scoreboard_canvas.GetComponent<Scoreboard>().scoreboard_header_text.color = winning_color;
             }
         }
@@ -3275,17 +3298,18 @@ public class GameController : GlobalHelperFunctions
             bool local_is_winner = false;
             local_is_winner = (option_gamemode == (int)gamemode_name.Infection && winning_team == 0);
             local_is_winner = local_is_winner || (option_gamemode == (int)gamemode_name.BossBash && winning_team == local_plyAttr.ply_team);
-            local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && option_teamplay && winner_name.Contains(team_names[Mathf.Clamp(local_plyAttr.ply_team, 0, team_names.Length - 1)]));
-            local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && !option_teamplay && winner_name.Contains(Networking.LocalPlayer.displayName));
+            local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && option_teamplay && winner_name_input.Contains(local_plyAttr.ply_team.ToString()));
+            local_is_winner = local_is_winner || (option_gamemode != (int)gamemode_name.Infection && !option_teamplay && winner_name_localized.Contains(Networking.LocalPlayer.displayName));
+            UnityEngine.Debug.Log("[ROUND_END]: winning_team = " + winning_team + "; winner_name_input = " + winner_name_input + "; localized = " + winner_name_localized + "; is_local = " + local_is_winner);
 
             //if (snd_game_music_source.volume < music_volume_stored) { snd_game_music_source.volume = music_volume_stored; }
             snd_game_music_source.pitch = 1.0f;
-            if (!option_teamplay && winner_name != null && winner_name.Length > 0)
+            if (!option_teamplay && winner_name_localized != null && winner_name_localized.Length > 0)
             {
                 PlaySFXFromArray(snd_game_music_source, snd_victory_music_clips, option_gamemode, 1, true);
                 vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.End);
             }
-            else if (winner_name != null && winner_name.Length > 0 && local_is_winner)
+            else if (winner_name_localized != null && winner_name_localized.Length > 0 && local_is_winner)
             {
                 PlaySFXFromArray(snd_game_music_source, snd_victory_music_clips, option_gamemode, 1, true);
                 if (option_gamemode == (int)gamemode_name.Infection) { vopack_selected.PlayVoiceover((int)voiceover_event_name.Round, (int)voiceover_round_sfx_name.Infection_End_Victory); }
@@ -4036,11 +4060,13 @@ public class GameController : GlobalHelperFunctions
     }
 
     [NetworkCallable]
-    public void NetworkAddToTextQueue(string input, Color color, float duration)
+    public void NetworkAddToTextQueue(string input, string arg0, Color color, float duration)
     {
+        string localized_input = localizer.FetchText(input, input, arg0);
+
         if (local_uiplytoself != null) 
         { 
-            if (input.Contains(localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", "").Trim())
+            if (localized_input.Contains(localizer.FetchText("NOTIFICATION_ELIMINATION", "$ARG0 has been eliminated!", "").Trim())
                 && local_plyAttr != null 
                  && ((local_plyAttr.ply_state != (int)player_state_name.Alive && local_plyAttr.ply_state != (int)player_state_name.Inactive)
                  || local_plyAttr.ply_team < 0 || local_plyAttr.in_ready_room)
@@ -4048,7 +4074,7 @@ public class GameController : GlobalHelperFunctions
             {
                 return;
             }
-            local_uiplytoself.AddToTextQueue(input, color, duration); 
+            local_uiplytoself.AddToTextQueue(localized_input, color, duration); 
         }
     }
 

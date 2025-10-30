@@ -1048,7 +1048,7 @@ MonoBehaviour:
   item_spawn_linger: 25
   item_spawn_impulse: 10
   item_spawn_chance_global: 1
-  item_spawn_powerup_duration: 17
+  item_spawn_powerup_duration: 23
   item_spawn_team: -1
   item_spawn_min_players: 0
   item_spawn_chances_config_keys:
