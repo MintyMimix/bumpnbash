@@ -216,7 +216,7 @@ public class Room_Ready : UdonSharpBehaviour
 
                 if (gameController.GetGlobalTeam(player.playerId) < 0 && plyAttr.ply_team < 0)
                 {
-                    if (gameController.round_state != (int)round_state_name.Start 
+                    if (gameController.round_state != (int)round_state_name.Start && gameController.round_state != (int)round_state_name.Queued
                         && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.WaitingForLobby
                         && plyAttr.ply_team != (int)player_tracking_name.WaitingForLobby) 
                     {
@@ -225,7 +225,7 @@ public class Room_Ready : UdonSharpBehaviour
                         gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "ChangeTeam", player.playerId, (int)player_tracking_name.WaitingForLobby, true);
                         ZoneMarkerHighlight(true);
                     }
-                    else if (gameController.round_state == (int)round_state_name.Start)
+                    else if (gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued)
                     {
                         plyAttr.ply_team = 0;
                         gameController.PlaySFXFromArray(gameController.snd_ready_sfx_source, gameController.snd_ready_sfx_clips, (int)ready_sfx_name.JoinGame);
@@ -250,7 +250,7 @@ public class Room_Ready : UdonSharpBehaviour
             {
                 plyAttr.ply_state = (int)player_state_name.Inactive;
 
-                if (gameController.round_state == (int)round_state_name.Start 
+                if ((gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued)
                     && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Spectator 
                     && gameController.GetGlobalTeam(player.playerId) != (int)player_tracking_name.Unassigned
                     && plyAttr.ply_team != (int)player_tracking_name.Unassigned

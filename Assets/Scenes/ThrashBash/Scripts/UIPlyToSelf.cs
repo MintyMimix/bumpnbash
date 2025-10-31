@@ -688,7 +688,7 @@ public class UIPlyToSelf : UdonSharpBehaviour
         float TimerValue = gameController.round_length - gameController.round_timer + 1.0f;
         string TimerText = Mathf.FloorToInt(TimerValue).ToString();
         PTSTimerTransform.localScale = new Vector3(1.0f, 1.0f, 1.0f);
-        if (gameController.round_state == (int)round_state_name.Start || (gameController.round_state == (int)round_state_name.Ongoing && !gameController.round_length_enabled)) { TimerText = "--"; }
+        if (gameController.round_state == (int)round_state_name.Start || gameController.round_state == (int)round_state_name.Queued  || (gameController.round_state == (int)round_state_name.Ongoing && !gameController.round_length_enabled)) { TimerText = "--"; }
         else if (gameController.round_state == (int)round_state_name.Ready) { TimerText = Mathf.Floor(gameController.ready_length - gameController.round_timer + 1.0f).ToString(); }
         else
         {

@@ -35,7 +35,7 @@ public class UIArrowTeamPanel : UIArrow
         if (button_increment != null && button_decrement != null)
         {
             bool toggle_should_be_on = Networking.IsOwner(parent_teampanel.gameController.gameObject);
-            if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+            if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start && parent_teampanel.gameController.round_state != (int)round_state_name.Queued) { toggle_should_be_on = false; }
             else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
             if (toggle_should_be_on && button_increment.interactable == false) { button_increment.interactable = true; }
@@ -122,7 +122,7 @@ public class UIArrowTeamPanel : UIArrow
     public void UpdateOwnership()
     {
         bool toggle_should_be_on = Networking.IsOwner(parent_teampanel.gameController.gameObject);
-        if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start) { toggle_should_be_on = false; }
+        if (parent_teampanel != null && parent_teampanel.gameController.round_state != (int)round_state_name.Start && parent_teampanel.gameController.round_state != (int)round_state_name.Queued) { toggle_should_be_on = false; }
         else if (parent_teampanel != null && parent_teampanel.gameController.option_personal_teams && player == Networking.LocalPlayer) { toggle_should_be_on = true; }
 
         if (parent_teampanel.gameController.team_count <= 1 || !toggle_should_be_on)

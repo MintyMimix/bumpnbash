@@ -278,7 +278,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             if (in_grav_well) { Networking.LocalPlayer.SetGravityStrength(0.0f); }
             else { Networking.LocalPlayer.SetGravityStrength(Mathf.Max(0.125f, 1.0f * ply_grav * (1.0f / koth_mod))); }
             float jump_height = 4.0f + (1.0f - ply_grav);
-            jump_height = 0.5f * (jump_height + (jump_height * Mathf.Max(1.0f, ply_scale))); // Jump height scales with player at half rate (i.e. 2x = 1.5x jump height, 3x = 2x jump height, etc.)
+            jump_height = ((2.0f * jump_height) + (jump_height * Mathf.Max(1.0f, ply_scale))) / 3.0f; // Jump height scales with player at half rate (i.e. 2x = 1.5x jump height, 3x = 2x jump height, etc.)
             Networking.LocalPlayer.SetJumpImpulse(jump_height); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }
         else
@@ -914,7 +914,9 @@ public class PlayerAttributes : UdonSharpBehaviour
             if (!Networking.LocalPlayer.IsPlayerGrounded() && ply_jumps_tracking < ply_jumps_add)
             {
                 Vector3 plyVel = Networking.LocalPlayer.GetVelocity();
-                Networking.LocalPlayer.SetVelocity(new Vector3(plyVel.x, 4.0f + (1.0f - ply_grav), plyVel.z));
+                float jump_height = 4.0f + (1.0f - ply_grav);
+                jump_height = ((2.0f * jump_height) + (jump_height * Mathf.Max(1.0f, ply_scale))) / 3.0f;
+                Networking.LocalPlayer.SetVelocity(new Vector3(plyVel.x, jump_height, plyVel.z));
                 ply_jumps_tracking++;
             }
             else if (!Networking.LocalPlayer.IsPlayerGrounded() && ply_jumps_tracking >= ply_jumps_add && air_thrust_enabled && air_thrust_ready)

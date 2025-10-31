@@ -1324,7 +1324,7 @@ public class GameController : GlobalHelperFunctions
             ui_round_length_input.interactable = false;
             ui_round_option_goal_input_a.interactable = false;
             ui_round_option_goal_input_b.interactable = false;
-            ui_round_teamplay_sort_button.interactable = false;
+            ui_round_teamplay_sort_button.interactable = Networking.IsOwner(gameObject) && round_state == (int)round_state_name.Queued && option_teamplay;
             ui_round_teamplay_count_input.interactable = false;
 
             ui_ply_option_dp.interactable = false;

@@ -145,7 +145,7 @@ public class PPP_Options : UdonSharpBehaviour
         }
         else
         {
-            bool allow_round_state = !(gameController.round_state == (int)round_state_name.Queued || gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready);
+            bool allow_round_state = !(gameController.round_state == (int)round_state_name.Loading || gameController.round_state == (int)round_state_name.Ready); //gameController.round_state == (int)round_state_name.Queued || 
             bool allow_ply_team = false;
             bool allow_ply_state = false;
             if (gameController.local_plyAttr != null) 
