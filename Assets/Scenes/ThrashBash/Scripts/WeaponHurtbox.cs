@@ -14,7 +14,7 @@ using static UnityEngine.UI.Image;
 
 public enum damage_type_name
 {
-    Strike, ForceExplosion, Kapow, HazardBurn, Laser, ItemHit, ENUM_LENGTH
+    Strike, ForceExplosion, Kapow, HazardBurn, Laser, ItemHit, ZombigIdle, ENUM_LENGTH
 }
 public enum damage_mesh_type_name
 {

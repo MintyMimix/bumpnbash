@@ -192,11 +192,11 @@
     }
   },
   "LangType": {
-    "LastUpdated": "2025-10-30T18:12:40.4978642-04:00",
+    "LastUpdated": "2025-11-02T10:54:58.2268659-05:00",
     "Key": "LangType",
     "Value": {
       "type": "Int",
-      "value": 1
+      "value": 0
     }
   },
   "MotionSicknessCage": {

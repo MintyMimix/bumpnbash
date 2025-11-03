@@ -309,7 +309,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     private void LocalPerTickUpdate()
     {
         // Update size
-        if (Networking.IsOwner(gameObject) && plyEyeHeight_change)
+        if (Networking.IsOwner(gameObject) && plyEyeHeight_change && gameController.room_ready_script.warning_acknowledged)
         {
             var plyCurrentEyeHeight = Networking.LocalPlayer.GetAvatarEyeHeightAsMeters();
             var lerp_delta = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), plyEyeHeight_lerp_start_ms);
@@ -334,6 +334,22 @@ public class PlayerAttributes : UdonSharpBehaviour
             LocalResetScale(); 
         }
 
+    }
+
+    public void LocalPerSecondUpdate()
+    {
+
+        // If the ZomBig has been alive for too long, start taking damage
+        if (gameController.infection_zombig_spawn_time != 0.0d && infection_special == 2) //  && ply_dp != 0 We also do ply_dp != 0 to account for ping delay for if a 2nd zombig is queued to spawn immediately after death 
+        {
+            double time_elapsed = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), gameController.infection_zombig_spawn_time);
+            UnityEngine.Debug.Log("[ASSERT_ZOMBIG_STATUS]: time_elapsed: " + time_elapsed + "combo_send: " + combo_send + "combo_send_timer: " + combo_send_timer + "combo_send_duration: " + combo_send_duration + "killbo: " + killbo + "killbo_timer: " + killbo_timer + "killbo_duration: " + killbo_duration);
+            if (time_elapsed > 25 && combo_send <= 0 && combo_send_timer >= combo_send_duration && killbo <= 0)
+            {
+                if (ply_def >= 0.25f) { ply_def *= 0.9f; }
+                ReceiveDamage(3, Networking.LocalPlayer.GetRotation() * Vector3.forward, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, -1, (int)damage_type_name.ZombigIdle, false, 0);
+            }
+        }
     }
 
     public override void OnAvatarChanged(VRCPlayerApi player) {
@@ -390,6 +406,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         if (attacker_id != Networking.LocalPlayer.playerId) { return; }
         gameController.PlaySFXFromArray(gameController.snd_game_sfx_sources[(int)game_sfx_name.HitSend], gameController.snd_game_sfx_clips[(int)game_sfx_name.HitSend], damage_type, 1 + 0.1f * (combo_send));
         combo_send++;
+        combo_send_timer = 0.0f;
         if (!ply_training) { ply_damage_dealt += damage; }
 
         TryHapticEvent((int)game_sfx_name.HitSend);
@@ -1097,15 +1114,16 @@ public class PlayerAttributes : UdonSharpBehaviour
         {
             TryHapticEvent((int)game_sfx_name.Death);
             ply_respawn_timer = 0;
-            ply_respawn_duration = gameController.plysettings_respawn_duration * 1.5f;
+            ply_respawn_duration = gameController.plysettings_respawn_duration * 1.25f;
             ply_state = (int)player_state_name.Respawning;
             gameController.TeleportLocalPlayerToKOTHtainer();
         }
         else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
         infection_special = 2;
         ply_dp = ply_dp_default;
-        ply_scale *= 2.5f;
+        ply_scale *= 2.0f;
         ply_speed *= 1.33f;
+        combo_send_duration = killbo_duration;
 
         gameController.local_plyweapon.weapon_temp_ammo = -1;
         gameController.local_plyweapon.weapon_temp_duration = -1;
@@ -1123,13 +1141,13 @@ public class PlayerAttributes : UdonSharpBehaviour
         plyEyeHeight_desired = plyEyeHeight_default * ply_scale;
         plyEyeHeight_lerp_start_ms = Networking.GetServerTimeInSeconds();
         plyEyeHeight_change = true;
-
         if (isFirst) { gameController.AddToLocalTextQueue(gameController.localizer.FetchText("NOTIFICATION_INFECTION_ZOMBIG_LOCAL", "You are the ZomBig! Crush the Survivors into dust!"), gameController.team_colors_bright[1]); }
     }
 
     [NetworkCallable]
     public void InfectionStatReset(bool ply_was_invul)
     {
+        combo_send_duration = 2.0f;
         if (infection_special == 2)
         {
             // ZomBig
@@ -1156,7 +1174,7 @@ public class PlayerAttributes : UdonSharpBehaviour
         else if (infection_special == 0)
         { 
             // Normal Zombie
-            ply_speed = gameController.plysettings_speed * 0.9f;
+            //ply_speed = gameController.plysettings_speed * 0.9f;
             ply_def = gameController.plysettings_def * 0.4f;
             ply_atk = gameController.plysettings_atk * 0.5f;
         }
@@ -1165,6 +1183,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     [NetworkCallable]
     public void ResetToDefaultStats()
     {
+        combo_send_duration = 2.0f;
         ply_dp = ply_dp_default;
         //ply_damage_dealt = 0;
         //ply_lives = gameController.plysettings_lives;

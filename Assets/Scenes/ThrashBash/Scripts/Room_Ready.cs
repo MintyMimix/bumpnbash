@@ -196,7 +196,8 @@ public class Room_Ready : UdonSharpBehaviour
             }
         }
         if (gameController.local_plyAttr != null) 
-        { 
+        {
+            gameController.local_plyAttr.SetDefaultEyeHeight();
             gameController.local_plyAttr.air_thrust_enabled = true;
             if (gameController.local_plyweapon != null) { gameController.local_plyAttr.air_thrust_cooldown = gameController.local_plyweapon.GetStatsFromWeaponType((int)weapon_type_name.MegaGlove)[(int)weapon_stats_name.Cooldown] * 2.0f; }
         }

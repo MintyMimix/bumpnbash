@@ -84,6 +84,7 @@ public class GameController : GlobalHelperFunctions
     [SerializeField] public LocalMotionSicknessHelper localMotionSicknessHelper;
     [SerializeField] public GameObject audiolink_obj;
     [SerializeField] public ClockDisplay[] clock_displays;
+    [SerializeField] public GameObject victory_camera_plane;
 
     [SerializeField] public Camera[] highlightCameras;
     [SerializeField] public GameObject ui_spectatorcanvas;
@@ -367,6 +368,7 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized] public double koth_respawn_wave_duration;
     [NonSerialized][UdonSynced] public byte infection_zombigs_spawned = 0;
     [NonSerialized][UdonSynced] public bool infection_zombig_active = false;
+    [NonSerialized][UdonSynced] public double infection_zombig_spawn_time = 0.0d;
     [NonSerialized][UdonSynced] public int round_extra_data = 0; // Extra tracking data for a gamemode, such as number of Survivor deaths in Infected
 
     [NonSerialized] public bool ui_initialized = false;
@@ -408,6 +410,8 @@ public class GameController : GlobalHelperFunctions
         debug_run_update = true;
         ui_initialized = false;
         skybox.mainTexture = default_skybox_tex;
+
+        victory_camera_plane.SetActive(false);
 
         // Initialize team colors
         // We want to store the base colors from the inspector. Due to legacy issues, we have to do in this strnage order (colors -> base -> colors)
@@ -675,12 +679,15 @@ public class GameController : GlobalHelperFunctions
         for (int i = 0; i < highlightCameras.Length; i++)
         {
             photo_timer = (float)Networking.CalculateServerDeltaTime(server_ms, highlight_cameras_ms[i]);
-            if (highlight_cameras_active[i] && photo_timer >= ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f))
+            //if (camera_id == 5) { victory_camera_plane.SetActive(true); }
+            double photo_length = i == 5 ? over_length - 1 : ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f);
+            if (highlight_cameras_active[i] && photo_timer >= photo_length)
             {
                 highlight_cameras_snapped[i] = !highlight_cameras_resetting;
                 highlightCameras[i].gameObject.SetActive(false);
                 highlight_cameras_active[i] = false;
                 highlight_cameras_waiting_on_sync[i] = false; // We received the network event, thus we are no longer waiting on sync (active & snapped instead do the work)
+                if (i == 5) { victory_camera_plane.SetActive(false); }
             }
             if (highlight_cameras_resetting && !highlight_cameras_active[i] && !highlight_cameras_waiting_on_sync[i]) { reset_count++; }
 
@@ -772,6 +779,7 @@ public class GameController : GlobalHelperFunctions
             round_start_ms = server_ms;
             round_state = (int)round_state_name.Loading;
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetupMap");
+            SetupMapSpecificParams();
             RequestSerialization();
             //RefreshSetupUI();
             //RequestSerialization();
@@ -889,7 +897,7 @@ public class GameController : GlobalHelperFunctions
                 }
             }
         }
-        else if (round_state == (int)round_state_name.Over)
+        /*else if (round_state == (int)round_state_name.Over)
         {
             if (Networking.IsOwner(gameObject) && Mathf.RoundToInt(over_length - round_timer) <= 3
                 && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 5
@@ -902,7 +910,7 @@ public class GameController : GlobalHelperFunctions
                 else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, lead_ply.GetPosition(), lead_ply.GetRotation() * Vector3.forward, true, lead_attr.ply_scale); }
                 highlight_cameras_waiting_on_sync[5] = true;
             }
-        }
+        }*/
 
         // Infection-specific handling
         if (round_state == (int)round_state_name.Ongoing && option_gamemode == (int)gamemode_name.Infection)
@@ -982,8 +990,9 @@ public class GameController : GlobalHelperFunctions
             // -- Master only below --
             if (Networking.IsOwner(gameObject))
             {
+                int survivor_count = survivors != null && survivors.Length > 0 && survivors[0] != null ? survivors[0].Length : 0;
                 // If we hit a certain threshold of players and timer is met and we have not yet spawned X number of zombigs, spawn one
-                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 3.0f) && infection_zombigs_spawned < 2)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
+                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 3.0f) && infection_zombigs_spawned < 2 && survivor_count >= 4)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
                 {
                     int pick_player_id = UnityEngine.Random.Range(0, infected[0].Length);
                     VRCPlayerApi pick_player = VRCPlayerApi.GetPlayerById(infected[0][pick_player_id]);
@@ -993,6 +1002,7 @@ public class GameController : GlobalHelperFunctions
                         if (zombig_attr != null && zombig_attr.infection_special != 2)
                         {
                             zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig", true);
+                            infection_zombig_spawn_time = Networking.GetServerTimeInSeconds();
                             infection_zombig_active = true;
                             infection_zombigs_spawned++;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_INFECTION_ZOMBIG_GLOBAL", pick_player.displayName, Color.red, 5.0f);
@@ -1018,6 +1028,8 @@ public class GameController : GlobalHelperFunctions
         //    + Networking.GetOwner(gameObject).displayName + " [" + Networking.GetOwner(gameObject).playerId + "]"
         //    + ": near = " + Networking.GetOwner(gameObject).GetVoiceDistanceNear() + ", far = " + Networking.GetOwner(gameObject).GetVoiceDistanceFar() + ", gain = " + Networking.GetOwner(gameObject).GetVoiceGain()
         //    );
+
+        if (local_plyAttr != null) { local_plyAttr.LocalPerSecondUpdate(); } // Run per second update for local player attribute as well, so we don't have to keep as many timers
        
     }
 
@@ -1064,6 +1076,7 @@ public class GameController : GlobalHelperFunctions
             }
         }
         infection_zombig_active = found_zombig;
+        if (!found_zombig) { infection_zombig_spawn_time = 0.0d; }
         RequestSerialization();
     }
 
@@ -2234,8 +2247,11 @@ public class GameController : GlobalHelperFunctions
             playerData.ply_desktop_applied_dual_compensation_buff = false;
             playerData.killstreak = 0;
             playerData.killbo = 0;
+            playerData.killbo_timer = 0.0f;
             playerData.combo_receive = 0;
             playerData.combo_send = 0;
+            playerData.combo_send_timer = 0.0f;
+            playerData.combo_send_duration = 2.0f;
             playerData.ply_state = (int)player_state_name.Alive;
             playerData.ply_team = GetGlobalTeam(Networking.LocalPlayer.playerId);
             if (room_ready_script.warning_acknowledged) { room_ready_script.ZoneMarkerHighlight(true); }
@@ -2517,11 +2533,93 @@ public class GameController : GlobalHelperFunctions
         round_state = (int)round_state_name.Ready;
         round_start_ms = Networking.GetServerTimeInSeconds();
         largest_ply_scale = plysettings_scale;
+        infection_zombig_spawn_time = 0.0d;
         infection_zombigs_spawned = 0;
         infection_zombig_active = false;
         round_extra_data = 0;
 
         RequestSerialization();
+    }
+
+    public void SetupMapSpecificParams()
+    {
+        if (Networking.IsOwner(gameObject))
+        {
+            if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
+            // If we're on Facing Worlds, increase default speed to compensate for map size
+            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds"))
+            {
+                if (plysettings_speed < 1.91f || plysettings_atk < 3.0f)
+                {
+                    plysettings_speed = 1.91f;
+                    plysettings_atk = 3.0f;
+                }
+                if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
+                {
+                    option_gm_goal = 400;
+                    option_gm_config_a = 100;
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_UNDERWATER", "Deep Blues"))
+            {
+                if (plysettings_speed < 1.61f)
+                {
+                    plysettings_speed = 1.61f;
+                }
+                if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
+                {
+                    option_gm_goal = 400;
+                    option_gm_config_a = 100;
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_RATS", "Borrowed Space"))
+            {
+                if (plysettings_speed < 1.91f || plysettings_atk < 2.0f)
+                {
+                    plysettings_speed = 1.91f;
+                    plysettings_atk = 2.0f;
+                }
+                if (option_gamemode == (int)gamemode_name.FittingIn)
+                {
+                    option_gm_goal = (ushort)Mathf.Max(option_gm_goal, 801);
+                    option_gm_config_a = (ushort)Mathf.Max(option_gm_config_a, 200);
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_CASTLE", "Stone's Throw"))
+            {
+                if (plysettings_speed < 1.61f || plysettings_atk < 1.5f)
+                {
+                    plysettings_speed = 1.61f;
+                    plysettings_atk = 1.5f;
+                }
+                if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
+                {
+                    option_gm_goal = 400;
+                    option_gm_config_a = 100;
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
+            // And reset if the game master forgot to
+            else if (plysettings_speed == 1.61f || plysettings_speed == 1.91f)
+            {
+                plysettings_speed = 1.0f;
+                plysettings_atk = 1.0f;
+                if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
+                {
+                    option_gm_goal = 400;
+                    option_gm_config_a = 100;
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
+        }
     }
 
     [NetworkCallable]
@@ -2536,49 +2634,13 @@ public class GameController : GlobalHelperFunctions
         if (Networking.IsOwner(gameObject))
         {
             if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
-            // If we're on Facing Worlds, increase default speed to compensate for map size
-            if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds"))
-            {
-                if (plysettings_speed < 1.91f || plysettings_atk < 3.0f)
-                {
-                    plysettings_speed = 1.91f;
-                    plysettings_atk = 3.0f;
-                }
-            }
-            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_UNDERWATER", "Deep Blues"))
-            {
-                if (plysettings_speed < 1.61f)
-                {
-                    plysettings_speed = 1.61f;
-                }
-            }
-            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_RATS", "Borrowed Space"))
-            {
-                if (plysettings_speed < 1.91f || plysettings_atk < 2.0f)
-                {
-                    plysettings_speed = 1.91f;
-                    plysettings_atk = 2.0f;
-                }
-            }
-            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_CASTLE", "Stone's Throw"))
-            {
-                if (plysettings_speed < 1.61f || plysettings_atk < 1.5f)
-                {
-                    plysettings_speed = 1.61f;
-                    plysettings_atk = 1.5f;
-                }
-            }
-            // And reset if the game master forgot to
-            else
-                    { 
-                plysettings_speed = 1.0f;
-                plysettings_atk = 1.0f;
-            }
 
+            SetupMapSpecificParams();
             LocalRoundStart();
         }
         else { wait_for_sync_for_round_start = true; }
     }
+
 
     [NetworkCallable]
     public void NetworkRoundQueueStart()
@@ -2603,7 +2665,7 @@ public class GameController : GlobalHelperFunctions
         if (Networking.IsOwner(gameObject))
         {
             if (map_selected >= mapscript_list.Length || map_selected < 0) { map_selected = 0; }
-            // If we're on Facing Worlds, increase default speed to compensate for map size
+            /*// If we're on Facing Worlds, increase default speed to compensate for map size
             if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_FACINGWORLDS", "Facing Worlds")
                 && (plysettings_speed < 1.91f || plysettings_atk < 2.99f))
             {
@@ -2616,7 +2678,8 @@ public class GameController : GlobalHelperFunctions
             {
                 plysettings_speed = 1.0f;
                 plysettings_atk = 1.0f;
-            }
+            }*/
+            SetupMapSpecificParams();
             RequestSerialization();
         }
         RefreshSetupUI();
@@ -3363,6 +3426,18 @@ public class GameController : GlobalHelperFunctions
         ui_spectatorcanvas.SetActive(false);
         ui_highlightcanvas.SetActive(true);
 
+        if (Networking.IsOwner(gameObject) 
+            && highlight_cameras_snapped != null && highlight_cameras_snapped.Length > 5
+            && highlight_cameras_waiting_on_sync != null && highlight_cameras_waiting_on_sync.Length > 5
+            && highlight_cameras_snapped[5] == false && highlight_cameras_waiting_on_sync[5] == false)
+        {
+            // Victory
+            VRCPlayerApi lead_ply = GetLeaderPlayer(); PlayerAttributes lead_attr = FindPlayerAttributes(lead_ply);
+            if (option_teamplay || lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, 1.0f); }
+            else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, lead_attr.ply_scale); } //lead_ply.GetRotation() * Vector3.forward
+            highlight_cameras_waiting_on_sync[5] = true;
+        }
+
         restrict_map_change = false;
         RefreshSetupUI();
     }
@@ -3646,6 +3721,7 @@ public class GameController : GlobalHelperFunctions
         highlight_cameras_waiting_on_sync[camera_id] = true; // Camera #1 is from plyAttr, which may not match owners with gameController. We put this is in as a failsafe so others don't try to overwrite it with their first KOs. It's still possible for desync to occur (i.e. Player #2 KOs & receives own network event -> Player #3 KOs & receives own network event -> Player #3 receives 2's event due to ping -> photo is now 2's on 2's screen, and 3 on 3's screen. Could be 2's or 3's for all other players.
 
         highlightCameras[camera_id].gameObject.SetActive(true);
+        if (camera_id == 5) { victory_camera_plane.SetActive(true); }
 
         if (look_at_target)
         {
