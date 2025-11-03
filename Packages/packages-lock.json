@@ -145,6 +145,17 @@
       },
       "url": "https://packages.unity.com"
     },
+    "com.unity.render-pipelines.core": {
+      "version": "14.0.10",
+      "depth": 1,
+      "source": "builtin",
+      "dependencies": {
+        "com.unity.ugui": "1.0.0",
+        "com.unity.modules.physics": "1.0.0",
+        "com.unity.modules.terrain": "1.0.0",
+        "com.unity.modules.jsonserialize": "1.0.0"
+      }
+    },
     "com.unity.settings-manager": {
       "version": "2.0.1",
       "depth": 1,
@@ -269,6 +280,14 @@
         "com.unity.textmeshpro": "3.0.6",
         "com.unity.inputsystem": "1.2.0",
         "com.unity.ai.navigation": "1.1.5"
+      }
+    },
+    "com.z3y.graphlit": {
+      "version": "file:com.z3y.graphlit",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {
+        "com.unity.render-pipelines.core": "14.0.10"
       }
     },
     "dev.onevr.vrworldtoolkit": {
