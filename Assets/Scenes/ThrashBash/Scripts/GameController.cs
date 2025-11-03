@@ -32,7 +32,7 @@ public enum announcement_sfx_name
 }
 public enum infection_music_name
 {
-    Start, ZombigSpawn, FinalSeconds, LastSurvivor, ENUM_LENGTH
+    Start, ZombigSpawn, ZombigSuper, FinalSeconds, LastSurvivor, ENUM_LENGTH
 }
 public enum round_state_name
 {
@@ -367,7 +367,7 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized][UdonSynced] public double koth_respawn_wave_start_ms;
     [NonSerialized] public double koth_respawn_wave_duration;
     [NonSerialized][UdonSynced] public byte infection_zombigs_spawned = 0;
-    [NonSerialized][UdonSynced] public bool infection_zombig_active = false;
+    [NonSerialized][UdonSynced] public byte infection_zombig_active = 0; // 0 = no, 1 = yes, 2 = super
     [NonSerialized][UdonSynced] public double infection_zombig_spawn_time = 0.0d;
     [NonSerialized][UdonSynced] public int round_extra_data = 0; // Extra tracking data for a gamemode, such as number of Survivor deaths in Infected
 
@@ -960,12 +960,20 @@ public class GameController : GlobalHelperFunctions
                     PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.FinalSeconds, 1.0f, true);
                 }
             }
-            else if (infection_zombig_active)
+            else if (infection_zombig_active == 1)
             {
                 if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.ZombigSpawn]) 
                 {
                     music_clip_ts = snd_game_music_source.time;
                     PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.ZombigSpawn, 1.0f, true); 
+                }
+            }
+            else if (infection_zombig_active == 2)
+            {
+                if (music_clip_playing != snd_infection_music_clips[(int)infection_music_name.ZombigSuper])
+                {
+                    music_clip_ts = snd_game_music_source.time;
+                    PlaySFXFromArray(snd_game_music_source, snd_infection_music_clips, (int)infection_music_name.ZombigSuper, 1.0f, true);
                 }
             }
             else
@@ -992,18 +1000,19 @@ public class GameController : GlobalHelperFunctions
             {
                 int survivor_count = survivors != null && survivors.Length > 0 && survivors[0] != null ? survivors[0].Length : 0;
                 // If we hit a certain threshold of players and timer is met and we have not yet spawned X number of zombigs, spawn one
-                if (!infection_zombig_active && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 3.0f) && infection_zombigs_spawned < 2 && survivor_count >= 4)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
+                if (infection_zombig_active == 0 && ((TimeLeft <= (round_length / 1.5f) && infection_zombigs_spawned < 1) || (TimeLeft <= (round_length / 3.0f) && infection_zombigs_spawned < 2 && survivor_count >= 4)) && infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
                 {
                     int pick_player_id = UnityEngine.Random.Range(0, infected[0].Length);
                     VRCPlayerApi pick_player = VRCPlayerApi.GetPlayerById(infected[0][pick_player_id]);
                     if (pick_player != null)
                     {
                         PlayerAttributes zombig_attr = FindPlayerAttributes(pick_player);
-                        if (zombig_attr != null && zombig_attr.infection_special != 2)
+                        if (zombig_attr != null && zombig_attr.infection_special < 2)
                         {
-                            zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig", true);
+                            bool zombig_super = survivor_count >= 10;
+                            zombig_attr.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.Owner, "BecomeZombig", true, zombig_super);
                             infection_zombig_spawn_time = Networking.GetServerTimeInSeconds();
-                            infection_zombig_active = true;
+                            infection_zombig_active = (byte)(zombig_super ? 2 : 1);
                             infection_zombigs_spawned++;
                             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NetworkAddToTextQueue", "NOTIFICATION_INFECTION_ZOMBIG_GLOBAL", pick_player.displayName, Color.red, 5.0f);
                             RequestSerialization();
@@ -1057,7 +1066,7 @@ public class GameController : GlobalHelperFunctions
         if (!Networking.IsOwner(gameObject)) { return; }
         
         int[][] infected = GetPlayersOnTeam(1);
-        bool found_zombig = false;
+        byte found_zombig = 0;
         if (infected != null && infected.Length > 0 && infected[0] != null && infected[0].Length > 0)
         {
             for (int i = 0; i < infected[0].Length; i++)
@@ -1067,16 +1076,16 @@ public class GameController : GlobalHelperFunctions
                 if (check_player != null)
                 {
                     PlayerAttributes zombig_attr = FindPlayerAttributes(check_player);
-                    if (zombig_attr != null && zombig_attr.infection_special == 2)
+                    if (zombig_attr != null && zombig_attr.infection_special >= 2)
                     {
-                        found_zombig = true;
+                        found_zombig = zombig_attr.infection_special;
                         break;
                     }
                 }
             }
         }
         infection_zombig_active = found_zombig;
-        if (!found_zombig) { infection_zombig_spawn_time = 0.0d; }
+        if (found_zombig == 0) { infection_zombig_spawn_time = 0.0d; }
         RequestSerialization();
     }
 
@@ -2535,7 +2544,7 @@ public class GameController : GlobalHelperFunctions
         largest_ply_scale = plysettings_scale;
         infection_zombig_spawn_time = 0.0d;
         infection_zombigs_spawned = 0;
-        infection_zombig_active = false;
+        infection_zombig_active = 0;
         round_extra_data = 0;
 
         RequestSerialization();

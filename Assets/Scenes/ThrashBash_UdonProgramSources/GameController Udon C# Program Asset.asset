@@ -11383,10 +11383,10 @@ MonoBehaviour:
       Data: infection_zombig_active
     - Name: <UserType>k__BackingField
       Entry: 9
-      Data: 79
+      Data: 357
     - Name: <SystemType>k__BackingField
       Entry: 9
-      Data: 79
+      Data: 357
     - Name: <SyncMode>k__BackingField
       Entry: 7
       Data: System.Nullable`1[[UdonSharp.UdonSyncMode, UdonSharp.Runtime]], mscorlib

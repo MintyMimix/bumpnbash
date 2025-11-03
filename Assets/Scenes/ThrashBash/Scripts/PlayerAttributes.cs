@@ -184,14 +184,14 @@ public class PlayerAttributes : UdonSharpBehaviour
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
             // Update KOTH timers, if applicable
-            if (((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) && cached_kothtainer != null) { cached_kothtainer.RefreshTimers(ply_respawn_duration - ply_respawn_timer + 1); }
+            if (((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special >= 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) && cached_kothtainer != null) { cached_kothtainer.RefreshTimers(ply_respawn_duration - ply_respawn_timer + 1); }
         }
         else if (ply_state == (int)player_state_name.Respawning)
         {
             ply_state = (int)player_state_name.Alive;
             // Update the UI accordingly
             if (gameController.local_uiplytoself != null) { gameController.local_uiplytoself.UI_Damage(); }
-            if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
+            if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special >= 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill)
             {
                 if (cached_kothtainer != null) { cached_kothtainer.gameObject.SetActive(false); cached_kothtainer = null; }
                 gameController.TeleportLocalPlayerToGameSpawnZone();
@@ -340,14 +340,15 @@ public class PlayerAttributes : UdonSharpBehaviour
     {
 
         // If the ZomBig has been alive for too long, start taking damage
-        if (gameController.infection_zombig_spawn_time != 0.0d && infection_special == 2) //  && ply_dp != 0 We also do ply_dp != 0 to account for ping delay for if a 2nd zombig is queued to spawn immediately after death 
+        if (gameController.infection_zombig_spawn_time != 0.0d && infection_special >= 2) //  && ply_dp != 0 We also do ply_dp != 0 to account for ping delay for if a 2nd zombig is queued to spawn immediately after death 
         {
             double time_elapsed = Networking.CalculateServerDeltaTime(Networking.GetServerTimeInSeconds(), gameController.infection_zombig_spawn_time);
-            UnityEngine.Debug.Log("[ASSERT_ZOMBIG_STATUS]: time_elapsed: " + time_elapsed + "combo_send: " + combo_send + "combo_send_timer: " + combo_send_timer + "combo_send_duration: " + combo_send_duration + "killbo: " + killbo + "killbo_timer: " + killbo_timer + "killbo_duration: " + killbo_duration);
+            //UnityEngine.Debug.Log("[ASSERT_ZOMBIG_STATUS]: time_elapsed: " + time_elapsed + "combo_send: " + combo_send + "combo_send_timer: " + combo_send_timer + "combo_send_duration: " + combo_send_duration + "killbo: " + killbo + "killbo_timer: " + killbo_timer + "killbo_duration: " + killbo_duration);
             if (time_elapsed > 25 && combo_send <= 0 && combo_send_timer >= combo_send_duration && killbo <= 0)
             {
                 if (ply_def >= 0.25f) { ply_def *= 0.9f; }
-                ReceiveDamage(3, Networking.LocalPlayer.GetRotation() * Vector3.forward, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, -1, (int)damage_type_name.ZombigIdle, false, 0);
+                // 4 damage if tank, 6 damage if supertank
+                ReceiveDamage(infection_special * 2.0f, Networking.LocalPlayer.GetRotation() * Vector3.forward, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, -1, (int)damage_type_name.ZombigIdle, false, 0);
             }
         }
     }
@@ -679,7 +680,7 @@ public class PlayerAttributes : UdonSharpBehaviour
                 && total_lives <= 1) { gameController.TeleportLocalPlayerToReadyRoom(); ply_state = (int)player_state_name.Dead; }
             else 
             { 
-                if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special == 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) { gameController.TeleportLocalPlayerToKOTHtainer(); }
+                if ((gameController.option_gamemode == (int)gamemode_name.Infection && infection_special >= 2) || gameController.option_gamemode == (int)gamemode_name.KingOfTheHill) { gameController.TeleportLocalPlayerToKOTHtainer(); }
                 else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
             }
         }
@@ -1107,7 +1108,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     }
 
     [NetworkCallable]
-    public void BecomeZombig(bool isFirst)
+    public void BecomeZombig(bool isFirst, bool isSuper)
     {
         ResetToDefaultStats();
         if (isFirst) 
@@ -1119,10 +1120,10 @@ public class PlayerAttributes : UdonSharpBehaviour
             gameController.TeleportLocalPlayerToKOTHtainer();
         }
         else { gameController.TeleportLocalPlayerToGameSpawnZone(); }
-        infection_special = 2;
+        infection_special = (byte)(isSuper ? 3 : 2);
         ply_dp = ply_dp_default;
-        ply_scale *= 2.0f;
-        ply_speed *= 1.33f;
+        ply_scale *= isSuper ? 3.0f : 2.0f;
+        ply_speed *= isSuper ? 1.66f : 1.33f;
         combo_send_duration = killbo_duration;
 
         gameController.local_plyweapon.weapon_temp_ammo = -1;
@@ -1148,12 +1149,12 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void InfectionStatReset(bool ply_was_invul)
     {
         combo_send_duration = 2.0f;
-        if (infection_special == 2)
+        if (infection_special >= 2)
         {
             // ZomBig
             if (ply_was_invul)
             {
-                BecomeZombig(false);
+                BecomeZombig(false, infection_special == 3);
             }
             else
             {

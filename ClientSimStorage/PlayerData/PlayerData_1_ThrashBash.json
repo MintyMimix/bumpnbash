@@ -104,7 +104,7 @@
     }
   },
   "MusicOverride": {
-    "LastUpdated": "2025-10-30T10:17:10.6453776-04:00",
+    "LastUpdated": "2025-11-02T19:28:30.8262261-05:00",
     "Key": "MusicOverride",
     "Value": {
       "type": "Float",
@@ -192,11 +192,11 @@
     }
   },
   "LangType": {
-    "LastUpdated": "2025-11-02T10:54:58.2268659-05:00",
+    "LastUpdated": "2025-11-02T19:30:08.5927271-05:00",
     "Key": "LangType",
     "Value": {
       "type": "Int",
-      "value": 0
+      "value": 2
     }
   },
   "MotionSicknessCage": {
