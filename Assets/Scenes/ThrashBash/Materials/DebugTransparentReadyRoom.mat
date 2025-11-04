@@ -16,11 +16,12 @@ Material:
   - _ALPHATEST_ON
   m_InvalidKeywords: []
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 2450
   stringTagMap:
     RenderType: TransparentCutout
+    folder_Emission: 1
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -166,7 +167,7 @@ Material:
     - _EmissionEnabled: 0
     - _EmissionGIMultiplier: 1
     - _EmissionHueShift: 0
-    - _EmissionMultiplyBase: 0
+    - _EmissionMultiplyBase: 1
     - _EmissionStrength: 1
     - _EmissionUV: 0
     - _EnableExternalAlpha: 0

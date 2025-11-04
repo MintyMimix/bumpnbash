@@ -15,18 +15,21 @@ Material:
   m_ValidKeywords:
   - _EMISSION
   - _NORMALMAP
-  - _PARALLAXMAP
-  - _SURFACE_TYPE_TRANSPARENT
+  - _THINFILM
   m_InvalidKeywords: []
   m_LightmapFlags: 2
-  m_EnableInstancingVariants: 0
+  m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3000
+  m_CustomRenderQueue: 2000
   stringTagMap:
-    RenderType: Transparent
+    RenderType: Opaque
+    folder_Anisotropy: 0
+    folder_Coat: 0
     folder_Detail: 0
     folder_Emission: 1
     folder_Rendering Options: 1
+    folder_Thin Film: 0
+    folder_Wind: 0
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -85,7 +88,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
-        m_Texture: {fileID: 2800000, guid: edc076b17571ee34bb2acf8c3998a7f3, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _TangentMap:
@@ -124,7 +127,7 @@ Material:
     - _DetailAlbedoBlendMode: 0
     - _DetailMaskInfo: 0
     - _DetailNormalMapScale: 1
-    - _DstBlend: 1
+    - _DstBlend: 0
     - _EmissionGIMultiplier: 1
     - _EmissionMultiplyBase: 0
     - _EnableGeometricSpecularAA: 1
@@ -154,8 +157,8 @@ Material:
     - _SpecularHighlights: 1
     - _SpecularOcclusion: 1
     - _SpecularOcclusionExp: 1
-    - _SrcBlend: 3
-    - _Surface: 1
+    - _SrcBlend: 1
+    - _Surface: 0
     - _ThinFilmIOR: 1.4
     - _ThinFilmThickness: 0.5
     - _ThinFilmWeight: 1
@@ -165,7 +168,7 @@ Material:
     - _Toggle_EMISSION: 1
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
-    - _Toggle_THINFILM: 0
+    - _Toggle_THINFILM: 1
     - _Toggle_WIND: 0
     - _TransClipping: 0
     - _UVSec: 0
@@ -173,7 +176,7 @@ Material:
     - _WindScale: 0.02
     - _WindSpeed: 0.05
     - _ZTest: 4
-    - _ZWrite: 0
+    - _ZWrite: 1
     - __reset: 0
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15

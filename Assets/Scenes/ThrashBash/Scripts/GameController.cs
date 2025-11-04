@@ -254,8 +254,8 @@ public class GameController : GlobalHelperFunctions
     [Tooltip("Should the throwable item only spawn debuffs?")]
     [UdonSynced] public bool plysettings_item_debuff = true;
 
-    [Tooltip("Starting Scale damage factor, which determines how much player size affects abilities, as a multiplier (default: 1.0x)")]
-    [UdonSynced] public float scale_damage_factor = 2.0f;
+    //[Tooltip("Starting Scale damage factor, which determines how much player size affects abilities, as a multiplier (default: 1.0x)")]
+    //[UdonSynced] public float scale_damage_factor = 2.0f;
 
     [Tooltip("(Boss Bash) How big should The Big Boss be?")]
     [UdonSynced] public float plysettings_boss_scale_mod = 3.5f;

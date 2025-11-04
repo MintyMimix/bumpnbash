@@ -7,20 +7,21 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: map_element_ramp
-  m_Shader: {fileID: 4334904775004639687, guid: 2918c08764a2abb41887082aebb996a1,
+  m_Name: MatReadyRoomUnlit
+  m_Shader: {fileID: 4334904775004639687, guid: 0066d2c6a2a3a074ca765f76afd7f2e4,
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _SURFACE_TYPE_TRANSPARENT
+  - _ALPHATEST_ON
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 1
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3000
+  m_CustomRenderQueue: 2450
   stringTagMap:
-    RenderType: Transparent
+    RenderType: TransparentCutout
+    folder_Rendering Options: 1
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -63,7 +64,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 69ddebd9d0665f54ab6832d3519c5a93, type: 3}
+        m_Texture: {fileID: 2800000, guid: f652f89d97651bb489246d143a607563, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MaskMap:
@@ -82,6 +83,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _SpecGlossMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _TangentMap:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -97,11 +102,12 @@ Material:
     m_Ints: []
     m_Floats:
     - _AlbedoSaturation: 1
-    - _AlphaClip: 0
-    - _AlphaToMask: 0
+    - _AlphaClip: 1
+    - _AlphaToMask: 1
     - _Anisotropy: 0
     - _AudioLinkEmissionBand: 0
     - _AudioLinkEmissionIntensity: 0.5
+    - _Bicubic: 0
     - _BicubicLightmap: 0
     - _Blend: 0
     - _BlendModePreserveSpecular: 1
@@ -117,18 +123,20 @@ Material:
     - _DetailAlbedoBlendMode: 0
     - _DetailMaskInfo: 0
     - _DetailNormalMapScale: 1
-    - _DstBlend: 10
+    - _DstBlend: 0
     - _EmissionGIMultiplier: 1
     - _EmissionMultiplyBase: 0
+    - _EnableGeometricSpecularAA: 1
     - _GlossMapScale: 1
-    - _Glossiness: 0
+    - _Glossiness: 1
     - _GlossyReflections: 1
     - _GraphlitMaterial: 1
+    - _LightmapType: 0
     - _LightmappedSpecular: 0
-    - _Metallic: 0
+    - _Metallic: 0.92
     - _MetallicScale: 1
     - _Mirror: 0
-    - _Mode: 3
+    - _Mode: 0
     - _MonoSH: 0
     - _NonLinearLightProbeSH: 0
     - _OcclusionStrength: 1
@@ -140,11 +148,13 @@ Material:
     - _Roughness: 0.5
     - _RoughnessScale: 1
     - _SmoothnessTextureChannel: 0
+    - _SpecularAAScreenSpaceVariance: 0.1
+    - _SpecularAAThreshold: 0.2
     - _SpecularHighlights: 1
     - _SpecularOcclusion: 1
     - _SpecularOcclusionExp: 1
     - _SrcBlend: 1
-    - _Surface: 1
+    - _Surface: 0
     - _ThinFilmIOR: 1.4
     - _ThinFilmThickness: 0.5
     - _ThinFilmWeight: 1
@@ -162,7 +172,7 @@ Material:
     - _WindScale: 0.02
     - _WindSpeed: 0.05
     - _ZTest: 4
-    - _ZWrite: 0
+    - _ZWrite: 1
     - __reset: 0
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15
@@ -172,6 +182,7 @@ Material:
     - _DetailUVScoll: {r: 0, g: 0, b: 0, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _MainUVScoll: {r: 0, g: 0, b: 0, a: 0}
+    - _SpecColor: {r: 1, g: 0.8839216, b: 0.41960788, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _WindIntensity: {r: 0.1, g: 0.1, b: 0.1, a: 0}
   m_BuildTextureStacks: []

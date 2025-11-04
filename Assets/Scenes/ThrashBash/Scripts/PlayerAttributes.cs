@@ -432,7 +432,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
         if (ply_def == 0) { ply_def = 0.01f; }
-        calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
+        calcDmg *= 1.0f / (ply_def + (ply_scale - 1.0f));
 
         float baseLift = 0.5f; // 0.66f
         if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }

@@ -728,7 +728,8 @@ public class PlayerWeapon : UdonSharpBehaviour
         if (use_melee)
         {
             float damage = GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
-            damage *= owner_attributes.ply_atk * (owner_attributes.ply_scale * gameController.scale_damage_factor);
+            //damage *= owner_attributes.ply_atk + ((owner_attributes.ply_scale - 1.0f) * gameController.scale_damage_factor);
+            damage *= owner_attributes.ply_atk + (owner_attributes.ply_scale - 1.0f);
             SendCustomNetworkEvent(
                 VRC.Udon.Common.Interfaces.NetworkEventTarget.All
                 , "NetworkCreateHurtBox"
