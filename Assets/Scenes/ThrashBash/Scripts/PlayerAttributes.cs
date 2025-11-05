@@ -422,7 +422,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 hitSpot, int attacker_id, int damage_type, bool hit_self, byte extra_data)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
-        if (ply_state != (int)player_state_name.Alive) { return; }
+        if (ply_state != (int)player_state_name.Alive || (gameController.round_state != (int)round_state_name.Ongoing && !ply_training)) { return; }
         // We want to ensure hazards aren't processed
         if (damage_type == (int)damage_type_name.HazardBurn && (hazard_timer < hazard_cooldown)) { return; } 
         else { hazard_timer = 0.0f; }

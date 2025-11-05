@@ -870,7 +870,7 @@ public class GameController : GlobalHelperFunctions
                     // First 30 seconds
                     VRCPlayerApi lead_ply = GetLeaderPlayer(); PlayerAttributes lead_attr = FindPlayerAttributes(lead_ply);
                     if (lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 2, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f); }
-                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 2, Vector3.zero, Quaternion.identity, lead_ply.GetPosition(), lead_ply.GetRotation() * Vector3.forward, true, lead_attr.ply_scale); }
+                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 2, Vector3.zero, Quaternion.identity, lead_ply.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, lead_ply.GetRotation() * (Vector3.forward - Vector3.right), true, lead_attr.ply_scale); }
                     highlight_cameras_waiting_on_sync[2] = true;
                 }
                 else if (TimeLeft <= Mathf.RoundToInt(round_length / 2.0f) 
@@ -881,7 +881,7 @@ public class GameController : GlobalHelperFunctions
                     // Halftime
                     VRCPlayerApi lead_ply = GetLeaderPlayer(); PlayerAttributes lead_attr = FindPlayerAttributes(lead_ply);
                     if (lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 3, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f); }
-                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 3, Vector3.zero, Quaternion.identity, lead_ply.GetPosition(), lead_ply.GetRotation() * Vector3.forward, true, lead_attr.ply_scale); }
+                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 3, Vector3.zero, Quaternion.identity, lead_ply.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, lead_ply.GetRotation() * (Vector3.forward - Vector3.right), true, lead_attr.ply_scale); }
                     highlight_cameras_waiting_on_sync[3] = true;
                 }
                 else if (TimeLeft <= 30
@@ -892,7 +892,7 @@ public class GameController : GlobalHelperFunctions
                     // Last 30 seconds
                     VRCPlayerApi lead_ply = GetLeaderPlayer(); PlayerAttributes lead_attr = FindPlayerAttributes(lead_ply);
                     if (lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 4, mapscript_list[map_selected].map_campoints[0].position, mapscript_list[map_selected].map_campoints[0].rotation, Vector3.zero, Vector3.forward, false, 1.0f); }
-                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 4, Vector3.zero, Quaternion.identity, lead_ply.GetPosition(), lead_ply.GetRotation() * Vector3.forward, true, lead_attr.ply_scale); }
+                    else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 4, Vector3.zero, Quaternion.identity, lead_ply.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, lead_ply.GetRotation() * (Vector3.forward - Vector3.right), true, lead_attr.ply_scale); }
                     highlight_cameras_waiting_on_sync[4] = true;
                 }
             }
@@ -1578,7 +1578,7 @@ public class GameController : GlobalHelperFunctions
         else if (option_gamemode == (int)gamemode_name.Clash)
         {
             goal_input_a = 3 + Mathf.FloorToInt((float)ply_count / (float)3.0f);
-            if (option_teamplay) { goal_input_a *= Mathf.Max(1, Mathf.RoundToInt(ply_count / team_count)); }
+            if (option_teamplay) { goal_input_a *= Mathf.Max(1, Mathf.RoundToInt(ply_count / (team_count * 3.0f))); }
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "5";
@@ -1586,7 +1586,7 @@ public class GameController : GlobalHelperFunctions
         }
         else if (option_gamemode == (int)gamemode_name.BossBash)
         {
-            goal_input_a = Mathf.FloorToInt((float)Mathf.Pow((float)ply_count, 1.5f));
+            goal_input_a = Mathf.FloorToInt((float)Mathf.Pow((float)ply_count, 1.33f));
             goal_input_b = 2 + Mathf.FloorToInt((float)ply_count / (float)10.0f);
             ui_round_length_input.text = "300";
             ui_round_length_toggle.isOn = true;
@@ -1596,7 +1596,7 @@ public class GameController : GlobalHelperFunctions
         else if (option_gamemode == (int)gamemode_name.Infection)
         {
             goal_input_a = 1 + Mathf.FloorToInt((float)ply_count / (float)8.0f);
-            ui_round_length_input.text = "180";
+            ui_round_length_input.text = "150";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "5";
             if (ui_ply_option_atk.text == "250") { ui_ply_option_atk.text = "100"; } // Reset from KOTH
@@ -1606,10 +1606,10 @@ public class GameController : GlobalHelperFunctions
         {
             if (option_teamplay) { goal_input_a = Mathf.RoundToInt(90.0f / Mathf.Max(1, team_count)); }
             else { goal_input_a = Mathf.RoundToInt(Mathf.Lerp(60, 20, Mathf.Min(1.0f, ply_count / 8))); }
-            goal_input_b = 2;
+            goal_input_b = Mathf.FloorToInt(15 / (float)Mathf.Max(1, ply_count));
             ui_round_length_input.text = "300";
             ui_round_length_toggle.isOn = true;
-            ui_adv_option_respawn_duration.text = "14"; // Respawn duration will be higher on KOTH by default
+            ui_adv_option_respawn_duration.text = "17"; // Respawn duration will be higher on KOTH by default
             if (ui_ply_option_atk.text == "100") { ui_ply_option_atk.text = "250"; } 
         }
 
@@ -1653,9 +1653,9 @@ public class GameController : GlobalHelperFunctions
         ui_ply_option_powerup_toggle.isOn = true;
 
         ui_adv_option_respawn_duration.text = "3";
-        ui_adv_option_boss_scale_mod.text = "350";
-        ui_adv_option_boss_atk_mod.text = "0";
-        ui_adv_option_boss_def_mod.text = "50";
+        ui_adv_option_boss_scale_mod.text = "400";
+        ui_adv_option_boss_atk_mod.text = "50";
+        ui_adv_option_boss_def_mod.text = "150";
         ui_adv_option_boss_speed_mod.text = "50";
         ui_adv_option_item_frequency.text = "100";
         ui_adv_option_item_duration.text = "100";
@@ -3442,8 +3442,9 @@ public class GameController : GlobalHelperFunctions
         {
             // Victory
             VRCPlayerApi lead_ply = GetLeaderPlayer(); PlayerAttributes lead_attr = FindPlayerAttributes(lead_ply);
-            if (option_teamplay || lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, 1.0f); }
-            else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, lead_attr.ply_scale); } //lead_ply.GetRotation() * Vector3.forward
+            //if (option_teamplay || lead_ply == null || lead_attr == null) { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, 1.0f); }
+            //else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, 1.0f); } //lead_ply.GetRotation() * Vector3.forward
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 5, Vector3.zero, Quaternion.identity, victory_camera_plane.transform.position, -Vector3.right, true, 1.0f);
             highlight_cameras_waiting_on_sync[5] = true;
         }
 
@@ -3734,7 +3735,9 @@ public class GameController : GlobalHelperFunctions
 
         if (look_at_target)
         {
-            Vector3 new_pos = target_pos + (target_vec_rot * 5.0f * scaleDist) + (Vector3.up * 2.5f * scaleDist);
+            //Vector3 new_pos = target_pos + (target_vec_rot * 5.0f * scaleDist) + (Vector3.up * 2.5f * scaleDist);
+            Vector3 new_pos = target_pos + (target_vec_rot * 1.0f * scaleDist);
+            new_pos += camera_id == 5 ? Vector3.zero : (target_vec_rot * 1.5f * scaleDist);
             highlightCameras[camera_id].transform.position = new_pos;
             highlightCameras[camera_id].transform.rotation = RotateTowards(target_pos, new_pos);
         }

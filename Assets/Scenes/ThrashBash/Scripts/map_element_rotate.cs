@@ -13,9 +13,9 @@ public class map_element_rotate : UdonSharpBehaviour
     {
         Quaternion rotAdd = Quaternion.Euler(0, 0, 0);
         if (rotation_axis > 2) { rotation_axis = 0; }
-        if (rotation_axis == 0) { rotAdd = Quaternion.Euler(rotation_speed, 0, 0); }
-        else if (rotation_axis == 1) { rotAdd = Quaternion.Euler(0, rotation_speed, 0); }
-        else if (rotation_axis == 2) { rotAdd = Quaternion.Euler(0, 0, rotation_speed); }
+        if (rotation_axis == 0) { rotAdd = Quaternion.Euler(rotation_speed * 100.0f * Time.deltaTime, 0, 0); }
+        else if (rotation_axis == 1) { rotAdd = Quaternion.Euler(0, rotation_speed * 100.0f * Time.deltaTime, 0); }
+        else if (rotation_axis == 2) { rotAdd = Quaternion.Euler(0, 0, rotation_speed * 100.0f * Time.deltaTime); }
         transform.rotation = transform.rotation * rotAdd;
     }
 }
