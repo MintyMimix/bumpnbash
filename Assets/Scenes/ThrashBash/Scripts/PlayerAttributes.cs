@@ -571,7 +571,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             && gameController.highlight_cameras_waiting_on_sync != null && gameController.highlight_cameras_waiting_on_sync.Length > 1
             && gameController.highlight_cameras_snapped[1] == false && gameController.highlight_cameras_waiting_on_sync[1] == false)
         {
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.forward, true, ply_scale);
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, Networking.LocalPlayer.GetRotation() * (Vector3.forward - Vector3.right), true, ply_scale);
             gameController.highlight_cameras_waiting_on_sync[1] = true;
         }
 

@@ -354,6 +354,7 @@ public class GameController : GlobalHelperFunctions
     [NonSerialized][UdonSynced] public bool option_start_from_master_only = true;
 
     [NonSerialized][UdonSynced] public int ply_master_id = 0;
+    [NonSerialized] public bool master_in_transit = false;
 
     [NonSerialized] private string room_ready_status_text = "";
 
@@ -796,6 +797,7 @@ public class GameController : GlobalHelperFunctions
     private void LocalPerSecondUpdate()
     {
         // Events that occur once per second based on local time (will always fire perfectly, but may not be synced with the server's game state)
+        megaphone.SetVisible();
 
         // Round state
         float TimeLeft = (round_length - round_timer);
@@ -1302,7 +1304,7 @@ public class GameController : GlobalHelperFunctions
         if ((!option_start_from_master_only || (option_start_from_master_only && Networking.IsOwner(gameObject))) && round_state == (int)round_state_name.Ongoing) { enableResetButton = true; }
         ui_round_reset_button.interactable = enableResetButton;
 
-        if (Networking.IsOwner(gameObject) && round_state == (int)round_state_name.Start)
+        if (Networking.IsOwner(gameObject) && round_state == (int)round_state_name.Start && !master_in_transit)
         {
             ui_round_master_only_toggle.interactable = true;
             ui_round_teamplay_toggle.interactable = true && !option_force_teamplay;
@@ -1469,7 +1471,8 @@ public class GameController : GlobalHelperFunctions
     public void ChangeHost(int new_owner_id)
     {
         // Note: This function needs to be updated we add any scripts that would ordinarily use Networking.IsMaster
-        if (!Networking.IsOwner(gameObject)) { return; }
+        master_in_transit = true;
+        //if (!Networking.IsOwner(gameObject)) { return; }
         RequestSerialization();
         VRCPlayerApi new_owner = VRCPlayerApi.GetPlayerById(new_owner_id);
         Networking.SetOwner(new_owner, ui_round_mapselect.gameObject);
@@ -1505,7 +1508,6 @@ public class GameController : GlobalHelperFunctions
     public override void OnOwnershipTransferred(VRCPlayerApi newOwner)
     {
         ply_master_id = Networking.GetOwner(gameObject).playerId;
-
         // If we are the new owner setup accordingly
         if (newOwner == Networking.LocalPlayer)
         {
@@ -1553,6 +1555,8 @@ public class GameController : GlobalHelperFunctions
             bool is_dev = Networking.LocalPlayer.displayName.ToLower() == "mintymimix" && newOwner == Networking.LocalPlayer;
             local_ppp_options.debuggerPanel.gameObject.SetActive(is_dev);
         }
+
+        master_in_transit = false;
     }
 
     public void ChangeGamemode()
@@ -1993,6 +1997,8 @@ public class GameController : GlobalHelperFunctions
             ply_tracking_dict_keys_str = ConvertIntArrayToString(ply_tracking_dict_keys_arr);
             ply_tracking_dict_values_str = ConvertIntArrayToString(ply_tracking_dict_values_arr);
             ply_master_id = Networking.LocalPlayer.playerId;
+            UnityEngine.Debug.Log("Host disconnected; changing host to self: " + Networking.LocalPlayer.playerId);
+            ChangeHost(Networking.LocalPlayer.playerId);
             //(int)GLOBAL_CONST.TICK_RATE_MS = Mathf.Clamp(ply_tracking_dict_keys_arr.Length * 10.0f, (int)GLOBAL_CONST.TICK_RATE_MS, 1000.0f);
             RequestSerialization();
             RefreshSetupUI();
@@ -3737,7 +3743,14 @@ public class GameController : GlobalHelperFunctions
         {
             //Vector3 new_pos = target_pos + (target_vec_rot * 5.0f * scaleDist) + (Vector3.up * 2.5f * scaleDist);
             Vector3 new_pos = target_pos + (target_vec_rot * 1.0f * scaleDist);
-            new_pos += camera_id == 5 ? Vector3.zero : (target_vec_rot * 1.5f * scaleDist);
+            if (camera_id != 5)
+            {
+                new_pos += target_vec_rot * 1.5f * scaleDist;
+            }
+            /*else if (flag_for_mobile_vr) 
+            {
+                new_pos -= target_vec_rot * 1.5f * scaleDist;
+            }*/
             highlightCameras[camera_id].transform.position = new_pos;
             highlightCameras[camera_id].transform.rotation = RotateTowards(target_pos, new_pos);
         }

@@ -1239,7 +1239,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 //weapon_stats[(int)weapon_stats_name.Cooldown] *= 0.5f;
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Size] *= 2.5f; //2.0f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 1.0f;
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] *= 1.5f;
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Kapow;
             }
             else if (weapon_in_type == (int)weapon_type_name.HyperGlove)
@@ -1266,7 +1266,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = projectile_speed * weapon_stats[(int)weapon_stats_name.Projectile_Duration];
             weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bullet;
             weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.1f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 20.0f; // 30.0 //24 -> 20.0f
             weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.0f; // 2.85
             weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
@@ -1274,7 +1274,7 @@ public class PlayerWeapon : UdonSharpBehaviour
         else if (weapon_in_type == (int)weapon_type_name.Bomb || weapon_in_type == (int)weapon_type_name.ThrowableItem)
         {
             weapon_stats[(int)weapon_stats_name.IsMelee] = 0;
-            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.5f;
+            weapon_stats[(int)weapon_stats_name.Cooldown] = 1.0f;
             weapon_stats[(int)weapon_stats_name.ChargeTime] = 0.0f;
             // To emulate a "projectile speed", we can determine the distance based on projectile time
             weapon_stats[(int)weapon_stats_name.Projectile_Duration] = 3.0f;
@@ -1283,7 +1283,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             {
                 weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Bomb;
                 weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.5f;
-                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 48.0f; // 50.0f
+                weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 40.0f; // 50.0f //48 -> 40.0f
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 3.6f; // 3.4
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.0f;
                 weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.ForceExplosion;
@@ -1308,7 +1308,7 @@ public class PlayerWeapon : UdonSharpBehaviour
             weapon_stats[(int)weapon_stats_name.Projectile_Distance] = 200.0f;
             weapon_stats[(int)weapon_stats_name.Projectile_Type] = (int)projectile_type_name.Laser;
             weapon_stats[(int)weapon_stats_name.Projectile_Size] = 0.05f;
-            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 24.0f; // 30.0f
+            weapon_stats[(int)weapon_stats_name.Hurtbox_Damage] = 25.0f; // 30.0f
             weapon_stats[(int)weapon_stats_name.Hurtbox_Size] = 1.0f;
             weapon_stats[(int)weapon_stats_name.Hurtbox_Duration] = 1.5f; // 2.0
             weapon_stats[(int)weapon_stats_name.Hurtbox_Damage_Type] = (int)damage_type_name.Laser;
