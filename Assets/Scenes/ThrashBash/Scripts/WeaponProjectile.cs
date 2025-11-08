@@ -249,7 +249,8 @@ public class WeaponProjectile : UdonSharpBehaviour
             PlayerAttributes plyAttr = gameController.FindPlayerAttributes(Networking.LocalPlayer);
             if (weapon_script == null) { weapon_script = gameController.local_plyweapon; }
             float damage = weapon_script.GetStatsFromWeaponType(weapon_type)[(int)weapon_stats_name.Hurtbox_Damage];
-            damage *= plyAttr.ply_atk * (owner_scale * gameController.scale_damage_factor);
+            //damage *= plyAttr.ply_atk * (owner_scale * gameController.scale_damage_factor);
+            damage *= plyAttr.ply_atk + (owner_scale - 1.0f);
             float dist_scale = 1.0f;
             // For a Laser type projectile, we want to instead position the hurtbox at the midway point between start and current, and scale it according to that distance
             if (projectile_type == (int)projectile_type_name.Laser) 

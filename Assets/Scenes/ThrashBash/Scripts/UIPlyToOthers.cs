@@ -186,8 +186,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     public void UI_Attack() 
     {
         if (!render_active_near) { return; }
-
-        var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
+        // var AttackVal = Mathf.RoundToInt(playerAttributes.ply_atk * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
+        var AttackVal = Mathf.RoundToInt((playerAttributes.ply_atk + (playerAttributes.ply_scale - 1.0f)) * 100.0f) / 100.0f;
         var AttackText = AttackVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { AttackText = ""; }
         if (AttackVal > gameController.plysettings_atk) { PTOAttack.color = new Color32(60, 255, 60, 255); }
@@ -199,8 +199,8 @@ public class UIPlyToOthers : UdonSharpBehaviour
     public void UI_Defense()
     {
         if (!render_active_near) { return; }
-
-        var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
+        // var DefenseVal = Mathf.RoundToInt(playerAttributes.ply_def * (playerAttributes.ply_scale * gameController.scale_damage_factor) * 100.0f) / 100.0f;
+        var DefenseVal = Mathf.RoundToInt((playerAttributes.ply_def + (playerAttributes.ply_scale - 1.0f)) * 100.0f) / 100.0f;
         var DefenseText = DefenseVal + "x";
         if (gameController.round_state == (int)round_state_name.Start) { DefenseText = ""; }
         if (DefenseVal > gameController.plysettings_def) { PTODefense.color = new Color32(60, 255, 60, 255); }
