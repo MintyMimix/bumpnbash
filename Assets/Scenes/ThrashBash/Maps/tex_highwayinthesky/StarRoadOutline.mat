@@ -8,11 +8,13 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: StarRoadOutline
-  m_Shader: {fileID: 4334904775004639687, guid: 0066d2c6a2a3a074ca765f76afd7f2e4,
+  m_Shader: {fileID: 4334904775004639687, guid: 2918c08764a2abb41887082aebb996a1,
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _AUDIOLINK_EMISSION
+  - _EMISSION
   - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 1

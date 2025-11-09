@@ -23,6 +23,7 @@ Material:
   stringTagMap:
     RenderType: Transparent
     folder_Rendering Options: 1
+    folder_Surface Inputs: 0
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:

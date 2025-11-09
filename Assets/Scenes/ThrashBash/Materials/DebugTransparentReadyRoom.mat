@@ -13,11 +13,9 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _ALPHATEST_ON
-  - _EMISSION
   - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
-  m_LightmapFlags: 4
+  m_LightmapFlags: 0
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 3000
@@ -25,7 +23,8 @@ Material:
     RenderType: Transparent
     folder_Emission: 1
     folder_Rendering Options: 1
-  disabledShaderPasses: []
+  disabledShaderPasses:
+  - GRABPASS
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
@@ -130,8 +129,8 @@ Material:
     m_Floats:
     - PixelSnap: 0
     - _AlbedoSaturation: 1
-    - _AlphaClip: 1
-    - _AlphaToMask: 1
+    - _AlphaClip: 0
+    - _AlphaToMask: 0
     - _Anisotropy: 0
     - _AudioLinkEmissionBand: 0
     - _AudioLinkEmissionIntensity: 0.5
@@ -170,7 +169,7 @@ Material:
     - _EmissionEnabled: 0
     - _EmissionGIMultiplier: 1
     - _EmissionHueShift: 0
-    - _EmissionMultiplyBase: 0
+    - _EmissionMultiplyBase: 1
     - _EmissionStrength: 1
     - _EmissionUV: 0
     - _EnableExternalAlpha: 0
@@ -239,7 +238,7 @@ Material:
     - _Toggle_ANISOTROPY: 0
     - _Toggle_AUDIOLINK_EMISSION: 0
     - _Toggle_COAT: 0
-    - _Toggle_EMISSION: 1
+    - _Toggle_EMISSION: 0
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0
