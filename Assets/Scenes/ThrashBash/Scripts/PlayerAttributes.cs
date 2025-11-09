@@ -277,7 +277,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             Networking.LocalPlayer.SetStrafeSpeed(2.0f * ply_speed * koth_mod);
             if (in_grav_well) { Networking.LocalPlayer.SetGravityStrength(0.0f); }
             else { Networking.LocalPlayer.SetGravityStrength(Mathf.Max(0.125f, 1.0f * ply_grav * (1.0f / koth_mod))); }
-            float jump_height = 4.0f + (1.0f - ply_grav);
+            float jump_height = 4.0f + (4.0f - (4.0f * Mathf.Max(1.0f, ply_grav)));
             jump_height = ((2.0f * jump_height) + (jump_height * Mathf.Max(1.0f, ply_scale))) / 3.0f; // Jump height scales with player at half rate (i.e. 2x = 1.5x jump height, 3x = 2x jump height, etc.)
             Networking.LocalPlayer.SetJumpImpulse(jump_height); // Default is 3.0f, but we want some verticality to our maps, so we'll make it 4.0
         }

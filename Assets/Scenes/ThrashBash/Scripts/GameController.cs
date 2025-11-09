@@ -2571,6 +2571,21 @@ public class GameController : GlobalHelperFunctions
                     ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
                 }
             }
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_HIGHWAYINTHESKY", "Deep Blues"))
+            {
+                if (plysettings_speed < 3.01f || plysettings_grav > 0.49f)
+                {
+                    plysettings_speed = 3.01f;
+                    plysettings_grav = 0.49f;
+                }
+                if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
+                {
+                    option_gm_goal = 400;
+                    option_gm_config_a = 100;
+                    ui_round_option_goal_input_a.text = option_gm_goal.ToString();
+                    ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
+                }
+            }
             else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_UNDERWATER", "Deep Blues"))
             {
                 if (plysettings_speed < 1.61f)
@@ -4023,8 +4038,16 @@ public class GameController : GlobalHelperFunctions
         for (int i = 0; i < mapscript_list[map_selected].map_spawnzones.Length; i++)
         {
             map_element_spawn spawnzone = mapscript_list[map_selected].map_spawnzones[i];
+            int my_team = GetGlobalTeam(player.playerId);
+            bool exclude_for_team = option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id >= 0;
+            exclude_for_team = exclude_for_team // This must be teamplay (or forced used team) with a non-negative team ID, and:
+                && (
+                (team_count == 2 && my_team == 0 && spawnzone.team_id != 0 && spawnzone.team_id != 2) // If there are only 2 teams, blue can use yellow's spawns as well
+                || (team_count == 2 && my_team == 1 && spawnzone.team_id != 1 && spawnzone.team_id != 3) // If there are only 2 teams, red can use green's spawns as well
+                || (team_count > 2 && my_team != spawnzone.team_id) // Otherwise, if there are 3+ teams, the team ID must match exactly
+                );
             if (spawnzone == null
-                || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id != GetGlobalTeam(player.playerId) && spawnzone.team_id >= 0)
+                || exclude_for_team
                 || (option_teamplay && (force_use_team || !option_enforce_team_limits) && spawnzone.team_id == -2) // FFA-only
                 || (GetPlayersInGame()[0].Length < spawnzone.min_players && spawnzone.min_players > 0)
                 || (spawnzone.enabled == false || spawnzone.gameObject.activeInHierarchy == false)
