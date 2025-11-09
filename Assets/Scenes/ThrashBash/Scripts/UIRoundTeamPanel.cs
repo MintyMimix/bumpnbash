@@ -322,7 +322,8 @@ public class UIRoundTeamPanel : UdonSharpBehaviour
         VRCPlayerApi player = VRCPlayerApi.GetPlayerById(new_host_proposed_id);
         if (player == null) { HostChangeCancel(); }
 
-        gameController.ChangeHost(new_host_proposed_id);
+        gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ChangeHost", new_host_proposed_id);
+        //gameController.ChangeHost(new_host_proposed_id);
         UIHostChangePanel.SetActive(false);
     }
 

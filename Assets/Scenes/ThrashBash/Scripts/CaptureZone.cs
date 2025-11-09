@@ -95,6 +95,7 @@ public class CaptureZone : UdonSharpBehaviour
         contest_pause_timer = 0.0f;
         is_locked = true;
         players_on_point = new int[0];
+        avg_network_delay = 0.0f;
         if (captureDisplayArea != null) { captureDisplayArea.SetActive(false); }
         if (gameController == null)
         {
@@ -151,16 +152,16 @@ public class CaptureZone : UdonSharpBehaviour
                         else { } // Overtime condition
                         hold_points = dict_points_values_arr[hold_index];
                         gameController.CheckForRoundGoal();
-                        UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
+                        UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " at index " + hold_index + " (overtime = " + overtime_enabled + ") " + " array output: " + GlobalHelperFunctions.ConvertIntArrayToString(dict_points_values_arr));
 
                     }
 
                     //SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "LocalGrantPoints");
                     // (SFX handling used to be here as networked events, but has since been moved outside this block as local events)
                 }
-                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length)
+                if (hold_index >= 0 && hold_index < dict_points_keys_arr.Length && Networking.LocalPlayer.displayName.ToLower() == "mintymimix")
                 {
-                    UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " (overtime = " + overtime_enabled + ")");
+                    UnityEngine.Debug.Log("[KOTH_TEST]: hold_points: " + hold_points + " (goal: " + gameController.option_gm_goal + ") for hold ID " + hold_id + " at index " + hold_index + " (overtime = " + overtime_enabled + ") " + " array output: " + GlobalHelperFunctions.ConvertIntArrayToString(dict_points_values_arr));
                 }
        
                 // Handle SFX locally

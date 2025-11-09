@@ -422,7 +422,7 @@ public class PlayerAttributes : UdonSharpBehaviour
     public void ReceiveDamage(float damage, Vector3 forceDirection, Vector3 hitSpot, int attacker_id, int damage_type, bool hit_self, byte extra_data)
     {
         //if (attacker_id == Networking.LocalPlayer.playerId) { return; }
-        if (ply_state != (int)player_state_name.Alive) { return; }
+        if (ply_state != (int)player_state_name.Alive || (gameController.round_state != (int)round_state_name.Ongoing && !ply_training)) { return; }
         // We want to ensure hazards aren't processed
         if (damage_type == (int)damage_type_name.HazardBurn && (hazard_timer < hazard_cooldown)) { return; } 
         else { hazard_timer = 0.0f; }
@@ -432,7 +432,7 @@ public class PlayerAttributes : UdonSharpBehaviour
 
         // Input damage should already have the attacker's attack & scale added onto it; we only handle defense from here
         if (ply_def == 0) { ply_def = 0.01f; }
-        calcDmg *= (1.0f / ply_def) * (1.0f / (ply_scale * gameController.scale_damage_factor));
+        calcDmg *= 1.0f / (ply_def + (ply_scale - 1.0f));
 
         float baseLift = 0.5f; // 0.66f
         if (hit_self) { modForceDirection += new Vector3(0.0f, baseLift, 0.0f); }
@@ -571,7 +571,7 @@ public class PlayerAttributes : UdonSharpBehaviour
             && gameController.highlight_cameras_waiting_on_sync != null && gameController.highlight_cameras_waiting_on_sync.Length > 1
             && gameController.highlight_cameras_snapped[1] == false && gameController.highlight_cameras_waiting_on_sync[1] == false)
         {
-            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetPosition(), Networking.LocalPlayer.GetRotation() * Vector3.forward, true, ply_scale);
+            gameController.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SnapHighlightPhoto", 1, Vector3.zero, Quaternion.identity, Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position, Networking.LocalPlayer.GetRotation() * (Vector3.forward - Vector3.right), true, ply_scale);
             gameController.highlight_cameras_waiting_on_sync[1] = true;
         }
 

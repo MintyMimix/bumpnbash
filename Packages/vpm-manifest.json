@@ -23,6 +23,9 @@
     },
     "dev.onevr.vrworldtoolkit": {
       "version": "3.3.1"
+    },
+    "com.z3y.graphlit": {
+      "version": "2.5.2"
     }
   },
   "locked": {
@@ -68,6 +71,10 @@
     },
     "dev.onevr.vrworldtoolkit": {
       "version": "3.3.1",
+      "dependencies": {}
+    },
+    "com.z3y.graphlit": {
+      "version": "2.5.2",
       "dependencies": {}
     }
   }

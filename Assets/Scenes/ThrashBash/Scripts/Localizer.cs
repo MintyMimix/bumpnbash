@@ -358,8 +358,8 @@ public class Localizer : UdonSharpBehaviour
         CreditsSpectremintText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_1", CreditsSpectremintText.text);
         CreditsTheMitzezText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_2", CreditsTheMitzezText.text);
         CreditsLixianPrimeText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_3", CreditsLixianPrimeText.text);
-        CreditsDiegoimhlText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_4", CreditsDiegoimhlText.text);
-        CreditsLeviaCoText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_5", CreditsLeviaCoText.text);
+        CreditsLeviaCoText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_4", CreditsLeviaCoText.text);
+        CreditsDiegoimhlText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_5", CreditsDiegoimhlText.text);
         CreditsMidoriSetoText.text = FetchText("CREDITS_DESCRIPTION_CONTRIBUTORS_7", CreditsMidoriSetoText.text); // yes, it is 7. European Spanish will be 6.
 
         WeaponDemoHeader.text = FetchText("TRAINING_HEADER_WEAPON", WeaponDemoHeader.text);
