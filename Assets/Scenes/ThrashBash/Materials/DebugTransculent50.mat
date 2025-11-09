@@ -8,16 +8,22 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: DebugTransculent50
-  m_Shader: {fileID: 4800000, guid: 9200bec112b65ec4fbbbd33fa89c20f4, type: 3}
+  m_Shader: {fileID: 4334904775004639687, guid: 2918c08764a2abb41887082aebb996a1,
+    type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords: []
+  m_ValidKeywords:
+  - _EMISSION
+  - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
+  m_CustomRenderQueue: 3000
+  stringTagMap:
+    RenderType: Transparent
+    folder_Emission: 1
+    folder_Rendering Options: 1
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -115,7 +121,7 @@ Material:
     - _DetailAlbedoBlendMode: 0
     - _DetailMaskInfo: 0
     - _DetailNormalMapScale: 1
-    - _DstBlend: 0
+    - _DstBlend: 10
     - _EmissionGIMultiplier: 1
     - _EmissionMultiplyBase: 0
     - _EnableGeometricSpecularAA: 1
@@ -146,14 +152,14 @@ Material:
     - _SpecularOcclusion: 1
     - _SpecularOcclusionExp: 1
     - _SrcBlend: 1
-    - _Surface: 0
+    - _Surface: 1
     - _ThinFilmIOR: 1.4
     - _ThinFilmThickness: 0.5
     - _ThinFilmWeight: 1
     - _Toggle_ANISOTROPY: 0
     - _Toggle_AUDIOLINK_EMISSION: 0
     - _Toggle_COAT: 0
-    - _Toggle_EMISSION: 0
+    - _Toggle_EMISSION: 1
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0
@@ -164,7 +170,7 @@ Material:
     - _WindScale: 0.02
     - _WindSpeed: 0.05
     - _ZTest: 4
-    - _ZWrite: 1
+    - _ZWrite: 0
     - __reset: 0
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15
