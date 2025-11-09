@@ -14,6 +14,7 @@ Material:
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
   - _SURFACE_TYPE_TRANSPARENT
+  - _WIND
   m_InvalidKeywords: []
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
@@ -21,6 +22,7 @@ Material:
   m_CustomRenderQueue: 3000
   stringTagMap:
     RenderType: Transparent
+    folder_Wind: 1
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -155,12 +157,12 @@ Material:
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0
-    - _Toggle_WIND: 0
+    - _Toggle_WIND: 1
     - _TransClipping: 0
     - _UVSec: 0
     - _WindHelpbox: 0
     - _WindScale: 0.02
-    - _WindSpeed: 0.05
+    - _WindSpeed: 0.07
     - _ZTest: 4
     - _ZWrite: 0
     - __reset: 0
@@ -173,5 +175,5 @@ Material:
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _MainUVScoll: {r: 0, g: 0, b: 0, a: 0}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
-    - _WindIntensity: {r: 0.1, g: 0.1, b: 0.1, a: 0}
+    - _WindIntensity: {r: 0.2, g: 0.2, b: 0.2, a: 0}
   m_BuildTextureStacks: []

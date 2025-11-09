@@ -8,22 +8,22 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: StarRoadOutline
-  m_Shader: {fileID: 4334904775004639687, guid: 2918c08764a2abb41887082aebb996a1,
+  m_Shader: {fileID: 4334904775004639687, guid: 0066d2c6a2a3a074ca765f76afd7f2e4,
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _AUDIOLINK_EMISSION
-  - _EMISSION
+  - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 1
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
+  m_CustomRenderQueue: 2460
   stringTagMap:
-    RenderType: Opaque
+    RenderType: TransparentCutout
     folder_Emission: 1
     folder_Rendering Options: 1
+    folder_Surface Inputs: 1
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -115,12 +115,12 @@ Material:
     - _CoatRoughness: 0
     - _CoatWeight: 1
     - _Cull: 2
-    - _Cutoff: 0.5
+    - _Cutoff: 0.172
     - _Decalery: 0
     - _DetailAlbedoBlendMode: 0
     - _DetailMaskInfo: 0
     - _DetailNormalMapScale: 1
-    - _DstBlend: 0
+    - _DstBlend: 10
     - _EmissionGIMultiplier: 1
     - _EmissionMultiplyBase: 1
     - _GlossMapScale: 1
@@ -147,7 +147,7 @@ Material:
     - _SpecularOcclusion: 1
     - _SpecularOcclusionExp: 1
     - _SrcBlend: 1
-    - _Surface: 0
+    - _Surface: 1
     - _ThinFilmIOR: 1.4
     - _ThinFilmThickness: 0.5
     - _ThinFilmWeight: 1
@@ -159,7 +159,7 @@ Material:
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0
     - _Toggle_WIND: 0
-    - _TransClipping: 0
+    - _TransClipping: 1
     - _UVSec: 0
     - _WindHelpbox: 0
     - _WindScale: 0.02

@@ -737,6 +737,7 @@ public class GameController : GlobalHelperFunctions
                 }
                 else { mapscript_list[map_selected].map_bouncepads[k].gameObject.SetActive(false); }
             }
+            SetupGamemodeMapObjects();
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "RoundCommence");
             RequestSerialization();
             RefreshSetupUI();
@@ -2195,10 +2196,12 @@ public class GameController : GlobalHelperFunctions
                     if (gm_specific_list[i].gamemode_enabled != null && option_gamemode >= 0 && option_gamemode < gm_specific_list[i].gamemode_enabled.Length && gm_specific_list[i].gamemode_enabled[option_gamemode])
                     {
                         gm_specific_list[i].gameObject.SetActive(true);
+                        UnityEngine.Debug.Log("Gamemode Specific Object " + gm_specific_list[i].gameObject.name + " is ENABLED for gamemode " + option_gamemode);
                     }
                     else
                     {
                         gm_specific_list[i].gameObject.SetActive(false);
+                        UnityEngine.Debug.Log("Gamemode Specific Object " + gm_specific_list[i].gameObject.name + " is DISABLED for gamemode " + option_gamemode);
                     }
                 }
             }
@@ -2571,12 +2574,13 @@ public class GameController : GlobalHelperFunctions
                     ui_round_option_goal_input_b.text = option_gm_config_a.ToString();
                 }
             }
-            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_HIGHWAYINTHESKY", "Deep Blues"))
+            else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_HIGHWAYINTHESKY", "Starlight Skyway"))
             {
-                if (plysettings_speed < 3.01f || plysettings_grav > 0.49f)
+                if (plysettings_speed < 3.01f || plysettings_grav > 0.49f || plysettings_atk < 3.0f)
                 {
                     plysettings_speed = 3.01f;
                     plysettings_grav = 0.49f;
+                    plysettings_atk = 3.0f;
                 }
                 if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
                 {
@@ -2631,7 +2635,7 @@ public class GameController : GlobalHelperFunctions
                 }
             }
             // And reset if the game master forgot to
-            else if (plysettings_speed == 1.61f || plysettings_speed == 1.91f)
+            else if (plysettings_speed == 1.61f || plysettings_speed == 1.91f || plysettings_speed == 3.01f || plysettings_grav == 0.49f)
             {
                 plysettings_speed = 1.0f;
                 plysettings_atk = 1.0f;
