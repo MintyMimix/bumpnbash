@@ -1,1014 +1,27 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!641289076 &-1284074873963046826
+--- !u!641289076 &-4569942121587305930
 AudioBuildInfo:
   m_IsAudioDisabled: 0
   m_AudioClipCount: 165
   m_AudioMixerCount: 0
---- !u!1126 &-650749913450733582
+--- !u!1126 &-2730289760594335907
 PackedAssets:
-  m_ShortPath: BuildPlayer-ThrashBash.resource
-  m_Overhead: 0
+  m_ShortPath: CAB-ab223ec1eaf1d952744f7393d879c224
+  m_Overhead: 4032
   m_Contents:
-  - fileID: 0
-    classID: 83
-    packedSize: 38048
-    offset: 0
-    sourceAssetGUID: 01f77d96663a774418fc1a2566909e59
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mabuildup.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 13568
-    offset: 0
-    sourceAssetGUID: 02d406e60767e414ea5c70581e5f10a6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_0.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 13376
-    offset: 0
-    sourceAssetGUID: 04af3b55bd0b330458e8e43c770b56ab
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_victory.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12448
-    offset: 0
-    sourceAssetGUID: 04b1b640198020b4a9ddc160ad691bfe
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/whoosh7.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 8608
-    offset: 0
-    sourceAssetGUID: 066b1682d30ffc645b07a75a53c28f64
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_clash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 38176
-    offset: 0
-    sourceAssetGUID: 06c7f5168c60fe94f8f9422a7ea2c557
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/controller.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 36928
-    offset: 0
-    sourceAssetGUID: 08cca303e61ea574ab31a4759e54e66f
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceMulti2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 21024
-    offset: 0
-    sourceAssetGUID: 0a007b0564c3bdd4693e1cef49106494
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/happy2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 19584
-    offset: 0
-    sourceAssetGUID: 0a3bee3dfe5d66343bd32bf9084ce23d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_survival.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12704
-    offset: 0
-    sourceAssetGUID: 0bad92e904b467b458b0f8e527ea4b33
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/exploblast.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 16064
-    offset: 0
-    sourceAssetGUID: 0bb65df3f0e27cb44a33236165e419c9
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_infectionenddefeat.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 36864
-    offset: 0
-    sourceAssetGUID: 0be1e85e21dc25b4b9eaad3d7af753c9
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/TW_CrushingBlow_HitFast_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 46112
-    offset: 0
-    sourceAssetGUID: 0ee6ebba09cadaa468d394de01ca0485
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_infection_a.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17344
-    offset: 0
-    sourceAssetGUID: 0f8f08f388a3a9e4699e40558b2aacc3
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/BAF_TurretBlast_Attack_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 11520
-    offset: 0
-    sourceAssetGUID: 10b1d3e81114ab9478915b958b38cb1a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_koth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 16192
-    offset: 0
-    sourceAssetGUID: 117424cf2eefce44c884d5829fc81c2c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_clash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 5991424
-    offset: 0
-    sourceAssetGUID: 11f253df8c294bd4bb9376b3f255ee61
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Mamonoro_0000000A [1].mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 21088
-    offset: 0
-    sourceAssetGUID: 1248abc8437b33e45b55bc41b1f223d5
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/fireballfly.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 64736
-    offset: 0
-    sourceAssetGUID: 12fdd4ae6f4ee3545948b408444fd421
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/19. Game Over.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9152
-    offset: 0
-    sourceAssetGUID: 15b503cad358a0447b4031d42d35ee59
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Next.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 7840
-    offset: 0
-    sourceAssetGUID: 1604a6051b4cf114bb4fb8b7c97cf939
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/knifetwirly.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 22784
-    offset: 0
-    sourceAssetGUID: 168162c6f19672f4d9dc58e8cd7d7042
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_hollowsthrash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9024
-    offset: 0
-    sourceAssetGUID: 18b31c9683ff6e24786ff682795f0dc2
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_stalemate.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 31584
-    offset: 0
-    sourceAssetGUID: 195a18026048a2e498388f69ac6238db
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Fireball1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17120
-    offset: 0
-    sourceAssetGUID: 1a2559889c0fc2a4cba5b891d493495d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_infection.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17216
-    offset: 0
-    sourceAssetGUID: 1a3eb4d1916bcab46a651e99687c4a19
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceAOEblast.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17952
-    offset: 0
-    sourceAssetGUID: 1b14b4264f9737148a07b68f802ba05b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_4.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 53920
-    offset: 0
-    sourceAssetGUID: 1c35e137ef4cbfb499497cc2a8a159f8
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Mental6b.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 9280
-    offset: 0
-    sourceAssetGUID: 1cbd50d698cba4542a9d68abe858eb7f
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Male_Rage1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 4224
-    offset: 0
-    sourceAssetGUID: 1fe6be54acd33004f848a7201ca674e4
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/N_Hit_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 4224
-    offset: 0
-    sourceAssetGUID: 21cee368122f8ac45a2ab4b77366b590
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/minus.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 4352
-    offset: 0
-    sourceAssetGUID: 23045d673528b10418e28e2d881b05bd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OutofRange1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 15264
-    offset: 0
-    sourceAssetGUID: 23b7c5eaad4f96f4f9833b6b38ab9d8a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_0.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 55392
-    offset: 0
-    sourceAssetGUID: 23bb3153d1f24984ca14832d83f3ef89
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_fittingin.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1636864
-    offset: 0
-    sourceAssetGUID: 247a83a8816bb1342a2c93ab216407a3
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/30_Hot_Pursuit.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12928
-    offset: 0
-    sourceAssetGUID: 258f2a366b1f04342ab0c7634b6766a0
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 101664
-    offset: 0
-    sourceAssetGUID: 265c5a5a9dad14b4fb4bf34cbf3c7ce6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mentalwail2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 63072
-    offset: 0
-    sourceAssetGUID: 28168ff80b82d43448792b96c7295d28
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/death.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1988000
-    offset: 0
-    sourceAssetGUID: 28f639e58c786b149b045d44550b53da
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/2-38. Ultimate Legend
-      of the Untrained Demon King.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 19616
-    offset: 0
-    sourceAssetGUID: 29e61518f765c1b4c8c0cc05c8b5c849
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_deepblues.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12736
-    offset: 0
-    sourceAssetGUID: 2bf3958ada1e0ae49989f235733825bd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_fittingin.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 23168
-    offset: 0
-    sourceAssetGUID: 2c9801a7695ecad40aa81e54aba2e2a9
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_bossbash_b.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1985920
-    offset: 0
-    sourceAssetGUID: 3105b98ccd9efc8408294704e236f89d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Foregone Destruction
-      (Facing Worlds) - Unreal Tournament.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 14144
-    offset: 0
-    sourceAssetGUID: 327075a8894e3be4ba11443ab1157acd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_overtime.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17600
-    offset: 0
-    sourceAssetGUID: 3368ac8791d642b47b97b000fc243d81
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/hurry_up.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 19616
-    offset: 0
-    sourceAssetGUID: 33dc2ad22cf14df48999c19d099d359c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_synth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 11904
-    offset: 0
-    sourceAssetGUID: 33e48cafdafb3e14fb84b0db123bc297
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_stalemate.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 46752
-    offset: 0
-    sourceAssetGUID: 3565c8a99e1cca94fade05c8a88097bd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/rage.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 3840
-    offset: 0
-    sourceAssetGUID: 3592b7fc96dd2e14894dbbca6dd87449
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/select5.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 39104
-    offset: 0
-    sourceAssetGUID: 3645c90d20d45824d8cad2ecc5f71a4d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_infection_a.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17536
-    offset: 0
-    sourceAssetGUID: 388f47eb1106d7d418c60d1abeaef7f2
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_0.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 860512
-    offset: 0
-    sourceAssetGUID: 38e1a4d0a5f295140a045d0818bf5522
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/02 Booting Up.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12192
-    offset: 0
-    sourceAssetGUID: 38e565dea9df2a64fa7cd57f3227bf7b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_fittingin.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 70336
-    offset: 0
-    sourceAssetGUID: 3985fa3f4288414489c6446683cc930e
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/ForcefieldOn.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 13984
-    offset: 0
-    sourceAssetGUID: 3a1adcaa9a422f54a9cd01f373305c9c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_0.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 44128
-    offset: 0
-    sourceAssetGUID: 3a1dbb2567fa1bd4b85f5ea60ecf0369
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/FireExplo.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 37920
-    offset: 0
-    sourceAssetGUID: 3acda854e82cdbd419f8f304f3ee7213
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_infection_b.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 34080
-    offset: 0
-    sourceAssetGUID: 3c8504a73ec983a43bf71f30deba4fd0
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/playgame.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 10752
-    offset: 0
-    sourceAssetGUID: 3fc515a5fd2d2884db5d2ead1ad04748
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_infection.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17408
-    offset: 0
-    sourceAssetGUID: 3fddc5558a848504ea4bd37106f6355c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_3.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 34208
-    offset: 0
-    sourceAssetGUID: 447acf524ed5abb4d8341e4ea4d7e25c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/diviningRodout.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 18240
-    offset: 0
-    sourceAssetGUID: 458a549751fe49e4c8b061fb1f71a725
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_2.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 3486720
-    offset: 0
-    sourceAssetGUID: 4cf099902f5fca14ca2300c899e52acc
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Underworld ~ Chaos.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9728
-    offset: 0
-    sourceAssetGUID: 4fee7beb50c674d4ebcc8472fa3c4487
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_clash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 15616
-    offset: 0
-    sourceAssetGUID: 51e150d9de4dac64c86a9e84edf2a5a8
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_2.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 106304
-    offset: 0
-    sourceAssetGUID: 53d8d6c745fcb5247be6b73e25737c87
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NA_Regrowth_02.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 44576
-    offset: 0
-    sourceAssetGUID: 55ab8248ea5f29540922c89e1e71cb4c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_infection_b.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 617856
-    offset: 0
-    sourceAssetGUID: 5bde32162888bc84c93b3a454b74217b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/taank.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 8032
-    offset: 0
-    sourceAssetGUID: 5c6bc01b65718194ca084e3794c40a66
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_start.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 7776
-    offset: 0
-    sourceAssetGUID: 6236cd0c08f2f6943af0819cb89ea6fe
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/lock2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 18464
-    offset: 0
-    sourceAssetGUID: 641dbd3c3bbe62849901e457d8af7c12
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_3.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 8928
-    offset: 0
-    sourceAssetGUID: 657e43396dd3f7542b5215a16942d7df
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/select2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 11488
-    offset: 0
-    sourceAssetGUID: 65ce670e300334848a05bb3d0a32f241
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/WB_WaterBurst_Hit.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 76704
-    offset: 0
-    sourceAssetGUID: 6608f4ae2b18646408473f309c9e28c4
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/themonsterswithout.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 2671680
-    offset: 0
-    sourceAssetGUID: 66fcbea3ad4b1d447a9e7149939b6da8
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Tricktrack PART2.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 21504
-    offset: 0
-    sourceAssetGUID: 67f4f659c2cc42e4fa34dc194e4e165a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_bossbash_a.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 15168
-    offset: 0
-    sourceAssetGUID: 699e47517985b9447b1b3e1aea02694c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_4.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 22944
-    offset: 0
-    sourceAssetGUID: 69cc29cb4cb4a664cb1be273ccc8e079
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_bossbash_b.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 24416
-    offset: 0
-    sourceAssetGUID: 73d2bc1dd0cf6434381c3756d5ee902a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_bitcrush.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 20800
-    offset: 0
-    sourceAssetGUID: 763e28f38d853f64ebe91f9840f02797
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_infectionenddefeat.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 21376
-    offset: 0
-    sourceAssetGUID: 784970a77cf26d74e8cb1de78daa3dbe
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchHit1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17472
-    offset: 0
-    sourceAssetGUID: 79146f3128eb33248b72872f194e547c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_3.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 14240
-    offset: 0
-    sourceAssetGUID: 79651c0a2dff7a9408766f1ec287d17b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_captureother.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 18944
-    offset: 0
-    sourceAssetGUID: 7c054db0f9bbbc74bb1e52fe8f1a92a4
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_clash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 16608
-    offset: 0
-    sourceAssetGUID: 7c70fe87f2464da4e971c0d3bfb313be
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 18944
-    offset: 0
-    sourceAssetGUID: 7e9a3dbbeb635b249b04a7102f08ab30
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_infectionendvictory.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17632
-    offset: 0
-    sourceAssetGUID: 7fa44d834f8ab3a4183d62ca9633d7fe
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Ignite2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 15392
-    offset: 0
-    sourceAssetGUID: 83cd0f121e040194f9a42670c902dec6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_2.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 10688
-    offset: 0
-    sourceAssetGUID: 852ecf4338fcd274b9c8409dae18f7cc
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_survival.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9568
-    offset: 0
-    sourceAssetGUID: 8688388dac9d8814a88a7927eb4d5cd3
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/exit.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 13536
-    offset: 0
-    sourceAssetGUID: 893929829d8a58443952d80a887d3ebe
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_koth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9792
-    offset: 0
-    sourceAssetGUID: 8f538b3c554aaa747b1bffd243ff0c35
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_defeat.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 17408
-    offset: 0
-    sourceAssetGUID: 8fac39fd6b7e4c143876a21f12d1a383
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PopHelp_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 20640
-    offset: 0
-    sourceAssetGUID: 904b075a79f2ad04c81049713952f311
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_bossbash_a.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 14176
-    offset: 0
-    sourceAssetGUID: 91ba2f217ba1bcd4d8bcde2d15d3ca91
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_bossbash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1115584
-    offset: 0
-    sourceAssetGUID: 92728ca8e47fb87479eca3df1341c3b8
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Halloween Havoc.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 22048
-    offset: 0
-    sourceAssetGUID: 93a01a9f0e5c5d64d86ac0e02bbbd690
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/forcebolt.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 15936
-    offset: 0
-    sourceAssetGUID: 9707e72a2416ecf4ba503e6933851787
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/happy4.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 14240
-    offset: 0
-    sourceAssetGUID: 989f5d1eed346e34b8d3e0e7d47905ae
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 28032
-    offset: 0
-    sourceAssetGUID: 999c8365257ed4e49b94a8f95cadca5c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_starlightskyway.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9408
-    offset: 0
-    sourceAssetGUID: 9a281a9bfa4ae8843823a2c380ea4f86
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OutofRange2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 1184608
-    offset: 0
-    sourceAssetGUID: 9d20ee37cc2a75d48b5f6fffd5db6169
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/bloodharvest.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 54592
-    offset: 0
-    sourceAssetGUID: 9f07bf6c061d68143b14a26d42bd3772
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Fireball2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 59968
-    offset: 0
-    sourceAssetGUID: 9fe6f5b4b5fc8f34882ca2419cca2b7f
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceLightForm1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 10240
-    offset: 0
-    sourceAssetGUID: a1d060f6aed375344910d9734aa7c82b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/help2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 14752
-    offset: 0
-    sourceAssetGUID: a1d5849af9cce4344ab14d85a1553222
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/ready01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 16576
-    offset: 0
-    sourceAssetGUID: a55d5f1f8ace47c4b84e6e1be8cdb032
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_koth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 80960
-    offset: 0
-    sourceAssetGUID: a8c68ea14f5cc3c40a4bb2fc1df760d4
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/tanker.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 75840
-    offset: 0
-    sourceAssetGUID: a975575660bbc0547a2cfa6d057d9cb6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/31-Mission Complete.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 20544
-    offset: 0
-    sourceAssetGUID: ab63490599811ed4a925e6415b6b6d4d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NA_CorrosiveSap_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 8736
-    offset: 0
-    sourceAssetGUID: abe0ab17c575e1542918522cce8d8b6c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Range1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 2372064
-    offset: 0
-    sourceAssetGUID: ad329aedd940b0d47bcb83694bbd5805
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/1-21. The End of Silent
-      Conflict.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 3744
-    offset: 0
-    sourceAssetGUID: ae5a3059f89ddbc4791f468d3a13c2bf
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/boing.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 11648
-    offset: 0
-    sourceAssetGUID: b08a465eb57ceca4993a8b4684ebd638
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_overtime.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 10048
-    offset: 0
-    sourceAssetGUID: b2b54749235db4c43962da153eca9f87
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_koth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 15680
-    offset: 0
-    sourceAssetGUID: b345aad4058992e4c84b2bfc524607f3
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_2.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 5600
-    offset: 0
-    sourceAssetGUID: b49f83ad8a65fb349a4d5f42295c956d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/rockthrow.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 40864
-    offset: 0
-    sourceAssetGUID: b4bce03d75a3cab439892e03c19c1575
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/FlashArrowHit.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17344
-    offset: 0
-    sourceAssetGUID: b516b10957bbbfa48b3a2b4956598420
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_captureother.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 23808
-    offset: 0
-    sourceAssetGUID: b5a66afaead832e47b0e52342445736a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceAOEhit.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 16480
-    offset: 0
-    sourceAssetGUID: b9142cf53d928674eafba871c2c50171
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NemesisStaffOut.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 19008
-    offset: 0
-    sourceAssetGUID: b93669f539a2397478260bf50046d125
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_infectionendvictory.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 19136
-    offset: 0
-    sourceAssetGUID: b9d1436c20fafb940b8361f687b4e265
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/scrapper.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17312
-    offset: 0
-    sourceAssetGUID: bb0f1d3813cd5e24497e48849063c002
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_captureself.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 70208
-    offset: 0
-    sourceAssetGUID: bfd359e8cb9e5a84b842a6ac46365618
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/hasten2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 2688
-    offset: 0
-    sourceAssetGUID: c17d4ff8b7adbed4fb9fda13044871c6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchOpenPalm2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 22368
-    offset: 0
-    sourceAssetGUID: c43348f61a3469344b1bce7ed97ba988
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_4.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 2014784
-    offset: 0
-    sourceAssetGUID: c435cec39b61fa6478dc6e3dc5b16c92
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Space Colony Ark Act1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 49984
-    offset: 0
-    sourceAssetGUID: c532586363d67ef489f865705cc9fa81
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_fittingin.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 7104
-    offset: 0
-    sourceAssetGUID: c64bebb59c9cc3c4e8e498c00a2e6710
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/BM_Hit_01.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 20864
-    offset: 0
-    sourceAssetGUID: c7e5dfed4b0b99f4fb38ee68d2030acd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_casteddream.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 10656
-    offset: 0
-    sourceAssetGUID: c991bebba1e75a248ba2b18260c3b504
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mineset.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 12608
-    offset: 0
-    sourceAssetGUID: cc0348a8d8428c742b2622abe1e5c2d6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/M3.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 1568
-    offset: 0
-    sourceAssetGUID: cd1553b11b532b849814fddc0b671d86
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mouseover_07_chiff02.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 1704000
-    offset: 0
-    sourceAssetGUID: cd27500bad37b7744811cd8b9c0ae5df
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/10 - Air Ride Machine
-      Passage.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 20736
-    offset: 0
-    sourceAssetGUID: cde71a3d85caf874895c360235c5a531
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_facingworlds.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 11040
-    offset: 0
-    sourceAssetGUID: cf471c7cbd3cd614ab435f3a3dbe1bdf
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_end.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9600
-    offset: 0
-    sourceAssetGUID: d0db549481109424c947654322449cd6
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_survival.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 4480
-    offset: 0
-    sourceAssetGUID: d186e976a6ce55042b75265fbddb3d23
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/AxeOut.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 11168
-    offset: 0
-    sourceAssetGUID: d4365fc55a732e84a84f35b18013954d
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_defeat.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 14080
-    offset: 0
-    sourceAssetGUID: d5e529d061fff9a41bd38177d319d232
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_1.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 15776
-    offset: 0
-    sourceAssetGUID: d725936b2dea0874e8d424c22d832aea
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_captureself.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 10784
-    offset: 0
-    sourceAssetGUID: d7688548d5c3cd5448afdf9159d6741a
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/klaxon1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 1262048
-    offset: 0
-    sourceAssetGUID: d9d7a1451d095244cbbf3035d5aea466
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/onebadtank.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 2848
-    offset: 0
-    sourceAssetGUID: dc2a15dcd873c0a43813dce4d24f4c88
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/M1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 17280
-    offset: 0
-    sourceAssetGUID: e0779e527cb9f1047aa108074b2f0d6c
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_bossbash.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 9472
-    offset: 0
-    sourceAssetGUID: e2131c926d718a34f83420ef85421b97
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_end.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 25312
-    offset: 0
-    sourceAssetGUID: e2eed3807a00a4649800d6fcf601272b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OperaPeople2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 23488
-    offset: 0
-    sourceAssetGUID: e32956f70f61b9140b8cab7db051395e
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Hybrid_Support.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1324192
-    offset: 0
-    sourceAssetGUID: e33fec80c637dff4ea0d967307f89dcd
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/239 - Smash Bros Melee
-      - Temple.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 7840
-    offset: 0
-    sourceAssetGUID: e6f3f8e30d4c964468789c3bc633200b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_start.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 12416
-    offset: 0
-    sourceAssetGUID: e7a5ea1683d825f4abfcdd20befcb54b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_3.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 35520
-    offset: 0
-    sourceAssetGUID: e8da6525e8b42214887ad960cabf1b40
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/illusiontoss3.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 2656
-    offset: 0
-    sourceAssetGUID: e94af18ac49fcb140a01ab6ee6a05f2b
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/2Beep.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 34336
-    offset: 0
-    sourceAssetGUID: ea57cbecdb4e6054b94ff2161f46b255
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Powerup2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 196032
-    offset: 0
-    sourceAssetGUID: eb954b41d8f819b45880bab62de0b958
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/yourownfuneral.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 10592
-    offset: 0
-    sourceAssetGUID: ed528244ba6d33b4bb0798939eaf8aca
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_victory.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 11456
-    offset: 0
-    sourceAssetGUID: f106bd1f5fa2e5540b8a041ffd7bda73
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/fireblastfly.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 19488
-    offset: 0
-    sourceAssetGUID: f3d2838b9cda73f46b298a19295137b3
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Heal1.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 42560
-    offset: 0
-    sourceAssetGUID: f518ab1444da62d4e9c1482b54358a56
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/kinetic4.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 1135808
-    offset: 0
-    sourceAssetGUID: f74f5682ae424d048884b949f97268c8
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/1-14. Misty Rain.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 22560
-    offset: 0
-    sourceAssetGUID: f75bb91e81c73e049bb160faf221feef
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchHit2.ogg
-  - fileID: 0
-    classID: 83
-    packedSize: 16672
-    offset: 0
-    sourceAssetGUID: ff470f49f694bcf4a8a5390cfd3ae479
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_survival.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 1527904
-    offset: 0
-    sourceAssetGUID: ff72bc8b8d8166c40a250df92061853e
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/skinonourteeth.mp3
-  - fileID: 0
-    classID: 83
-    packedSize: 23488
-    offset: 0
-    sourceAssetGUID: ff8aaf7d0a85ddc45b97e05b331f0e8f
-    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_brawlburned.mp3
---- !u!1521398425 &-112210881071363602
-VideoBuildInfo:
-  m_VideoClipCount: 0
-  m_IsVideoModuleDisabled: 0
+  - fileID: 1
+    classID: 142
+    packedSize: 104
+    offset: 4032
+    sourceAssetGUID: 00000000000000000000000000000000
+    buildTimeAssetPath: AssetBundle Object
+  - fileID: 2
+    classID: 290
+    packedSize: 136
+    offset: 4136
+    sourceAssetGUID: 00000000000000000000000000000000
+    buildTimeAssetPath: 'Built-in AssetBundleManifest: AssetBundleManifest'
 --- !u!1125 &1
 BuildReport:
   m_ObjectHideFlags: 0
@@ -1019,7 +32,7 @@ BuildReport:
   m_Summary:
     buildStartTime:
       serializedVersion: 2
-      ticks: 638983285067925397
+      ticks: 638983290632503495
     buildGUID: 00000000000000000000000000000000
     platformName: Android
     platformGroupName: Android
@@ -1027,34 +40,34 @@ BuildReport:
     options: 0
     assetBundleOptions: 32
     outputPath: C:/Users/Alex/AppData/Local/Temp/DefaultCompany/Thrash Bash
-    crc: 48341544
-    totalSize: 101050605
-    totalTimeTicks: 1078861840
+    crc: 240772232
+    totalSize: 101045361
+    totalTimeTicks: 709392729
     totalErrors: 0
     totalWarnings: 219
     buildType: 2
     buildResult: 1
   m_Files:
-  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw/BuildPlayer-ThrashBash
+  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw/BuildPlayer-ThrashBash
     role: Scene
     id: 0
     totalSize: 44045648
-  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw/BuildPlayer-ThrashBash.sharedAssets
+  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw/BuildPlayer-ThrashBash.sharedAssets
     role: SharedAssets
     id: 1
     totalSize: 169697684
-  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw/BuildPlayer-ThrashBash.resource
+  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw/BuildPlayer-ThrashBash.resource
     role: StreamingResourceFile
     id: 2
     totalSize: 36391744
-  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw
+  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw
     role: AssetBundle
     id: 3
-    totalSize: 101044306
-  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw.manifest
+    totalSize: 101039062
+  - path: C:/Unity/Projects/Thrash Bash/scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw.manifest
     role: AssetBundleTextManifest
     id: 4
-    totalSize: 5024
+    totalSize: 5025
   - path: C:/Unity/Projects/Thrash Bash/Thrash Bash/CAB-ab223ec1eaf1d952744f7393d879c224
     role: ResourcesFile
     id: 5
@@ -1062,46 +75,46 @@ BuildReport:
   - path: C:/Unity/Projects/Thrash Bash/Thrash Bash
     role: ManifestAssetBundle
     id: 6
-    totalSize: 1081
+    totalSize: 1080
   - path: C:/Unity/Projects/Thrash Bash/Thrash Bash.manifest
     role: AssetBundleTextManifest
     id: 7
     totalSize: 194
   m_BuildSteps:
   - stepName: Build Asset Bundles
-    durationTicks: 1078861840
+    durationTicks: 709392729
     depth: 0
     messages: []
   - stepName: Calculate asset bundles to be built
-    durationTicks: 2651856
+    durationTicks: 2523825
     depth: 1
     messages: []
   - stepName: Prebuild Cleanup and Recompile
-    durationTicks: 85480356
+    durationTicks: 40874893
     depth: 1
     messages: []
   - stepName: Compile scripts
-    durationTicks: 84820257
+    durationTicks: 39776245
     depth: 2
     messages: []
   - stepName: Generate and validate platform script types
-    durationTicks: 496770
+    durationTicks: 926783
     depth: 2
     messages: []
   - stepName: Build Scene AssetBundle(s)
-    durationTicks: 921384371
+    durationTicks: 591907579
     depth: 1
     messages: []
-  - stepName: 'Build bundle: scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw'
-    durationTicks: 902810944
+  - stepName: 'Build bundle: scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw'
+    durationTicks: 570771195
     depth: 2
     messages: []
   - stepName: Verify Build setup
-    durationTicks: 1108788
+    durationTicks: 1092610
     depth: 3
     messages: []
   - stepName: Prepare assets for target platform
-    durationTicks: 914445
+    durationTicks: 918518
     depth: 3
     messages:
     - type: 2
@@ -1109,17 +122,17 @@ BuildReport:
         performance severely. You can change the mobile quality settings in 'Project
         Settings -> Quality Settings'.
   - stepName: Prepare splash screen
-    durationTicks: 2188451
+    durationTicks: 3051011
     depth: 3
     messages:
     - type: 3
       content: Including Unity Splash Screen logo because 'Show Unity Logo' is enabled.
   - stepName: Building scenes
-    durationTicks: 514808977
+    durationTicks: 164571453
     depth: 3
     messages: []
   - stepName: Building scene Assets/Scenes/ThrashBash.unity
-    durationTicks: 514808787
+    durationTicks: 164571152
     depth: 4
     messages:
     - type: 2
@@ -1776,13 +789,13 @@ BuildReport:
         not match, updated storage type
     - type: 3
       content: Computed code signatures for 133 scripts of type SerializedUdonProgramAsset
-        in 13ms
+        in 12ms
   - stepName: Writing asset files
-    durationTicks: 18984280
+    durationTicks: 38979700
     depth: 3
     messages: []
   - stepName: Packaging assets - archive:/BuildPlayer-ThrashBash/BuildPlayer-ThrashBash.sharedAssets
-    durationTicks: 18714957
+    durationTicks: 38692170
     depth: 4
     messages:
     - type: 2
@@ -1814,19 +827,20 @@ BuildReport:
 
 
         Compiling Subshader: 0, Pass: Forward, Vertex program
-        with <no keywords>
+        with STEREO_MULTIVIEW_ON _SURFACE_TYPE_TRANSPARENT
 
-        Platform defines: SHADER_API_GLES30 SHADER_API_MOBILE
-        UNITY_ENABLE_REFLECTION_BUFFERS UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HARDWARE_TIER1
-        UNITY_LIGHTMAP_DLDR_ENCODING UNITY_NO_CUBEMAP_ARRAY UNITY_NO_DXT5nm UNITY_NO_FULL_STANDARD_SHADER
-        UNITY_NO_RGBM UNITY_NO_SCREENSPACE_SHADOWS UNITY_PASS_FORWARDBASE UNITY_PBS_USE_BRDF3
+        Platform defines:
+        SHADER_API_GLES30 SHADER_API_MOBILE UNITY_ENABLE_REFLECTION_BUFFERS UNITY_FRAMEBUFFER_FETCH_AVAILABLE
+        UNITY_HARDWARE_TIER2 UNITY_LIGHTMAP_DLDR_ENCODING UNITY_NO_CUBEMAP_ARRAY
+        UNITY_NO_DXT5nm UNITY_NO_RGBM UNITY_NO_SCREENSPACE_SHADOWS UNITY_PASS_FORWARDBASE
+        UNITY_PBS_USE_BRDF2
 
-        Disabled
-        keywords: FOG_EXP FOG_EXP2 FOG_LINEAR INSTANCING_ON UNITY_ASTC_NORMALMAP_ENCODING
-        UNITY_COLORSPACE_GAMMA UNITY_ENABLE_DETAIL_NORMALMAP UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
-        UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHTMAP_RGBM_ENCODING
-        UNITY_LIGHT_PROBE_PROXY_VOLUME UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_PBS_USE_BRDF1
-        UNITY_PBS_USE_BRDF2 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_SPECCUBE_BLENDING
+        Disabled keywords: FOG_EXP FOG_EXP2 FOG_LINEAR
+        INSTANCING_ON UNITY_ASTC_NORMALMAP_ENCODING UNITY_COLORSPACE_GAMMA UNITY_ENABLE_DETAIL_NORMALMAP
+        UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS UNITY_HARDWARE_TIER1 UNITY_HARDWARE_TIER3
+        UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHTMAP_RGBM_ENCODING UNITY_LIGHT_PROBE_PROXY_VOLUME
+        UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_NO_FULL_STANDARD_SHADER UNITY_PBS_USE_BRDF1
+        UNITY_PBS_USE_BRDF3 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_SPECCUBE_BLENDING
         UNITY_SPECCUBE_BOX_PROJECTION UNITY_UNIFIED_SHADER_PRECISION_MODEL UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
         UNITY_VIRTUAL_TEXTURING'
     - type: 2
@@ -1858,16 +872,16 @@ BuildReport:
 
 
         Compiling Subshader: 0, Pass: Forward, Vertex program
-        with DIRECTIONAL VERTEXLIGHT_ON
+        with DIRECTIONAL INSTANCING_ON LIGHTPROBE_SH VERTEXLIGHT_ON _EMISSION
 
-        Platform defines: SHADER_API_GLES30
-        SHADER_API_MOBILE UNITY_ENABLE_REFLECTION_BUFFERS UNITY_FRAMEBUFFER_FETCH_AVAILABLE
-        UNITY_HARDWARE_TIER1 UNITY_LIGHTMAP_DLDR_ENCODING UNITY_NO_CUBEMAP_ARRAY
-        UNITY_NO_DXT5nm UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_RGBM UNITY_NO_SCREENSPACE_SHADOWS
-        UNITY_PASS_FORWARDBASE UNITY_PBS_USE_BRDF3
+        Platform
+        defines: SHADER_API_GLES30 SHADER_API_MOBILE UNITY_ENABLE_REFLECTION_BUFFERS
+        UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HARDWARE_TIER1 UNITY_LIGHTMAP_DLDR_ENCODING
+        UNITY_NO_CUBEMAP_ARRAY UNITY_NO_DXT5nm UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_RGBM
+        UNITY_NO_SCREENSPACE_SHADOWS UNITY_PASS_FORWARDBASE UNITY_PBS_USE_BRDF3
 
-        Disabled keywords: DIRLIGHTMAP_COMBINED
-        FOG_EXP FOG_EXP2 FOG_LINEAR INSTANCING_ON LIGHTMAP_ON LIGHTPROBE_SH UNITY_ASTC_NORMALMAP_ENCODING
+        Disabled
+        keywords: DIRLIGHTMAP_COMBINED FOG_EXP FOG_EXP2 FOG_LINEAR LIGHTMAP_ON UNITY_ASTC_NORMALMAP_ENCODING
         UNITY_COLORSPACE_GAMMA UNITY_ENABLE_DETAIL_NORMALMAP UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
         UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHTMAP_RGBM_ENCODING
         UNITY_LIGHT_PROBE_PROXY_VOLUME UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_PBS_USE_BRDF1
@@ -1875,31 +889,31 @@ BuildReport:
         UNITY_SPECCUBE_BOX_PROJECTION UNITY_UNIFIED_SHADER_PRECISION_MODEL UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
         UNITY_VIRTUAL_TEXTURING _DECALERY _WIND'
   - stepName: Creating compressed player package
-    durationTicks: 337633922
+    durationTicks: 338313103
     depth: 3
     messages: []
   - stepName: Postprocess built player
-    durationTicks: 680737
+    durationTicks: 417747
     depth: 3
     messages: []
   m_Appendices:
-  - {fileID: 1939944520862100764}
-  - {fileID: 3786405697458497903}
-  - {fileID: -650749913450733582}
-  - {fileID: 9000457062618841024}
-  - {fileID: -1284074873963046826}
-  - {fileID: -112210881071363602}
-  - {fileID: 6939759915740121998}
---- !u!668709126 &1939944520862100764
+  - {fileID: 3035162369916937156}
+  - {fileID: 4712030323936943865}
+  - {fileID: 8706884690893224427}
+  - {fileID: 8025386124411976073}
+  - {fileID: -4569942121587305930}
+  - {fileID: 7085790304367002542}
+  - {fileID: -2730289760594335907}
+--- !u!668709126 &3035162369916937156
 BuiltAssetBundleInfoSet:
   bundleInfos:
-  - bundleName: scene-android-thrashbash-e2755068-ff0e-4559-96a3-98b9d6349be5.vrcw
+  - bundleName: scene-android-thrashbash-8c6d0b75-3d2a-4c33-b02a-a1bed1ef4131.vrcw
     bundleArchiveFile: 3
     packagedFileIndices: 000000000100000002000000
   - bundleName: Thrash Bash
     bundleArchiveFile: 6
     packagedFileIndices: 05000000
---- !u!1126 &3786405697458497903
+--- !u!1126 &4712030323936943865
 PackedAssets:
   m_ShortPath: BuildPlayer-ThrashBash.sharedAssets
   m_Overhead: 192799
@@ -8992,24 +8006,11 @@ PackedAssets:
     sourceAssetGUID: 8f586378b4e144a9851e7b34d9b748ee
     buildTimeAssetPath: Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans
       SDF.asset
---- !u!1126 &6939759915740121998
-PackedAssets:
-  m_ShortPath: CAB-ab223ec1eaf1d952744f7393d879c224
-  m_Overhead: 4032
-  m_Contents:
-  - fileID: 1
-    classID: 142
-    packedSize: 104
-    offset: 4032
-    sourceAssetGUID: 00000000000000000000000000000000
-    buildTimeAssetPath: AssetBundle Object
-  - fileID: 2
-    classID: 290
-    packedSize: 136
-    offset: 4136
-    sourceAssetGUID: 00000000000000000000000000000000
-    buildTimeAssetPath: 'Built-in AssetBundleManifest: AssetBundleManifest'
---- !u!382020655 &9000457062618841024
+--- !u!1521398425 &7085790304367002542
+VideoBuildInfo:
+  m_VideoClipCount: 0
+  m_IsVideoModuleDisabled: 0
+--- !u!382020655 &8025386124411976073
 PluginBuildInfo:
   m_RuntimePlugins:
   - VRC.Udon.VM
@@ -9087,3 +8088,1003 @@ PluginBuildInfo:
   - Unity.Burst.Cecil.Rocks
   - vpm-core-lib
   - VRC.Udon.UAssembly
+--- !u!1126 &8706884690893224427
+PackedAssets:
+  m_ShortPath: BuildPlayer-ThrashBash.resource
+  m_Overhead: 0
+  m_Contents:
+  - fileID: 0
+    classID: 83
+    packedSize: 38048
+    offset: 0
+    sourceAssetGUID: 01f77d96663a774418fc1a2566909e59
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mabuildup.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 13568
+    offset: 0
+    sourceAssetGUID: 02d406e60767e414ea5c70581e5f10a6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_0.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 13376
+    offset: 0
+    sourceAssetGUID: 04af3b55bd0b330458e8e43c770b56ab
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_victory.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12448
+    offset: 0
+    sourceAssetGUID: 04b1b640198020b4a9ddc160ad691bfe
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/whoosh7.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 8608
+    offset: 0
+    sourceAssetGUID: 066b1682d30ffc645b07a75a53c28f64
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_clash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 38176
+    offset: 0
+    sourceAssetGUID: 06c7f5168c60fe94f8f9422a7ea2c557
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/controller.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 36928
+    offset: 0
+    sourceAssetGUID: 08cca303e61ea574ab31a4759e54e66f
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceMulti2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 21024
+    offset: 0
+    sourceAssetGUID: 0a007b0564c3bdd4693e1cef49106494
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/happy2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 19584
+    offset: 0
+    sourceAssetGUID: 0a3bee3dfe5d66343bd32bf9084ce23d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_survival.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12704
+    offset: 0
+    sourceAssetGUID: 0bad92e904b467b458b0f8e527ea4b33
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/exploblast.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 16064
+    offset: 0
+    sourceAssetGUID: 0bb65df3f0e27cb44a33236165e419c9
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_infectionenddefeat.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 36864
+    offset: 0
+    sourceAssetGUID: 0be1e85e21dc25b4b9eaad3d7af753c9
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/TW_CrushingBlow_HitFast_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 46112
+    offset: 0
+    sourceAssetGUID: 0ee6ebba09cadaa468d394de01ca0485
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_infection_a.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17344
+    offset: 0
+    sourceAssetGUID: 0f8f08f388a3a9e4699e40558b2aacc3
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/BAF_TurretBlast_Attack_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 11520
+    offset: 0
+    sourceAssetGUID: 10b1d3e81114ab9478915b958b38cb1a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_koth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 16192
+    offset: 0
+    sourceAssetGUID: 117424cf2eefce44c884d5829fc81c2c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_clash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 5991424
+    offset: 0
+    sourceAssetGUID: 11f253df8c294bd4bb9376b3f255ee61
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Mamonoro_0000000A [1].mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 21088
+    offset: 0
+    sourceAssetGUID: 1248abc8437b33e45b55bc41b1f223d5
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/fireballfly.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 64736
+    offset: 0
+    sourceAssetGUID: 12fdd4ae6f4ee3545948b408444fd421
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/19. Game Over.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9152
+    offset: 0
+    sourceAssetGUID: 15b503cad358a0447b4031d42d35ee59
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Next.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 7840
+    offset: 0
+    sourceAssetGUID: 1604a6051b4cf114bb4fb8b7c97cf939
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/knifetwirly.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 22784
+    offset: 0
+    sourceAssetGUID: 168162c6f19672f4d9dc58e8cd7d7042
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_hollowsthrash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9024
+    offset: 0
+    sourceAssetGUID: 18b31c9683ff6e24786ff682795f0dc2
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_stalemate.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 31584
+    offset: 0
+    sourceAssetGUID: 195a18026048a2e498388f69ac6238db
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Fireball1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17120
+    offset: 0
+    sourceAssetGUID: 1a2559889c0fc2a4cba5b891d493495d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_infection.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17216
+    offset: 0
+    sourceAssetGUID: 1a3eb4d1916bcab46a651e99687c4a19
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceAOEblast.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17952
+    offset: 0
+    sourceAssetGUID: 1b14b4264f9737148a07b68f802ba05b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_4.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 53920
+    offset: 0
+    sourceAssetGUID: 1c35e137ef4cbfb499497cc2a8a159f8
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Mental6b.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 9280
+    offset: 0
+    sourceAssetGUID: 1cbd50d698cba4542a9d68abe858eb7f
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Male_Rage1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 4224
+    offset: 0
+    sourceAssetGUID: 1fe6be54acd33004f848a7201ca674e4
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/N_Hit_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 4224
+    offset: 0
+    sourceAssetGUID: 21cee368122f8ac45a2ab4b77366b590
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/minus.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 4352
+    offset: 0
+    sourceAssetGUID: 23045d673528b10418e28e2d881b05bd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OutofRange1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 15264
+    offset: 0
+    sourceAssetGUID: 23b7c5eaad4f96f4f9833b6b38ab9d8a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_0.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 55392
+    offset: 0
+    sourceAssetGUID: 23bb3153d1f24984ca14832d83f3ef89
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_fittingin.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1636864
+    offset: 0
+    sourceAssetGUID: 247a83a8816bb1342a2c93ab216407a3
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/30_Hot_Pursuit.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12928
+    offset: 0
+    sourceAssetGUID: 258f2a366b1f04342ab0c7634b6766a0
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 101664
+    offset: 0
+    sourceAssetGUID: 265c5a5a9dad14b4fb4bf34cbf3c7ce6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mentalwail2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 63072
+    offset: 0
+    sourceAssetGUID: 28168ff80b82d43448792b96c7295d28
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/death.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1988000
+    offset: 0
+    sourceAssetGUID: 28f639e58c786b149b045d44550b53da
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/2-38. Ultimate Legend
+      of the Untrained Demon King.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 19616
+    offset: 0
+    sourceAssetGUID: 29e61518f765c1b4c8c0cc05c8b5c849
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_deepblues.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12736
+    offset: 0
+    sourceAssetGUID: 2bf3958ada1e0ae49989f235733825bd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_fittingin.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 23168
+    offset: 0
+    sourceAssetGUID: 2c9801a7695ecad40aa81e54aba2e2a9
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_bossbash_b.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1985920
+    offset: 0
+    sourceAssetGUID: 3105b98ccd9efc8408294704e236f89d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Foregone Destruction
+      (Facing Worlds) - Unreal Tournament.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 14144
+    offset: 0
+    sourceAssetGUID: 327075a8894e3be4ba11443ab1157acd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_overtime.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17600
+    offset: 0
+    sourceAssetGUID: 3368ac8791d642b47b97b000fc243d81
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/hurry_up.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 19616
+    offset: 0
+    sourceAssetGUID: 33dc2ad22cf14df48999c19d099d359c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_synth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 11904
+    offset: 0
+    sourceAssetGUID: 33e48cafdafb3e14fb84b0db123bc297
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_stalemate.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 46752
+    offset: 0
+    sourceAssetGUID: 3565c8a99e1cca94fade05c8a88097bd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/rage.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 3840
+    offset: 0
+    sourceAssetGUID: 3592b7fc96dd2e14894dbbca6dd87449
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/select5.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 39104
+    offset: 0
+    sourceAssetGUID: 3645c90d20d45824d8cad2ecc5f71a4d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_infection_a.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17536
+    offset: 0
+    sourceAssetGUID: 388f47eb1106d7d418c60d1abeaef7f2
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_0.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 860512
+    offset: 0
+    sourceAssetGUID: 38e1a4d0a5f295140a045d0818bf5522
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/02 Booting Up.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12192
+    offset: 0
+    sourceAssetGUID: 38e565dea9df2a64fa7cd57f3227bf7b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_fittingin.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 70336
+    offset: 0
+    sourceAssetGUID: 3985fa3f4288414489c6446683cc930e
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/ForcefieldOn.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 13984
+    offset: 0
+    sourceAssetGUID: 3a1adcaa9a422f54a9cd01f373305c9c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_0.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 44128
+    offset: 0
+    sourceAssetGUID: 3a1dbb2567fa1bd4b85f5ea60ecf0369
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/FireExplo.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 37920
+    offset: 0
+    sourceAssetGUID: 3acda854e82cdbd419f8f304f3ee7213
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_infection_b.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 34080
+    offset: 0
+    sourceAssetGUID: 3c8504a73ec983a43bf71f30deba4fd0
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/playgame.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 10752
+    offset: 0
+    sourceAssetGUID: 3fc515a5fd2d2884db5d2ead1ad04748
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_infection.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17408
+    offset: 0
+    sourceAssetGUID: 3fddc5558a848504ea4bd37106f6355c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_3.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 34208
+    offset: 0
+    sourceAssetGUID: 447acf524ed5abb4d8341e4ea4d7e25c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/diviningRodout.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 18240
+    offset: 0
+    sourceAssetGUID: 458a549751fe49e4c8b061fb1f71a725
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_2.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 3486720
+    offset: 0
+    sourceAssetGUID: 4cf099902f5fca14ca2300c899e52acc
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Underworld ~ Chaos.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9728
+    offset: 0
+    sourceAssetGUID: 4fee7beb50c674d4ebcc8472fa3c4487
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_clash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 15616
+    offset: 0
+    sourceAssetGUID: 51e150d9de4dac64c86a9e84edf2a5a8
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_2.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 106304
+    offset: 0
+    sourceAssetGUID: 53d8d6c745fcb5247be6b73e25737c87
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NA_Regrowth_02.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 44576
+    offset: 0
+    sourceAssetGUID: 55ab8248ea5f29540922c89e1e71cb4c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_infection_b.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 617856
+    offset: 0
+    sourceAssetGUID: 5bde32162888bc84c93b3a454b74217b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/taank.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 8032
+    offset: 0
+    sourceAssetGUID: 5c6bc01b65718194ca084e3794c40a66
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_start.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 7776
+    offset: 0
+    sourceAssetGUID: 6236cd0c08f2f6943af0819cb89ea6fe
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/lock2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 18464
+    offset: 0
+    sourceAssetGUID: 641dbd3c3bbe62849901e457d8af7c12
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_3.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 8928
+    offset: 0
+    sourceAssetGUID: 657e43396dd3f7542b5215a16942d7df
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/select2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 11488
+    offset: 0
+    sourceAssetGUID: 65ce670e300334848a05bb3d0a32f241
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/WB_WaterBurst_Hit.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 76704
+    offset: 0
+    sourceAssetGUID: 6608f4ae2b18646408473f309c9e28c4
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/themonsterswithout.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 2671680
+    offset: 0
+    sourceAssetGUID: 66fcbea3ad4b1d447a9e7149939b6da8
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Tricktrack PART2.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 21504
+    offset: 0
+    sourceAssetGUID: 67f4f659c2cc42e4fa34dc194e4e165a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_bossbash_a.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 15168
+    offset: 0
+    sourceAssetGUID: 699e47517985b9447b1b3e1aea02694c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_4.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 22944
+    offset: 0
+    sourceAssetGUID: 69cc29cb4cb4a664cb1be273ccc8e079
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_bossbash_b.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 24416
+    offset: 0
+    sourceAssetGUID: 73d2bc1dd0cf6434381c3756d5ee902a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_bitcrush.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 20800
+    offset: 0
+    sourceAssetGUID: 763e28f38d853f64ebe91f9840f02797
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_infectionenddefeat.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 21376
+    offset: 0
+    sourceAssetGUID: 784970a77cf26d74e8cb1de78daa3dbe
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchHit1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17472
+    offset: 0
+    sourceAssetGUID: 79146f3128eb33248b72872f194e547c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_3.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 14240
+    offset: 0
+    sourceAssetGUID: 79651c0a2dff7a9408766f1ec287d17b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_captureother.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 18944
+    offset: 0
+    sourceAssetGUID: 7c054db0f9bbbc74bb1e52fe8f1a92a4
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_clash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 16608
+    offset: 0
+    sourceAssetGUID: 7c70fe87f2464da4e971c0d3bfb313be
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_times_1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 18944
+    offset: 0
+    sourceAssetGUID: 7e9a3dbbeb635b249b04a7102f08ab30
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_infectionendvictory.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17632
+    offset: 0
+    sourceAssetGUID: 7fa44d834f8ab3a4183d62ca9633d7fe
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Ignite2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 15392
+    offset: 0
+    sourceAssetGUID: 83cd0f121e040194f9a42670c902dec6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_streak_2.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 10688
+    offset: 0
+    sourceAssetGUID: 852ecf4338fcd274b9c8409dae18f7cc
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_survival.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9568
+    offset: 0
+    sourceAssetGUID: 8688388dac9d8814a88a7927eb4d5cd3
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/exit.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 13536
+    offset: 0
+    sourceAssetGUID: 893929829d8a58443952d80a887d3ebe
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_koth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9792
+    offset: 0
+    sourceAssetGUID: 8f538b3c554aaa747b1bffd243ff0c35
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_defeat.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 17408
+    offset: 0
+    sourceAssetGUID: 8fac39fd6b7e4c143876a21f12d1a383
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PopHelp_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 20640
+    offset: 0
+    sourceAssetGUID: 904b075a79f2ad04c81049713952f311
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_bossbash_a.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 14176
+    offset: 0
+    sourceAssetGUID: 91ba2f217ba1bcd4d8bcde2d15d3ca91
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_bossbash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1115584
+    offset: 0
+    sourceAssetGUID: 92728ca8e47fb87479eca3df1341c3b8
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Halloween Havoc.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 22048
+    offset: 0
+    sourceAssetGUID: 93a01a9f0e5c5d64d86ac0e02bbbd690
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/forcebolt.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 15936
+    offset: 0
+    sourceAssetGUID: 9707e72a2416ecf4ba503e6933851787
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/happy4.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 14240
+    offset: 0
+    sourceAssetGUID: 989f5d1eed346e34b8d3e0e7d47905ae
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 28032
+    offset: 0
+    sourceAssetGUID: 999c8365257ed4e49b94a8f95cadca5c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_starlightskyway.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9408
+    offset: 0
+    sourceAssetGUID: 9a281a9bfa4ae8843823a2c380ea4f86
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OutofRange2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 1184608
+    offset: 0
+    sourceAssetGUID: 9d20ee37cc2a75d48b5f6fffd5db6169
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/bloodharvest.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 54592
+    offset: 0
+    sourceAssetGUID: 9f07bf6c061d68143b14a26d42bd3772
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Fireball2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 59968
+    offset: 0
+    sourceAssetGUID: 9fe6f5b4b5fc8f34882ca2419cca2b7f
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceLightForm1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 10240
+    offset: 0
+    sourceAssetGUID: a1d060f6aed375344910d9734aa7c82b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/help2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 14752
+    offset: 0
+    sourceAssetGUID: a1d5849af9cce4344ab14d85a1553222
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/ready01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 16576
+    offset: 0
+    sourceAssetGUID: a55d5f1f8ace47c4b84e6e1be8cdb032
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/tutorial_mode_koth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 80960
+    offset: 0
+    sourceAssetGUID: a8c68ea14f5cc3c40a4bb2fc1df760d4
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/tanker.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 75840
+    offset: 0
+    sourceAssetGUID: a975575660bbc0547a2cfa6d057d9cb6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/31-Mission Complete.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 20544
+    offset: 0
+    sourceAssetGUID: ab63490599811ed4a925e6415b6b6d4d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NA_CorrosiveSap_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 8736
+    offset: 0
+    sourceAssetGUID: abe0ab17c575e1542918522cce8d8b6c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Range1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 2372064
+    offset: 0
+    sourceAssetGUID: ad329aedd940b0d47bcb83694bbd5805
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/1-21. The End of Silent
+      Conflict.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 3744
+    offset: 0
+    sourceAssetGUID: ae5a3059f89ddbc4791f468d3a13c2bf
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/boing.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 11648
+    offset: 0
+    sourceAssetGUID: b08a465eb57ceca4993a8b4684ebd638
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_overtime.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 10048
+    offset: 0
+    sourceAssetGUID: b2b54749235db4c43962da153eca9f87
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_mode_koth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 15680
+    offset: 0
+    sourceAssetGUID: b345aad4058992e4c84b2bfc524607f3
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_2.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 5600
+    offset: 0
+    sourceAssetGUID: b49f83ad8a65fb349a4d5f42295c956d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/rockthrow.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 40864
+    offset: 0
+    sourceAssetGUID: b4bce03d75a3cab439892e03c19c1575
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/FlashArrowHit.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17344
+    offset: 0
+    sourceAssetGUID: b516b10957bbbfa48b3a2b4956598420
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_captureother.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 23808
+    offset: 0
+    sourceAssetGUID: b5a66afaead832e47b0e52342445736a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PeaceAOEhit.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 16480
+    offset: 0
+    sourceAssetGUID: b9142cf53d928674eafba871c2c50171
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/NemesisStaffOut.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 19008
+    offset: 0
+    sourceAssetGUID: b93669f539a2397478260bf50046d125
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_infectionendvictory.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 19136
+    offset: 0
+    sourceAssetGUID: b9d1436c20fafb940b8361f687b4e265
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/scrapper.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17312
+    offset: 0
+    sourceAssetGUID: bb0f1d3813cd5e24497e48849063c002
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_koth_captureself.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 70208
+    offset: 0
+    sourceAssetGUID: bfd359e8cb9e5a84b842a6ac46365618
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/hasten2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 2688
+    offset: 0
+    sourceAssetGUID: c17d4ff8b7adbed4fb9fda13044871c6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchOpenPalm2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 22368
+    offset: 0
+    sourceAssetGUID: c43348f61a3469344b1bce7ed97ba988
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_4.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 2014784
+    offset: 0
+    sourceAssetGUID: c435cec39b61fa6478dc6e3dc5b16c92
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/Space Colony Ark Act1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 49984
+    offset: 0
+    sourceAssetGUID: c532586363d67ef489f865705cc9fa81
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_fittingin.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 7104
+    offset: 0
+    sourceAssetGUID: c64bebb59c9cc3c4e8e498c00a2e6710
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/BM_Hit_01.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 20864
+    offset: 0
+    sourceAssetGUID: c7e5dfed4b0b99f4fb38ee68d2030acd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_casteddream.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 10656
+    offset: 0
+    sourceAssetGUID: c991bebba1e75a248ba2b18260c3b504
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mineset.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 12608
+    offset: 0
+    sourceAssetGUID: cc0348a8d8428c742b2622abe1e5c2d6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/M3.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 1568
+    offset: 0
+    sourceAssetGUID: cd1553b11b532b849814fddc0b671d86
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/mouseover_07_chiff02.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 1704000
+    offset: 0
+    sourceAssetGUID: cd27500bad37b7744811cd8b9c0ae5df
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/10 - Air Ride Machine
+      Passage.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 20736
+    offset: 0
+    sourceAssetGUID: cde71a3d85caf874895c360235c5a531
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_facingworlds.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 11040
+    offset: 0
+    sourceAssetGUID: cf471c7cbd3cd614ab435f3a3dbe1bdf
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_end.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9600
+    offset: 0
+    sourceAssetGUID: d0db549481109424c947654322449cd6
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_survival.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 4480
+    offset: 0
+    sourceAssetGUID: d186e976a6ce55042b75265fbddb3d23
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/AxeOut.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 11168
+    offset: 0
+    sourceAssetGUID: d4365fc55a732e84a84f35b18013954d
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_defeat.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 14080
+    offset: 0
+    sourceAssetGUID: d5e529d061fff9a41bd38177d319d232
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/ko_streak_1.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 15776
+    offset: 0
+    sourceAssetGUID: d725936b2dea0874e8d424c22d832aea
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_koth_captureself.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 10784
+    offset: 0
+    sourceAssetGUID: d7688548d5c3cd5448afdf9159d6741a
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/klaxon1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 1262048
+    offset: 0
+    sourceAssetGUID: d9d7a1451d095244cbbf3035d5aea466
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/onebadtank.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 2848
+    offset: 0
+    sourceAssetGUID: dc2a15dcd873c0a43813dce4d24f4c88
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/M1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 17280
+    offset: 0
+    sourceAssetGUID: e0779e527cb9f1047aa108074b2f0d6c
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/round_mode_bossbash.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 9472
+    offset: 0
+    sourceAssetGUID: e2131c926d718a34f83420ef85421b97
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_end.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 25312
+    offset: 0
+    sourceAssetGUID: e2eed3807a00a4649800d6fcf601272b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/OperaPeople2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 23488
+    offset: 0
+    sourceAssetGUID: e32956f70f61b9140b8cab7db051395e
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Hybrid_Support.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1324192
+    offset: 0
+    sourceAssetGUID: e33fec80c637dff4ea0d967307f89dcd
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/239 - Smash Bros Melee
+      - Temple.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 7840
+    offset: 0
+    sourceAssetGUID: e6f3f8e30d4c964468789c3bc633200b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_start.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 12416
+    offset: 0
+    sourceAssetGUID: e7a5ea1683d825f4abfcdd20befcb54b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/ko_times_3.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 35520
+    offset: 0
+    sourceAssetGUID: e8da6525e8b42214887ad960cabf1b40
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/illusiontoss3.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 2656
+    offset: 0
+    sourceAssetGUID: e94af18ac49fcb140a01ab6ee6a05f2b
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/2Beep.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 34336
+    offset: 0
+    sourceAssetGUID: ea57cbecdb4e6054b94ff2161f46b255
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Powerup2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 196032
+    offset: 0
+    sourceAssetGUID: eb954b41d8f819b45880bab62de0b958
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/yourownfuneral.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 10592
+    offset: 0
+    sourceAssetGUID: ed528244ba6d33b4bb0798939eaf8aca
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/round_victory.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 11456
+    offset: 0
+    sourceAssetGUID: f106bd1f5fa2e5540b8a041ffd7bda73
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/fireblastfly.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 19488
+    offset: 0
+    sourceAssetGUID: f3d2838b9cda73f46b298a19295137b3
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Heal1.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 42560
+    offset: 0
+    sourceAssetGUID: f518ab1444da62d4e9c1482b54358a56
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/kinetic4.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 1135808
+    offset: 0
+    sourceAssetGUID: f74f5682ae424d048884b949f97268c8
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/1-14. Misty Rain.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 22560
+    offset: 0
+    sourceAssetGUID: f75bb91e81c73e049bb160faf221feef
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/PunchHit2.ogg
+  - fileID: 0
+    classID: 83
+    packedSize: 16672
+    offset: 0
+    sourceAssetGUID: ff470f49f694bcf4a8a5390cfd3ae479
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/MintyMimix/tutorial_mode_survival.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 1527904
+    offset: 0
+    sourceAssetGUID: ff72bc8b8d8166c40a250df92061853e
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Music/skinonourteeth.mp3
+  - fileID: 0
+    classID: 83
+    packedSize: 23488
+    offset: 0
+    sourceAssetGUID: ff8aaf7d0a85ddc45b97e05b331f0e8f
+    buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_brawlburned.mp3

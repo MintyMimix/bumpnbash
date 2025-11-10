@@ -1,13 +1,9 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1521398425 &-3162297022496085620
-VideoBuildInfo:
-  m_VideoClipCount: 0
-  m_IsVideoModuleDisabled: 0
---- !u!1126 &-1893549045555526732
+--- !u!1126 &-5865841352624248263
 PackedAssets:
   m_ShortPath: BuildPlayer-ThrashBash.sharedAssets
-  m_Overhead: 192703
+  m_Overhead: 192699
   m_Contents:
   - fileID: 1
     classID: 150
@@ -6929,181 +6925,1101 @@ PackedAssets:
     buildTimeAssetPath: Assets/SerializedUdonPrograms/77a6c2bef9296b243ac5007b6f84bdba.asset
   - fileID: 1152
     classID: 114
-    packedSize: 23860
+    packedSize: 23856
     offset: 268697544
     sourceAssetGUID: 0424a075f362a4742b47433b1bf9624d
     buildTimeAssetPath: Assets/SerializedUdonPrograms/7b4f4d33808345d4ca10c7267df9cc79.asset
   - fileID: 1153
     classID: 114
     packedSize: 40120
-    offset: 268721408
+    offset: 268721400
     sourceAssetGUID: 4d470e9ba05c3ad40ae67bab8f197ab2
     buildTimeAssetPath: Assets/SerializedUdonPrograms/809060d0c52b490469eb697cafb6d588.asset
   - fileID: 1154
     classID: 114
     packedSize: 46824
-    offset: 268761528
+    offset: 268761520
     sourceAssetGUID: 436c05c75e569a1499c35f68e5c686fe
     buildTimeAssetPath: Assets/SerializedUdonPrograms/858736b03f66d104494990aec27bd316.asset
   - fileID: 1155
     classID: 114
     packedSize: 5608
-    offset: 268808352
+    offset: 268808344
     sourceAssetGUID: eb26b690e9052b14493273602eeba7dd
     buildTimeAssetPath: Assets/SerializedUdonPrograms/8b50ee2ee6b3e2847ba9d181fe2f720c.asset
   - fileID: 1156
     classID: 114
     packedSize: 15092
-    offset: 268813960
+    offset: 268813952
     sourceAssetGUID: db7307ff560689c4d9ef18bbb2a1a9e3
     buildTimeAssetPath: Assets/SerializedUdonPrograms/8c82509edf5da4b4985f55ed166dc54d.asset
   - fileID: 1157
     classID: 114
     packedSize: 5084
-    offset: 268829056
+    offset: 268829048
     sourceAssetGUID: fee6a265bfc949a4b8800ed095e8ebab
     buildTimeAssetPath: Assets/SerializedUdonPrograms/9f47fc2f5ebae214c88f200c6e790399.asset
   - fileID: 1158
     classID: 114
     packedSize: 4912
-    offset: 268834144
+    offset: 268834136
     sourceAssetGUID: 20ec78fb58ddd2047845275ec3e5b172
     buildTimeAssetPath: Assets/SerializedUdonPrograms/a4d5e51ec31e26443ab6c7830e1e3caf.asset
   - fileID: 1159
     classID: 114
     packedSize: 5520
-    offset: 268839056
+    offset: 268839048
     sourceAssetGUID: 31de8620da791f346bbdb81887d3e482
     buildTimeAssetPath: Assets/SerializedUdonPrograms/ad1b3b404abfd08438d66c2245e6a7a4.asset
   - fileID: 1160
     classID: 114
     packedSize: 17484
-    offset: 268844576
+    offset: 268844568
     sourceAssetGUID: 79a151c7e8389384b94c871a7fbd7270
     buildTimeAssetPath: Assets/SerializedUdonPrograms/b0f6986187eadd345b72f22978c4672c.asset
   - fileID: 1161
     classID: 114
     packedSize: 1504
-    offset: 268862064
+    offset: 268862056
     sourceAssetGUID: 1080f698dd00a294880e116170a1e452
     buildTimeAssetPath: Assets/SerializedUdonPrograms/b5280742086799a4c8c0a14e90cd913d.asset
   - fileID: 1162
     classID: 114
     packedSize: 5912
-    offset: 268863568
+    offset: 268863560
     sourceAssetGUID: 1c882eac459f18441b2f4d1e956f50cf
     buildTimeAssetPath: Assets/SerializedUdonPrograms/b8e16048ba32d81449aaa546709fe877.asset
   - fileID: 1163
     classID: 114
     packedSize: 17700
-    offset: 268869480
+    offset: 268869472
     sourceAssetGUID: 302509dcab85bdc41aed033e9ed5443d
     buildTimeAssetPath: Assets/SerializedUdonPrograms/bb91354800dfe4d46ab2081a092975dd.asset
   - fileID: 1164
     classID: 114
     packedSize: 4132
-    offset: 268887184
+    offset: 268887176
     sourceAssetGUID: cc770423259439c4ba04a8706b8d3cd1
     buildTimeAssetPath: Assets/SerializedUdonPrograms/c30f81890545eee4e808b718a3dd1ad2.asset
   - fileID: 1165
     classID: 114
     packedSize: 18980
-    offset: 268891320
+    offset: 268891312
     sourceAssetGUID: aa36c8e6f89a30a40b2d34c2b8098197
     buildTimeAssetPath: Assets/SerializedUdonPrograms/c45785253b94cf24a85b2a1319493fb8.asset
   - fileID: 1166
     classID: 114
     packedSize: 2524
-    offset: 268910304
+    offset: 268910296
     sourceAssetGUID: 23eb281bbb204a84c8c23c69cc5cc06f
     buildTimeAssetPath: Assets/SerializedUdonPrograms/c5e2f7166f3917d46b081e23322d782d.asset
   - fileID: 1167
     classID: 114
     packedSize: 1340
-    offset: 268912832
+    offset: 268912824
     sourceAssetGUID: 0adc6b97e86ce3543b52239f2eee283c
     buildTimeAssetPath: Assets/SerializedUdonPrograms/c7fa49a6118c73244ad8cd4fda57e5b7.asset
   - fileID: 1168
     classID: 114
     packedSize: 1720
-    offset: 268914176
+    offset: 268914168
     sourceAssetGUID: f8b2d95e4a12d374e8cf36f925c6433e
     buildTimeAssetPath: Assets/SerializedUdonPrograms/c8df303ceb45ae84f85a11591f741734.asset
   - fileID: 1169
     classID: 114
     packedSize: 2552
-    offset: 268915896
+    offset: 268915888
     sourceAssetGUID: adc1bda9e57f6ff4992820be4820344f
     buildTimeAssetPath: Assets/SerializedUdonPrograms/d8dddd9a0b0d69d498d2c11c7f1cd053.asset
   - fileID: 1170
     classID: 114
     packedSize: 2016
-    offset: 268918448
+    offset: 268918440
     sourceAssetGUID: 50558ae6b3239994aa6439ab41dd6771
     buildTimeAssetPath: Assets/SerializedUdonPrograms/daf00016cb4aadb4bb7aff7f9fd32359.asset
   - fileID: 1171
     classID: 114
     packedSize: 14164
-    offset: 268920464
+    offset: 268920456
     sourceAssetGUID: 7c63eb2cd6e5df946810b164a9197ba5
     buildTimeAssetPath: Assets/SerializedUdonPrograms/e3912b25e90369f4386bed29ab39dff9.asset
   - fileID: 1172
     classID: 114
     packedSize: 7492
-    offset: 268934632
+    offset: 268934624
     sourceAssetGUID: 9be69faabd0716e47aa254beb87c6745
     buildTimeAssetPath: Assets/SerializedUdonPrograms/e9e967d0bb66f09488cd024b783cc254.asset
   - fileID: 1173
     classID: 114
     packedSize: 11196
-    offset: 268942128
+    offset: 268942120
     sourceAssetGUID: bf6ca87d3c7464042894c4bc69f8d66c
     buildTimeAssetPath: Assets/SerializedUdonPrograms/eb4c80704f19c1a44b7044c4beece5b8.asset
   - fileID: 1174
     classID: 114
     packedSize: 4068
-    offset: 268953328
+    offset: 268953320
     sourceAssetGUID: 0178fa8698d2f064fbcd2aa56f55895e
     buildTimeAssetPath: Assets/SerializedUdonPrograms/eecec8d9c00359945afc3e72f743a01e.asset
   - fileID: 1175
     classID: 114
     packedSize: 6328
-    offset: 268957400
+    offset: 268957392
     sourceAssetGUID: 1179cfe307500584a9c1c29f6edd0bb5
     buildTimeAssetPath: Assets/SerializedUdonPrograms/f18ebae39cc5d73459981be56e8e95c7.asset
   - fileID: 1176
     classID: 114
     packedSize: 3032
-    offset: 268963728
+    offset: 268963720
     sourceAssetGUID: 7680e1295d382b14daf07a7d85e796f0
     buildTimeAssetPath: Assets/SerializedUdonPrograms/f29b442200b97f74abbf696e076a96e5.asset
   - fileID: 1177
     classID: 114
     packedSize: 12692
-    offset: 268966760
+    offset: 268966752
     sourceAssetGUID: 025e5e18d37359b4b91ba1e201e95319
     buildTimeAssetPath: Assets/SerializedUdonPrograms/fbaf82eb6ce47ba45a3485c6da8bbd19.asset
   - fileID: 1178
     classID: 114
     packedSize: 3504
-    offset: 268979456
+    offset: 268979448
     sourceAssetGUID: 886b28f12a3338d409ded30ceee2d30f
     buildTimeAssetPath: Assets/SerializedUdonPrograms/fc7305689f63c6547a24fb7cbe7c4133.asset
   - fileID: 1179
     classID: 114
     packedSize: 2600
-    offset: 268982960
+    offset: 268982952
     sourceAssetGUID: 2e498d1c8094910479dc3e1b768306a4
     buildTimeAssetPath: Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans
       SDF - Fallback.asset
   - fileID: 1180
     classID: 114
     packedSize: 28764
-    offset: 268985560
+    offset: 268985552
     sourceAssetGUID: 8f586378b4e144a9851e7b34d9b748ee
     buildTimeAssetPath: Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans
       SDF.asset
---- !u!1126 &-124523615346931554
+--- !u!1125 &1
+BuildReport:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: LastWindowsBuild
+  m_Summary:
+    buildStartTime:
+      serializedVersion: 2
+      ticks: 638983288257516417
+    buildGUID: 00000000000000000000000000000000
+    platformName: Win64
+    platformGroupName: Standalone
+    subtarget: 0
+    options: 0
+    assetBundleOptions: 32
+    outputPath: C:/Users/Alex/AppData/Local/Temp/DefaultCompany/Thrash Bash
+    crc: 1733087410
+    totalSize: 121185670
+    totalTimeTicks: 919277154
+    totalErrors: 0
+    totalWarnings: 216
+    buildType: 2
+    buildResult: 1
+  m_Files:
+  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw/BuildPlayer-ThrashBash
+    role: Scene
+    id: 0
+    totalSize: 52189544
+  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw/BuildPlayer-ThrashBash.sharedAssets
+    role: SharedAssets
+    id: 1
+    totalSize: 269014316
+  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw/BuildPlayer-ThrashBash.resource
+    role: StreamingResourceFile
+    id: 2
+    totalSize: 36391744
+  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw
+    role: AssetBundle
+    id: 3
+    totalSize: 121179350
+  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw.manifest
+    role: AssetBundleTextManifest
+    id: 4
+    totalSize: 5026
+  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash/CAB-ab223ec1eaf1d952744f7393d879c224
+    role: ResourcesFile
+    id: 5
+    totalSize: 4284
+  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash
+    role: ManifestAssetBundle
+    id: 6
+    totalSize: 1088
+  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash.manifest
+    role: AssetBundleTextManifest
+    id: 7
+    totalSize: 206
+  m_BuildSteps:
+  - stepName: Build Asset Bundles
+    durationTicks: 919277154
+    depth: 0
+    messages: []
+  - stepName: Calculate asset bundles to be built
+    durationTicks: 2539658
+    depth: 1
+    messages: []
+  - stepName: Prebuild Cleanup and Recompile
+    durationTicks: 45335131
+    depth: 1
+    messages: []
+  - stepName: Compile scripts
+    durationTicks: 41632926
+    depth: 2
+    messages: []
+  - stepName: Generate and validate platform script types
+    durationTicks: 3472760
+    depth: 2
+    messages: []
+  - stepName: Build Scene AssetBundle(s)
+    durationTicks: 793825400
+    depth: 1
+    messages: []
+  - stepName: 'Build bundle: scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw'
+    durationTicks: 759086321
+    depth: 2
+    messages: []
+  - stepName: Verify Build setup
+    durationTicks: 5482695
+    depth: 3
+    messages: []
+  - stepName: Prepare assets for target platform
+    durationTicks: 912022
+    depth: 3
+    messages: []
+  - stepName: Prepare splash screen
+    durationTicks: 698692
+    depth: 3
+    messages:
+    - type: 3
+      content: Including Unity Splash Screen logo because 'Show Unity Logo' is enabled.
+  - stepName: Building scenes
+    durationTicks: 165075242
+    depth: 3
+    messages: []
+  - stepName: Building scene Assets/Scenes/ThrashBash.unity
+    durationTicks: 165074983
+    depth: 4
+    messages:
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "SpawnCoral2-Rock.001"
+        within the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Stack"
+        within the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "Center-Rock.002" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "ItemRock2-Rock.001"
+        within the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "Center-Rock" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Top" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Stack.001"
+        within the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "Center-Rock.001" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "ItemRock2-Rock" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Couldn't create a Convex Mesh from source mesh "Planet.023" within
+        the maximum polygons limit (256). The partial hull will be used. Consider
+        simplifying your mesh.
+    - type: 2
+      content: Storage for variable 'round_state' of type 'System.Byte' did not match,
+        updated storage type
+    - type: 2
+      content: Storage for variable 'plysettings_lives' of type 'System.UInt16' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 2
+      content: Storage for variable 'powerup_duration' of type 'System.Single' did
+        not match, updated storage type
+    - type: 3
+      content: Computed code signatures for 133 scripts of type SerializedUdonProgramAsset
+        in 12ms
+  - stepName: Writing asset files
+    durationTicks: 66296821
+    depth: 3
+    messages: []
+  - stepName: Packaging assets - archive:/BuildPlayer-ThrashBash/BuildPlayer-ThrashBash.sharedAssets
+    durationTicks: 66022942
+    depth: 4
+    messages:
+    - type: 2
+      content: 'Shader warning in ''Graphlit/Unlit'': implicit truncation of vector
+        type at Packages/com.llealloo.audiolink/Runtime/Shaders/AudioLink.cginc(287)
+        (on d3d11)
+
+
+        Compiling Subshader: 0, Pass: ShadowCaster, Vertex program
+        with SHADOWS_DEPTH
+
+        Platform defines: SHADER_API_DESKTOP UNITY_ENABLE_DETAIL_NORMALMAP
+        UNITY_ENABLE_REFLECTION_BUFFERS UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHT_PROBE_PROXY_VOLUME
+        UNITY_PASS_SHADOWCASTER UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BLENDING UNITY_SPECCUBE_BOX_PROJECTION
+        UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
+
+        Disabled keywords:
+        INSTANCING_ON SHADER_API_GLES30 SHADOWS_CUBE UNITY_ASTC_NORMALMAP_ENCODING
+        UNITY_COLORSPACE_GAMMA UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
+        UNITY_HARDWARE_TIER1 UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_DLDR_ENCODING
+        UNITY_LIGHTMAP_RGBM_ENCODING UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_NO_DXT5nm
+        UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_SCREENSPACE_SHADOWS UNITY_PBS_USE_BRDF2
+        UNITY_PBS_USE_BRDF3 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_UNIFIED_SHADER_PRECISION_MODEL
+        UNITY_VIRTUAL_TEXTURING'
+    - type: 2
+      content: 'Shader warning in ''Graphlit/Lit'': implicit truncation of vector
+        type at Packages/com.llealloo.audiolink/Runtime/Shaders/AudioLink.cginc(287)
+        (on d3d11)
+
+
+        Compiling Subshader: 0, Pass: ShadowCaster, Vertex program
+        with SHADOWS_DEPTH
+
+        Platform defines: SHADER_API_DESKTOP UNITY_ENABLE_DETAIL_NORMALMAP
+        UNITY_ENABLE_REFLECTION_BUFFERS UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHT_PROBE_PROXY_VOLUME
+        UNITY_PASS_SHADOWCASTER UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BLENDING UNITY_SPECCUBE_BOX_PROJECTION
+        UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
+
+        Disabled keywords:
+        INSTANCING_ON SHADER_API_GLES30 SHADOWS_CUBE UNITY_ASTC_NORMALMAP_ENCODING
+        UNITY_COLORSPACE_GAMMA UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
+        UNITY_HARDWARE_TIER1 UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_DLDR_ENCODING
+        UNITY_LIGHTMAP_RGBM_ENCODING UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_NO_DXT5nm
+        UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_SCREENSPACE_SHADOWS UNITY_PBS_USE_BRDF2
+        UNITY_PBS_USE_BRDF3 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_UNIFIED_SHADER_PRECISION_MODEL
+        UNITY_VIRTUAL_TEXTURING _WIND'
+  - stepName: Creating compressed player package
+    durationTicks: 508544107
+    depth: 3
+    messages: []
+  - stepName: Postprocess built player
+    durationTicks: 430457
+    depth: 3
+    messages: []
+  m_Appendices:
+  - {fileID: 3255884811048806773}
+  - {fileID: -5865841352624248263}
+  - {fileID: 5022988692043366904}
+  - {fileID: 4043649545740202580}
+  - {fileID: 2464228950604389382}
+  - {fileID: 6673674382331367597}
+  - {fileID: 8063171296838412566}
+--- !u!641289076 &2464228950604389382
+AudioBuildInfo:
+  m_IsAudioDisabled: 0
+  m_AudioClipCount: 165
+  m_AudioMixerCount: 0
+--- !u!668709126 &3255884811048806773
+BuiltAssetBundleInfoSet:
+  bundleInfos:
+  - bundleName: scene-standalonewindows64-thrashbash-46d9894b-ee76-4353-a2ba-fc0da6166539.vrcw
+    bundleArchiveFile: 3
+    packagedFileIndices: 000000000100000002000000
+  - bundleName: Thrash Bash
+    bundleArchiveFile: 6
+    packagedFileIndices: 05000000
+--- !u!382020655 &4043649545740202580
+PluginBuildInfo:
+  m_RuntimePlugins:
+  - VRC.Udon.VM
+  - VRC.SDK3.Dynamics.PhysBone
+  - VRC.Udon.Security
+  - libvrc_fast_crypto
+  - VRCEconomy
+  - libvrc_image_loader
+  - YamlDotNet
+  - VRCSDK3
+  - nunit.framework
+  - VRCCore-Editor
+  - Serilog.Sinks.File
+  - vrc_fast_crypto
+  - VRC.SDK3.Dynamics.Contact
+  - System.Collections.Immutable
+  - OculusXRPlugin
+  - VRC.Udon.Wrapper
+  - vrc_image_loader
+  - Unity.Burst.Unsafe
+  - SemanticVersioning
+  - librsync.net
+  - OVRPlugin
+  - System.Runtime.CompilerServices.Unsafe
+  - Newtonsoft.Json
+  - Unity.Collections.LowLevel.ILSupport
+  - VRC.Udon.Common
+  - VRC.Udon.VRCWrapperModules
+  - VRC.Dynamics
+  - VRCSDKBase
+  - VRC.Utility
+  - portmidi
+  - VRC.Udon.ClientBindings
+  - SDKBase-Legacy
+  - Blake2Sharp
+  - VRC.SDK3.Dynamics.Constraint
+  - System.Text.Encoding.CodePages
+  - Serilog
+  - Collections.Pooled
+  - AudioPluginOculusSpatializer
+  m_EditorPlugins:
+  - VRC.Udon.VRCGraphModules
+  - VRC.Udon.EditorBindings
+  - 0Harmony
+  - VRC.SDK3.Dynamics.Contact.Editor
+  - libvrc_shader_compiler_plugin
+  - Mono.Cecil.Pdb
+  - JetBrains.Rider.PathLocator
+  - vrc_shader_compiler_plugin
+  - VRCSDKBase-Editor
+  - Microsoft.CodeAnalysis.CSharp
+  - VRC.Udon.VRCTypeResolverModules
+  - VRCEconomy-Editor
+  - ICSharpCode.SharpZipLib
+  - VRC.SDK3.Dynamics.Constraint.Editor
+  - AppleEventIntegration
+  - Mono.Cecil
+  - VRC.Udon.Graph
+  - Unity.Burst.Cecil.Pdb
+  - Mono.Cecil.Rocks
+  - Microsoft.CodeAnalysis
+  - VRC.Udon.Compiler
+  - System.Reflection.Metadata
+  - VRCSDK3-Editor
+  - Mono.Cecil.Mdb
+  - Serilog.Sinks.Unity3D
+  - Algolia.Search
+  - Unity.Burst.Cecil.Mdb
+  - VRC.SDK3.Dynamics.PhysBone.Editor
+  - Unity.Burst.Cecil
+  - Unity.Burst.Cecil.Rocks
+  - vpm-core-lib
+  - VRC.Udon.UAssembly
+--- !u!1126 &5022988692043366904
 PackedAssets:
   m_ShortPath: BuildPlayer-ThrashBash.resource
   m_Overhead: 0
@@ -8103,844 +9019,11 @@ PackedAssets:
     offset: 0
     sourceAssetGUID: ff8aaf7d0a85ddc45b97e05b331f0e8f
     buildTimeAssetPath: Assets/Scenes/ThrashBash/Sounds/Voiceover/LixianPrime/map_brawlburned.mp3
---- !u!1125 &1
-BuildReport:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: LastWindowsBuild
-  m_Summary:
-    buildStartTime:
-      serializedVersion: 2
-      ticks: 638983282283215021
-    buildGUID: 00000000000000000000000000000000
-    platformName: Win64
-    platformGroupName: Standalone
-    subtarget: 0
-    options: 0
-    assetBundleOptions: 32
-    outputPath: C:/Users/Alex/AppData/Local/Temp/DefaultCompany/Thrash Bash
-    crc: 1763787047
-    totalSize: 121176051
-    totalTimeTicks: 1204285737
-    totalErrors: 0
-    totalWarnings: 216
-    buildType: 2
-    buildResult: 1
-  m_Files:
-  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw/BuildPlayer-ThrashBash
-    role: Scene
-    id: 0
-    totalSize: 52189544
-  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw/BuildPlayer-ThrashBash.sharedAssets
-    role: SharedAssets
-    id: 1
-    totalSize: 269014324
-  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw/BuildPlayer-ThrashBash.resource
-    role: StreamingResourceFile
-    id: 2
-    totalSize: 36391744
-  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw
-    role: AssetBundle
-    id: 3
-    totalSize: 121169729
-  - path: C:/Unity/Projects/Thrash Bash/scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw.manifest
-    role: AssetBundleTextManifest
-    id: 4
-    totalSize: 5026
-  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash/CAB-ab223ec1eaf1d952744f7393d879c224
-    role: ResourcesFile
-    id: 5
-    totalSize: 4284
-  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash
-    role: ManifestAssetBundle
-    id: 6
-    totalSize: 1090
-  - path: C:/Unity/Projects/Thrash Bash/Thrash Bash.manifest
-    role: AssetBundleTextManifest
-    id: 7
-    totalSize: 206
-  m_BuildSteps:
-  - stepName: Build Asset Bundles
-    durationTicks: 1204285737
-    depth: 0
-    messages: []
-  - stepName: Calculate asset bundles to be built
-    durationTicks: 11889501
-    depth: 1
-    messages: []
-  - stepName: Prebuild Cleanup and Recompile
-    durationTicks: 94384396
-    depth: 1
-    messages: []
-  - stepName: Compile scripts
-    durationTicks: 93658015
-    depth: 2
-    messages: []
-  - stepName: Generate and validate platform script types
-    durationTicks: 547872
-    depth: 2
-    messages: []
-  - stepName: Build Scene AssetBundle(s)
-    durationTicks: 1020220991
-    depth: 1
-    messages: []
-  - stepName: 'Build bundle: scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw'
-    durationTicks: 1000020158
-    depth: 2
-    messages: []
-  - stepName: Verify Build setup
-    durationTicks: 955911
-    depth: 3
-    messages: []
-  - stepName: Prepare assets for target platform
-    durationTicks: 932256
-    depth: 3
-    messages: []
-  - stepName: Prepare splash screen
-    durationTicks: 396704
-    depth: 3
-    messages:
-    - type: 3
-      content: Including Unity Splash Screen logo because 'Show Unity Logo' is enabled.
-  - stepName: Building scenes
-    durationTicks: 157871897
-    depth: 3
-    messages: []
-  - stepName: Building scene Assets/Scenes/ThrashBash.unity
-    durationTicks: 157870280
-    depth: 4
-    messages:
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "SpawnCoral2-Rock.001"
-        within the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Stack"
-        within the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "Center-Rock.002" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "ItemRock2-Rock.001"
-        within the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "Center-Rock" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Top" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "SpawnRock1-Stack.001"
-        within the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "Center-Rock.001" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "ItemRock2-Rock" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Couldn't create a Convex Mesh from source mesh "Planet.023" within
-        the maximum polygons limit (256). The partial hull will be used. Consider
-        simplifying your mesh.
-    - type: 2
-      content: Storage for variable 'round_state' of type 'System.Byte' did not match,
-        updated storage type
-    - type: 2
-      content: Storage for variable 'plysettings_lives' of type 'System.UInt16' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 2
-      content: Storage for variable 'powerup_duration' of type 'System.Single' did
-        not match, updated storage type
-    - type: 3
-      content: Computed code signatures for 133 scripts of type SerializedUdonProgramAsset
-        in 12ms
-  - stepName: Writing asset files
-    durationTicks: 313333386
-    depth: 3
-    messages: []
-  - stepName: Packaging assets - archive:/BuildPlayer-ThrashBash/BuildPlayer-ThrashBash.sharedAssets
-    durationTicks: 312954537
-    depth: 4
-    messages:
-    - type: 2
-      content: 'Shader warning in ''Graphlit/Unlit'': implicit truncation of vector
-        type at Packages/com.llealloo.audiolink/Runtime/Shaders/AudioLink.cginc(287)
-        (on d3d11)
-
-
-        Compiling Subshader: 0, Pass: ShadowCaster, Vertex program
-        with SHADOWS_DEPTH
-
-        Platform defines: SHADER_API_DESKTOP UNITY_ENABLE_DETAIL_NORMALMAP
-        UNITY_ENABLE_REFLECTION_BUFFERS UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHT_PROBE_PROXY_VOLUME
-        UNITY_PASS_SHADOWCASTER UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BLENDING UNITY_SPECCUBE_BOX_PROJECTION
-        UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
-
-        Disabled keywords:
-        INSTANCING_ON SHADER_API_GLES30 SHADOWS_CUBE UNITY_ASTC_NORMALMAP_ENCODING
-        UNITY_COLORSPACE_GAMMA UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
-        UNITY_HARDWARE_TIER1 UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_DLDR_ENCODING
-        UNITY_LIGHTMAP_RGBM_ENCODING UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_NO_DXT5nm
-        UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_SCREENSPACE_SHADOWS UNITY_PBS_USE_BRDF2
-        UNITY_PBS_USE_BRDF3 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_UNIFIED_SHADER_PRECISION_MODEL
-        UNITY_VIRTUAL_TEXTURING'
-    - type: 2
-      content: 'Shader warning in ''Graphlit/Lit'': implicit truncation of vector
-        type at Packages/com.llealloo.audiolink/Runtime/Shaders/AudioLink.cginc(287)
-        (on d3d11)
-
-
-        Compiling Subshader: 0, Pass: ShadowCaster, Vertex program
-        with SHADOWS_DEPTH
-
-        Platform defines: SHADER_API_DESKTOP UNITY_ENABLE_DETAIL_NORMALMAP
-        UNITY_ENABLE_REFLECTION_BUFFERS UNITY_LIGHTMAP_FULL_HDR UNITY_LIGHT_PROBE_PROXY_VOLUME
-        UNITY_PASS_SHADOWCASTER UNITY_PBS_USE_BRDF1 UNITY_SPECCUBE_BLENDING UNITY_SPECCUBE_BOX_PROJECTION
-        UNITY_USE_DITHER_MASK_FOR_ALPHABLENDED_SHADOWS
-
-        Disabled keywords:
-        INSTANCING_ON SHADER_API_GLES30 SHADOWS_CUBE UNITY_ASTC_NORMALMAP_ENCODING
-        UNITY_COLORSPACE_GAMMA UNITY_FRAMEBUFFER_FETCH_AVAILABLE UNITY_HALF_PRECISION_FRAGMENT_SHADER_REGISTERS
-        UNITY_HARDWARE_TIER1 UNITY_HARDWARE_TIER2 UNITY_HARDWARE_TIER3 UNITY_LIGHTMAP_DLDR_ENCODING
-        UNITY_LIGHTMAP_RGBM_ENCODING UNITY_METAL_SHADOWS_USE_POINT_FILTERING UNITY_NO_DXT5nm
-        UNITY_NO_FULL_STANDARD_SHADER UNITY_NO_SCREENSPACE_SHADOWS UNITY_PBS_USE_BRDF2
-        UNITY_PBS_USE_BRDF3 UNITY_PRETRANSFORM_TO_DISPLAY_ORIENTATION UNITY_UNIFIED_SHADER_PRECISION_MODEL
-        UNITY_VIRTUAL_TEXTURING _WIND'
-  - stepName: Creating compressed player package
-    durationTicks: 512200299
-    depth: 3
-    messages: []
-  - stepName: Postprocess built player
-    durationTicks: 438453
-    depth: 3
-    messages: []
-  m_Appendices:
-  - {fileID: 8245187323143763915}
-  - {fileID: -1893549045555526732}
-  - {fileID: -124523615346931554}
-  - {fileID: 7486334870599776181}
-  - {fileID: 2473338001850814424}
-  - {fileID: -3162297022496085620}
-  - {fileID: 4335416730407596330}
---- !u!641289076 &2473338001850814424
-AudioBuildInfo:
-  m_IsAudioDisabled: 0
-  m_AudioClipCount: 165
-  m_AudioMixerCount: 0
---- !u!1126 &4335416730407596330
+--- !u!1521398425 &6673674382331367597
+VideoBuildInfo:
+  m_VideoClipCount: 0
+  m_IsVideoModuleDisabled: 0
+--- !u!1126 &8063171296838412566
 PackedAssets:
   m_ShortPath: CAB-ab223ec1eaf1d952744f7393d879c224
   m_Overhead: 4032
@@ -8957,86 +9040,3 @@ PackedAssets:
     offset: 4136
     sourceAssetGUID: 00000000000000000000000000000000
     buildTimeAssetPath: 'Built-in AssetBundleManifest: AssetBundleManifest'
---- !u!382020655 &7486334870599776181
-PluginBuildInfo:
-  m_RuntimePlugins:
-  - VRC.Udon.VM
-  - VRC.SDK3.Dynamics.PhysBone
-  - VRC.Udon.Security
-  - libvrc_fast_crypto
-  - VRCEconomy
-  - libvrc_image_loader
-  - YamlDotNet
-  - VRCSDK3
-  - nunit.framework
-  - VRCCore-Editor
-  - Serilog.Sinks.File
-  - vrc_fast_crypto
-  - VRC.SDK3.Dynamics.Contact
-  - System.Collections.Immutable
-  - OculusXRPlugin
-  - VRC.Udon.Wrapper
-  - vrc_image_loader
-  - Unity.Burst.Unsafe
-  - SemanticVersioning
-  - librsync.net
-  - OVRPlugin
-  - System.Runtime.CompilerServices.Unsafe
-  - Newtonsoft.Json
-  - Unity.Collections.LowLevel.ILSupport
-  - VRC.Udon.Common
-  - VRC.Udon.VRCWrapperModules
-  - VRC.Dynamics
-  - VRCSDKBase
-  - VRC.Utility
-  - portmidi
-  - VRC.Udon.ClientBindings
-  - SDKBase-Legacy
-  - Blake2Sharp
-  - VRC.SDK3.Dynamics.Constraint
-  - System.Text.Encoding.CodePages
-  - Serilog
-  - Collections.Pooled
-  - AudioPluginOculusSpatializer
-  m_EditorPlugins:
-  - VRC.Udon.VRCGraphModules
-  - VRC.Udon.EditorBindings
-  - 0Harmony
-  - VRC.SDK3.Dynamics.Contact.Editor
-  - libvrc_shader_compiler_plugin
-  - Mono.Cecil.Pdb
-  - JetBrains.Rider.PathLocator
-  - vrc_shader_compiler_plugin
-  - VRCSDKBase-Editor
-  - Microsoft.CodeAnalysis.CSharp
-  - VRC.Udon.VRCTypeResolverModules
-  - VRCEconomy-Editor
-  - ICSharpCode.SharpZipLib
-  - VRC.SDK3.Dynamics.Constraint.Editor
-  - AppleEventIntegration
-  - Mono.Cecil
-  - VRC.Udon.Graph
-  - Unity.Burst.Cecil.Pdb
-  - Mono.Cecil.Rocks
-  - Microsoft.CodeAnalysis
-  - VRC.Udon.Compiler
-  - System.Reflection.Metadata
-  - VRCSDK3-Editor
-  - Mono.Cecil.Mdb
-  - Serilog.Sinks.Unity3D
-  - Algolia.Search
-  - Unity.Burst.Cecil.Mdb
-  - VRC.SDK3.Dynamics.PhysBone.Editor
-  - Unity.Burst.Cecil
-  - Unity.Burst.Cecil.Rocks
-  - vpm-core-lib
-  - VRC.Udon.UAssembly
---- !u!668709126 &8245187323143763915
-BuiltAssetBundleInfoSet:
-  bundleInfos:
-  - bundleName: scene-standalonewindows64-thrashbash-a09f6f50-bc8b-4a8e-9a45-43ba689cb7c3.vrcw
-    bundleArchiveFile: 3
-    packagedFileIndices: 000000000100000002000000
-  - bundleName: Thrash Bash
-    bundleArchiveFile: 6
-    packagedFileIndices: 05000000
