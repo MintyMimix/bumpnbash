@@ -13,17 +13,14 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
-  - _EMISSION
   - _NORMALMAP
   - _PARALLAXMAP
   m_InvalidKeywords: []
-  m_LightmapFlags: 2
-  m_EnableInstancingVariants: 1
+  m_LightmapFlags: 1
+  m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
-    folder_Emission: 1
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -159,7 +156,7 @@ Material:
     - _Toggle_ANISOTROPY: 0
     - _Toggle_AUDIOLINK_EMISSION: 0
     - _Toggle_COAT: 0
-    - _Toggle_EMISSION: 1
+    - _Toggle_EMISSION: 0
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0

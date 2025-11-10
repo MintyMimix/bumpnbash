@@ -12,17 +12,15 @@ Material:
     type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
-  m_ValidKeywords:
-  - _EMISSION
-  - _SURFACE_TYPE_TRANSPARENT
-  m_InvalidKeywords: []
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _ALPHABLEND_ON
+  - _ENABLE_GEOMETRIC_SPECULAR_AA
   m_LightmapFlags: 2
-  m_EnableInstancingVariants: 1
+  m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 3000
-  stringTagMap:
-    RenderType: Transparent
-    folder_Emission: 1
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -136,7 +134,7 @@ Material:
     - _Bicubic: 0
     - _BicubicLightmap: 0
     - _Blend: 0
-    - _BlendModePreserveSpecular: 0
+    - _BlendModePreserveSpecular: 1
     - _BlendOp: 0
     - _BumpScale: 1
     - _CameraFadingEnabled: 0
@@ -230,14 +228,14 @@ Material:
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
-    - _Surface: 1
+    - _Surface: 0
     - _ThinFilmIOR: 1.4
     - _ThinFilmThickness: 0.5
     - _ThinFilmWeight: 1
     - _Toggle_ANISOTROPY: 0
     - _Toggle_AUDIOLINK_EMISSION: 0
     - _Toggle_COAT: 0
-    - _Toggle_EMISSION: 1
+    - _Toggle_EMISSION: 0
     - _Toggle_GSAA: 0
     - _Toggle_PIXELUV: 0
     - _Toggle_THINFILM: 0
@@ -251,7 +249,7 @@ Material:
     - _WindSpeed: 0.05
     - _ZTest: 4
     - _ZWrite: 0
-    - __reset: 0
+    - __reset: 1
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15
     m_Colors:

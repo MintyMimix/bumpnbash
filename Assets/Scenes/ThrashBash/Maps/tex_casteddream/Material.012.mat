@@ -13,13 +13,14 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _ENABLE_GEOMETRIC_SPECULAR_AA
+  - _SMOOTHNESS_TEXTURE_ALBEDO_CHANNEL_A
   m_LightmapFlags: 2
-  m_EnableInstancingVariants: 1
+  m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -167,7 +168,7 @@ Material:
     - _WindSpeed: 0.05
     - _ZTest: 4
     - _ZWrite: 1
-    - __reset: 0
+    - __reset: 1
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15
     m_Colors:

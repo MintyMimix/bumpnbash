@@ -9,6 +9,7 @@ public class ChangeColorWithSetting : UdonSharpBehaviour
 {
     [SerializeField] GameController gameController;
     [SerializeField] public int[] material_slots;
+    [SerializeField] public bool change_emission = true;
     [SerializeField] public bool use_color_index = true;
     [SerializeField] public int color_index;
     [SerializeField] public bool set_color_as_rgb_pattern = false;
@@ -22,7 +23,9 @@ public class ChangeColorWithSetting : UdonSharpBehaviour
     [NonSerialized] private float hue_angle = 0.0f;
     [NonSerialized] private float pulse_timer = 0.0f;
     [NonSerialized] private bool pulse_halfway_complete = false;
-    [NonSerialized] public byte stored_alpha;
+    [NonSerialized] public byte stored_r;
+    [NonSerialized] public byte stored_g;
+    [NonSerialized] public byte stored_b;
 
     void Start()
     {
@@ -38,7 +41,7 @@ public class ChangeColorWithSetting : UdonSharpBehaviour
             if (gcObj != null) { gameController = gcObj.GetComponent<GameController>(); }
         }
         if (gameController != null && gameController.flag_for_mobile_vr.activeInHierarchy) { pulse_color = false; }
-        if (pulse_color) { stored_alpha = set_color.a; }
+        if (pulse_color) { stored_r = set_color.r; stored_g = set_color.g; stored_b = set_color.b; }
     }
 
     private void Update()
@@ -53,11 +56,12 @@ public class ChangeColorWithSetting : UdonSharpBehaviour
         {
             set_color = (Color32)renderer_to_sync_to.material.color;
         }
-
-        if (pulse_color && pulse_timer < pulse_speed)
+        else if (pulse_color && pulse_timer < pulse_speed)
         {
             pulse_timer += Time.deltaTime;
-            set_color.a = (byte)Mathf.RoundToInt(Mathf.Lerp(0, stored_alpha, pulse_halfway_complete ? pulse_timer / pulse_speed : 1 - pulse_timer / pulse_speed));
+            set_color.r = (byte)Mathf.RoundToInt(Mathf.Lerp(0, stored_r, pulse_halfway_complete ? pulse_timer / pulse_speed : 1 - pulse_timer / pulse_speed));
+            set_color.g = (byte)Mathf.RoundToInt(Mathf.Lerp(0, stored_g, pulse_halfway_complete ? pulse_timer / pulse_speed : 1 - pulse_timer / pulse_speed));
+            set_color.b = (byte)Mathf.RoundToInt(Mathf.Lerp(0, stored_b, pulse_halfway_complete ? pulse_timer / pulse_speed : 1 - pulse_timer / pulse_speed));
         }
         else if (pulse_color && pulse_timer >= pulse_speed)
         {
@@ -131,21 +135,30 @@ public class ChangeColorWithSetting : UdonSharpBehaviour
                         if (color_index < 0)
                         {
                             mat.SetColor("_Color", Color.white);
-                            mat.EnableKeyword("_EMISSION");
-                            mat.SetColor("_EmissionColor", Color.white);
+                            if (change_emission)
+                            {
+                                mat.EnableKeyword("_EMISSION");
+                                mat.SetColor("_EmissionColor", Color.white);
+                            }
                         }
                         else
                         {
                             mat.SetColor("_Color", gameController.team_colors_bright[color_index]);
-                            mat.EnableKeyword("_EMISSION");
-                            mat.SetColor("_EmissionColor", gameController.team_colors[color_index]);
+                            if (change_emission)
+                            {
+                                mat.EnableKeyword("_EMISSION");
+                                mat.SetColor("_EmissionColor", gameController.team_colors[color_index]);
+                            }
                         }
                     }
                     else
                     {
                         mat.SetColor("_Color", set_color);
-                        mat.EnableKeyword("_EMISSION");
-                        mat.SetColor("_EmissionColor", set_color);
+                        if (change_emission)
+                        {
+                            mat.EnableKeyword("_EMISSION");
+                            mat.SetColor("_EmissionColor", set_color);
+                        }
                     }
                 }
             }

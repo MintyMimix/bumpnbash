@@ -13,14 +13,13 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
-  m_InvalidKeywords: []
+  m_InvalidKeywords:
+  - _ENABLE_GEOMETRIC_SPECULAR_AA
   m_LightmapFlags: 4
-  m_EnableInstancingVariants: 1
+  m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
-  m_CustomRenderQueue: 2000
-  stringTagMap:
-    RenderType: Opaque
-    folder_Emission: 1
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -142,13 +141,6 @@ Material:
     - _Reflectance: 0.5
     - _Roughness: 0.5
     - _RoughnessScale: 1
-    - _Shadow2ndBlur: 0.4
-    - _Shadow2ndBorder: 0.15
-    - _ShadowBlur: 0.1
-    - _ShadowBorder: 0.5
-    - _ShadowBorderRange: 0.08
-    - _ShadowMainStrength: 0
-    - _ShadowStrength: 1
     - _SmoothnessTextureChannel: 0
     - _SpecularAAScreenSpaceVariance: 0.1
     - _SpecularAAThreshold: 0.2
@@ -175,7 +167,7 @@ Material:
     - _WindSpeed: 0.05
     - _ZTest: 4
     - _ZWrite: 1
-    - __reset: 0
+    - __reset: 1
     - _specularAntiAliasingThreshold: 0.1
     - _specularAntiAliasingVariance: 0.15
     m_Colors:
@@ -184,9 +176,6 @@ Material:
     - _DetailUVScoll: {r: 0, g: 0, b: 0, a: 0}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _MainUVScoll: {r: 0, g: 0, b: 0, a: 0}
-    - _Shadow2ndColor: {r: 0.68, g: 0.65999997, b: 0.78999996, a: 1}
-    - _ShadowBorderColor: {r: 1, g: 0.09999997, b: 0, a: 1}
-    - _ShadowColor: {r: 0.82, g: 0.76, b: 0.85, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
     - _WindIntensity: {r: 0.1, g: 0.1, b: 0.1, a: 0}
   m_BuildTextureStacks: []

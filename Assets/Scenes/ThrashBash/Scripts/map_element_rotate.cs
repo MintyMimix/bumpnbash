@@ -8,6 +8,12 @@ public class map_element_rotate : UdonSharpBehaviour
 {
     [SerializeField] public float rotation_speed = 1.0f;
     [SerializeField] public byte rotation_axis = 0;
+    [SerializeField] public float rotation_speed_variance = 0.0f;
+
+    private void Start()
+    {
+        rotation_speed = UnityEngine.Random.Range(rotation_speed - rotation_speed_variance, rotation_speed + rotation_speed_variance);
+    }
 
     private void Update()
     {

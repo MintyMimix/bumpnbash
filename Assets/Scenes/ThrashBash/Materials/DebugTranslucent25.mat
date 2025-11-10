@@ -13,11 +13,12 @@ Material:
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHATEST_ON
   - _EMISSION
   - _SURFACE_TYPE_TRANSPARENT
   m_InvalidKeywords: []
   m_LightmapFlags: 2
-  m_EnableInstancingVariants: 1
+  m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: 3000
   stringTagMap:
@@ -129,8 +130,8 @@ Material:
     m_Floats:
     - PixelSnap: 0
     - _AlbedoSaturation: 1
-    - _AlphaClip: 0
-    - _AlphaToMask: 0
+    - _AlphaClip: 1
+    - _AlphaToMask: 1
     - _Anisotropy: 0
     - _AudioLinkEmissionBand: 0
     - _AudioLinkEmissionIntensity: 0.5
@@ -169,7 +170,7 @@ Material:
     - _EmissionEnabled: 0
     - _EmissionGIMultiplier: 1
     - _EmissionHueShift: 0
-    - _EmissionMultiplyBase: 0
+    - _EmissionMultiplyBase: 1
     - _EmissionStrength: 1
     - _EmissionUV: 0
     - _EnableExternalAlpha: 0
@@ -261,7 +262,7 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _ColorAddSubDiff: {r: 0, g: 0, b: 0, a: 0}
     - _DetailUVScoll: {r: 0, g: 0, b: 0, a: 0}
-    - _EmissionColor: {r: 0.05, g: 0.05, b: 0.05, a: 1}
+    - _EmissionColor: {r: 1, g: 1, b: 1, a: 1}
     - _Flip: {r: 1, g: 1, b: 1, a: 1}
     - _MainUVScoll: {r: 0, g: 0, b: 0, a: 0}
     - _RendererColor: {r: 1, g: 1, b: 1, a: 1}
