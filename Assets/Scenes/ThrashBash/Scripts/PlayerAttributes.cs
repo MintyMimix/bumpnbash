@@ -521,8 +521,9 @@ public class PlayerAttributes : UdonSharpBehaviour
         Debug.Log("We killed Defender ID: " + defenderPlyId);
         // Add points if we aren't on KOTH (which is capture time)
         if (gameController.option_gamemode != (int)gamemode_name.KingOfTheHill && !defenderIsTraining && !ply_training) 
-        { 
-            ply_points++; 
+        {
+            if (gameController.option_teamplay && gameController.GetGlobalTeam(defenderPlyId) != ply_team) { ply_points++; }
+
             if (gameController.option_gamemode == (int)gamemode_name.Clash)
             {
                 if ((!gameController.option_teamplay || (gameController.option_gamemode == (int)gamemode_name.BossBash && ply_team == 1)) && ply_points == gameController.option_gm_goal - 1) 

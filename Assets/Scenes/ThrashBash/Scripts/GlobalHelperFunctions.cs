@@ -8,7 +8,7 @@ using VRC.Udon;
 
 public class GlobalHelperFunctions : UdonSharpBehaviour
 {
-    public const string BUILD_VERSION = "0.32.0";
+    public const string BUILD_VERSION = "0.32.1";
 
     // Enum replacement helper
     public static int KeyToPowerupType(string enum_str_name)

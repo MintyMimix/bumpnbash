@@ -355,6 +355,7 @@ public class GameController : GlobalHelperFunctions
 
     [NonSerialized][UdonSynced] public int ply_master_id = 0;
     [NonSerialized] public bool master_in_transit = false;
+    [NonSerialized] public float master_in_transit_timeout_timer = 0.0f;
 
     [NonSerialized] private string room_ready_status_text = "";
 
@@ -708,6 +709,16 @@ public class GameController : GlobalHelperFunctions
             {
                 local_uiplytoself.UI_Capturezones();
             }
+        }
+
+        if (master_in_transit && master_in_transit_timeout_timer >= 60.0f)
+        {
+            master_in_transit = false;
+            master_in_transit_timeout_timer = 0.0f;
+        }
+        else
+        {
+            master_in_transit_timeout_timer += Time.deltaTime + ((int)GLOBAL_CONST.TICK_RATE_MS / 1000.0f);
         }
 
         // Master handling
@@ -1627,6 +1638,11 @@ public class GameController : GlobalHelperFunctions
                 goal_input_a = 800;
                 goal_input_b = 200;
             }
+            else if (mapscript_list != null && map_selected >= 0 && map_selected < mapscript_list.Length && mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_HIGHWAYINTHESKY", "Starlight Skyway"))
+            {
+                goal_input_a = 1200;
+                goal_input_b = 300;
+            }
             ui_round_length_input.text = "240";
             ui_round_length_toggle.isOn = true;
             ui_adv_option_respawn_duration.text = "5";
@@ -1657,9 +1673,9 @@ public class GameController : GlobalHelperFunctions
         ui_ply_option_weapon_toggle.isOn = true;
         ui_ply_option_powerup_toggle.isOn = true;
 
-        ui_adv_option_respawn_duration.text = "3";
+        ui_adv_option_respawn_duration.text = "5";
         ui_adv_option_boss_scale_mod.text = "400";
-        ui_adv_option_boss_atk_mod.text = "50";
+        ui_adv_option_boss_atk_mod.text = "0";
         ui_adv_option_boss_def_mod.text = "150";
         ui_adv_option_boss_speed_mod.text = "50";
         ui_adv_option_item_frequency.text = "100";
@@ -2582,11 +2598,11 @@ public class GameController : GlobalHelperFunctions
             }
             else if (mapscript_list[map_selected].map_name == localizer.FetchText("MAP_NAME_HIGHWAYINTHESKY", "Starlight Skyway"))
             {
-                if (plysettings_speed < 3.01f || plysettings_grav > 0.49f || plysettings_atk < 3.0f)
+                if (plysettings_speed < 3.01f || plysettings_grav > 0.49f || plysettings_atk < 5.0f)
                 {
                     plysettings_speed = 3.01f;
                     plysettings_grav = 0.49f;
-                    plysettings_atk = 3.0f;
+                    plysettings_atk = 5.0f;
                 }
                 if (option_gamemode == (int)gamemode_name.FittingIn && option_gm_goal == 801)
                 {
